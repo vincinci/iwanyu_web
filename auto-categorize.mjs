@@ -8,9 +8,10 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '.env.local') });
 
+// Use service role key for admin operations
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
 );
 
 // Smart categorization - keywords in priority order (checked first = higher priority)
