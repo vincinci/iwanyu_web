@@ -2,10 +2,26 @@
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
-import { FeaturedProducts } from "@/components/FeaturedProducts";
+import { CategoryProductSection } from "@/components/CategoryProductSection";
 import { Footer } from "@/components/Footer";
+import { useMarketplace } from "@/context/marketplace";
+import { CATEGORIES } from "@/lib/categories";
+import { slugifyCategory } from "@/lib/categories";
 
 const Index = () => {
+  const { products } = useMarketplace();
+
+  // Group products by category
+  const productsByCategory = CATEGORIES.map(category => {
+    const categoryProducts = products.filter(
+      product => product.category.toLowerCase() === category.name.toLowerCase()
+    );
+    return {
+      category,
+      products: categoryProducts
+    };
+  }).filter(group => group.products.length > 0); // Only show categories that have products
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <Header />
@@ -14,12 +30,6 @@ const Index = () => {
         <HeroSection />
         
         <CategoryNav />
-        
-        <FeaturedProducts 
-          title="Today's Deals" 
-          subtitle="Limited time offers on top products"
-          viewAllLink="/deals"
-        />
         
         <div className="container py-4">
           <div className="rounded-lg border border-iwanyu-border bg-gradient-to-r from-yellow-50 to-amber-50 p-6 shadow-subtle">
@@ -46,19 +56,23 @@ const Index = () => {
             </div>
           </div>
         </div>
-        
-        <FeaturedProducts 
-          title="Top Electronics" 
-          category="Electronics"
-          viewAllLink="/category/electronics"
-        />
-        
-        <FeaturedProducts 
-          title="Home & Kitchen Favorites" 
-          category="Kitchen"
-          viewAllLink="/category/kitchen"
-          maxProducts={4}
-        />
+
+        {/* Display all products grouped by category with horizontal scroll */}
+        {productsByCategory.map(({ category, products: categoryProducts }) => (
+          <CategoryProductSection
+            key={category.id}
+            categoryName={category.name}
+            products={categoryProducts}
+            viewAllLink={`/category/${slugifyCategory(category.name)}`}
+          />
+        ))}
+
+        {/* Show message if no products */}
+        {products.length === 0 && (
+          <div className="container py-12 text-center">
+            <p className="text-gray-500">No products available at the moment.</p>
+          </div>
+        )}
       </main>
       
       <Footer />
