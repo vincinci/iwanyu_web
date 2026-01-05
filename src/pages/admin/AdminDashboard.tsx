@@ -132,6 +132,16 @@ export default function AdminDashboardPage() {
     setApplications((prev) => prev.filter((x) => x.id !== app.id));
   }
 
+  async function toggleVendorRevoke(vendorId: string, currentRevoked: boolean) {
+    if (!supabase) throw new Error("Supabase is not configured");
+    const { error } = await supabase
+      .from("vendors")
+      .update({ revoked: !currentRevoked })
+      .eq("id", vendorId);
+    if (error) throw new Error(error.message);
+    await refresh();
+  }
+
   async function deleteProductWithReason() {
     if (!supabase) throw new Error("Supabase is not configured");
     if (!user) throw new Error("Not signed in");
@@ -276,6 +286,60 @@ export default function AdminDashboardPage() {
                           }}
                         >
                           Reject
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Vendors</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-gray-700">
+              {vendors.length === 0 ? (
+                <div className="text-gray-600">No vendors.</div>
+              ) : (
+                <div className="space-y-3">
+                  {vendors.map((v) => (
+                    <div key={v.id} className="rounded-lg border border-iwanyu-border bg-white p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-semibold text-gray-900">{v.name}</div>
+                          <div className="mt-1 text-xs text-gray-600">
+                            {v.location ?? "No location"} • {v.verified ? "Verified" : "Unverified"}
+                          </div>
+                          {v.revoked ? (
+                            <div className="mt-2 inline-block rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                              Revoked
+                            </div>
+                          ) : null}
+                        </div>
+                        <Button
+                          variant={v.revoked ? "outline" : "destructive"}
+                          className="rounded-full"
+                          onClick={async () => {
+                            try {
+                              await toggleVendorRevoke(v.id, v.revoked ?? false);
+                              toast({
+                                title: v.revoked ? "Unrevoked" : "Revoked",
+                                description: v.revoked
+                                  ? "Vendor can now sell products."
+                                  : "Vendor cannot sell products.",
+                              });
+                            } catch (e) {
+                              toast({
+                                title: "Failed",
+                                description: e instanceof Error ? e.message : "Unknown error",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          {v.revoked ? "Unrevoke" : "Revoke"}
                         </Button>
                       </div>
                     </div>

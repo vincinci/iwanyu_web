@@ -139,48 +139,11 @@ export default function SellPage() {
               ) : null}
 
               <div className="flex flex-wrap gap-3">
-                <Button
-                  className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
-                  disabled={
-                    loadingApplication ||
-                    (myVendors.length === 0 && storeName.trim().length < 2) ||
-                    (myVendors.length === 0 && application?.status === "pending")
-                  }
-                  onClick={async () => {
-                    await setRole("seller");
-
-                    // If vendor already exists, go straight to dashboard.
-                    if (myVendors.length > 0) {
-                      navigate("/seller");
-                      return;
-                    }
-
-                    // Otherwise submit an application for admin approval.
-                    if (!supabase) throw new Error("Supabase is not configured");
-                    const id = createId("va");
-                    await supabase.from("vendor_applications").insert({
-                      id,
-                      owner_user_id: user.id,
-                      store_name: storeName.trim(),
-                      location: location.trim(),
-                    });
-
-                    setApplication({
-                      id,
-                      store_name: storeName.trim(),
-                      location: location.trim(),
-                      status: "pending",
-                      vendor_id: null,
-                    });
-
-                    // Keep the old flow for admin-created stores.
-                    // (Admins can still create vendors directly via the seller product page.)
-                    await refresh();
-                    navigate("/seller");
-                  }}
-                >
-                  {myVendors.length > 0 ? "Go to Seller Dashboard" : "Submit Vendor Application"}
-                </Button>
+                <Link to={myVendors.length > 0 ? "/seller" : "/vendor-application"}>
+                  <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">
+                    {myVendors.length > 0 ? "Go to Seller Dashboard" : "Start Vendor Application"}
+                  </Button>
+                </Link>
 
                 <Link to="/seller/products/new">
                   <Button variant="outline" className="rounded-full">Upload a product</Button>

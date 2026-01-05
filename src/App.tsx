@@ -24,7 +24,9 @@ import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
 import { AuthProvider } from "./context/auth";
 import LoginPage from "./pages/Login";
+import SignupPage from "./pages/Signup";
 import LogoutPage from "./pages/Logout";
+import VendorApplicationPage from "./pages/VendorApplication";
 import RequireAuth from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/sell" element={<SellPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/vendor-application" element={<VendorApplicationPage />} />
             <Route path="/logout" element={<LogoutPage />} />
 
             {/* Dashboards */}

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,27 +8,24 @@ import { Separator } from "@/components/ui/separator";
 import StorefrontPage from "@/components/StorefrontPage";
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { useEffect } from "react";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const supabase = getSupabaseClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const supabase = getSupabaseClient();
-
-  const state = location.state as { from?: { pathname?: string } } | null;
-  const nextPath = state?.from?.pathname || "/account";
+  const [fullName, setFullName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate(nextPath, { replace: true });
-  }, [user, navigate, nextPath]);
+    if (user) navigate("/account", { replace: true });
+  }, [user, navigate]);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
       setError("Supabase is not configured");
@@ -39,22 +36,27 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          data: {
+            full_name: fullName.trim() || undefined,
+          },
+        },
       });
 
-      if (signInError) throw signInError;
+      if (signUpError) throw signUpError;
 
-      navigate(nextPath);
+      navigate("/account");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign in failed");
+      setError(e instanceof Error ? e.message : "Sign up failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignup = async () => {
     if (!supabase) {
       setError("Supabase is not configured");
       return;
@@ -64,7 +66,7 @@ export default function LoginPage() {
 
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: { redirectTo: `${window.location.origin}/account` },
     });
 
     if (e) setError(e.message);
@@ -76,14 +78,28 @@ export default function LoginPage() {
         <div className="mx-auto max-w-md">
           <Card>
             <CardHeader>
-              <CardTitle>Sign in</CardTitle>
+              <CardTitle>Create account</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">Sign in to manage your account and sell products.</p>
+              <p className="text-sm text-gray-600">Sign up to shop and sell on iwanyu marketplace.</p>
 
               {supabase ? (
                 <>
-                  <form onSubmit={handleEmailLogin} className="space-y-3">
+                  <form onSubmit={handleEmailSignup} className="space-y-3">
+                    <div>
+                      <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
+                        Full name (optional)
+                      </Label>
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder="John Doe"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+
                     <div>
                       <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                         Email
@@ -110,6 +126,7 @@ export default function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        minLength={6}
                         className="mt-1"
                       />
                     </div>
@@ -119,7 +136,7 @@ export default function LoginPage() {
                       className="w-full rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
                       disabled={loading}
                     >
-                      {loading ? "Signing in..." : "Sign in"}
+                      {loading ? "Creating account..." : "Sign up"}
                     </Button>
                   </form>
 
@@ -133,7 +150,7 @@ export default function LoginPage() {
                   <Button
                     variant="outline"
                     className="w-full rounded-full"
-                    onClick={handleGoogleLogin}
+                    onClick={handleGoogleSignup}
                     disabled={loading}
                   >
                     <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
@@ -172,9 +189,9 @@ export default function LoginPage() {
               ) : null}
 
               <div className="text-center text-sm text-gray-600">
-                Don't have an account?{" "}
-                <Link to="/signup" className="font-semibold text-iwanyu-primary hover:underline">
-                  Sign up
+                Already have an account?{" "}
+                <Link to="/login" className="font-semibold text-iwanyu-primary hover:underline">
+                  Sign in
                 </Link>
               </div>
 
