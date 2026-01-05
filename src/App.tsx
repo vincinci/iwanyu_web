@@ -27,6 +27,8 @@ import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import LogoutPage from "./pages/Logout";
 import VendorApplicationPage from "./pages/VendorApplication";
+import PrivacyPolicyPage from "./pages/PrivacyPolicy";
+import TermsOfServicePage from "./pages/TermsOfService";
 import RequireAuth from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -113,6 +115,8 @@ const App = () => (
             <Route path="/shipping" element={<StaticPage title="Shipping Rates & Policies" />} />
             <Route path="/returns" element={<StaticPage title="Returns & Replacements" />} />
             <Route path="/help" element={<StaticPage title="Help" />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsOfServicePage />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /seller
+Disallow: /account
+Disallow: /checkout
+Disallow: /cart
+
+# Crawl-delay (optional, helps prevent overwhelming the server)
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://iwanyu.store/sitemap.xml
