@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { ProductCard } from "@/components/ProductCard";
 import { useMarketplace } from "@/context/marketplace";
+import { getCategoryById, slugifyCategory } from "@/lib/categories";
 
 function titleFromSlug(slug: string) {
   if (slug === "all") return "All";
@@ -17,12 +18,15 @@ export default function CategoryPage() {
   const categoryId = rawCategoryId ?? "all";
   const { products } = useMarketplace();
 
-  const title = categoryId === "all" ? "All" : titleFromSlug(categoryId);
+  const title = (() => {
+    if (categoryId === "all") return "All";
+    const def = getCategoryById(categoryId);
+    return def?.name ?? titleFromSlug(categoryId);
+  })();
 
   const filtered = (() => {
     if (categoryId === "all") return products;
-    // products store category as display string (e.g. "Electronics")
-    return products.filter((p) => p.category.toLowerCase().replace(/\s+/g, "-") === categoryId);
+    return products.filter((p) => slugifyCategory(p.category) === categoryId);
   })();
 
   return (

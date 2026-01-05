@@ -4,6 +4,7 @@ import type { Vendor } from "@/types/vendor";
 import type { Product } from "@/types/product";
 import { createId } from "@/lib/ids";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { normalizeCategoryName } from "@/lib/categories";
 
 export type MarketplaceProduct = Product & {
   vendorId: string;
@@ -92,7 +93,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         vendorId: p.vendor_id,
         title: p.title,
         description: p.description ?? "",
-        category: p.category ?? "General",
+        category: normalizeCategoryName(p.category),
         price: Number(p.price_rwf ?? 0),
         image: p.image_url ?? "",
         inStock: Boolean(p.in_stock),

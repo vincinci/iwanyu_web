@@ -6,10 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 import { useMarketplace } from '@/context/marketplace';
-
-function slugifyCategory(category: string) {
-  return category.toLowerCase().trim().replace(/\s+/g, '-');
-}
+import { getNavCategoriesWithCounts } from '@/lib/categories';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -19,18 +16,7 @@ export const Header = () => {
   const { products } = useMarketplace();
 
   const categories = useMemo(() => {
-    const seen = new Set<string>();
-    const out: Array<{ id: string; name: string }> = [];
-    for (const p of products) {
-      const name = (p.category ?? '').trim();
-      if (!name) continue;
-      const id = slugifyCategory(name);
-      if (seen.has(id)) continue;
-      seen.add(id);
-      out.push({ id, name });
-    }
-    out.sort((a, b) => a.name.localeCompare(b.name));
-    return out;
+    return getNavCategoriesWithCounts(products).map(({ id, name }) => ({ id, name }));
   }, [products]);
 
   const toggleMobileMenu = () => {

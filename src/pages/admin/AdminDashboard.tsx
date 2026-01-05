@@ -21,6 +21,7 @@ import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { formatMoney } from "@/lib/money";
+import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 
 const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
@@ -55,17 +56,7 @@ export default function AdminDashboardPage() {
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
 
-  const categoryOptions = useMemo(() => {
-    const byKey = new Map<string, string>();
-    for (const p of products) {
-      const raw = String(p.category ?? "").trim();
-      if (!raw) continue;
-      const key = raw.toLowerCase();
-      if (key === "general" || key === "uncategorized") continue;
-      if (!byKey.has(key)) byKey.set(key, raw);
-    }
-    return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
 
   const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
 
@@ -305,7 +296,8 @@ export default function AdminDashboardPage() {
                 <div className="space-y-3">
                   {products.slice(0, 50).map((p) => {
                     const vendor = vendors.find((v) => v.id === p.vendorId);
-                    const selected = categoryEdits[p.id] ?? String(p.category ?? "").trim();
+                    const current = normalizeCategoryName(p.category);
+                    const selected = categoryEdits[p.id] ?? (isRealCategoryName(current) ? current : "");
                     return (
                       <div key={p.id} className="rounded-lg border border-iwanyu-border bg-white p-4">
                         <div className="font-semibold text-gray-900">{p.title}</div>
@@ -345,7 +337,7 @@ export default function AdminDashboardPage() {
                             <Button
                               variant="outline"
                               className="rounded-full"
-                              disabled={categoryOptions.length === 0 || !selected || selected === String(p.category ?? "").trim()}
+                              disabled={categoryOptions.length === 0 || !selected || selected === current}
                               onClick={async () => {
                                 try {
                                   await updateProductCategory(p.id, selected);

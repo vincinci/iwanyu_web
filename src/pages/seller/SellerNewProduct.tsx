@@ -11,6 +11,7 @@ import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
+import { getAllCategoryOptions } from "@/lib/categories";
 
 const MAX_MEDIA_FILES = 8;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -20,7 +21,7 @@ export default function SellerNewProductPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { vendors, products, createVendor, upsertProduct, getVendorsForOwner } = useMarketplace();
+  const { vendors, createVendor, upsertProduct, getVendorsForOwner } = useMarketplace();
 
   const supabase = getSupabaseClient();
 
@@ -46,17 +47,7 @@ export default function SellerNewProductPage() {
   const [inStock, setInStock] = useState(true);
   const [uploading, setUploading] = useState(false);
 
-  const categoryOptions = useMemo(() => {
-    const byKey = new Map<string, string>();
-    for (const p of products) {
-      const raw = String(p.category ?? "").trim();
-      if (!raw) continue;
-      const key = raw.toLowerCase();
-      if (key === "general" || key === "uncategorized") continue;
-      if (!byKey.has(key)) byKey.set(key, raw);
-    }
-    return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
 
   useEffect(() => {
     if (!category && categoryOptions.length > 0) setCategory(categoryOptions[0]);
@@ -158,7 +149,7 @@ export default function SellerNewProductPage() {
                 <div className="text-sm font-medium text-gray-700">Category</div>
                 {categoryOptions.length === 0 ? (
                   <div className="mt-1 rounded-md border border-iwanyu-border bg-white p-3 text-xs text-gray-600">
-                    No categories available yet. Ask admin to categorize products first.
+                    No categories available.
                   </div>
                 ) : (
                   <Select value={category} onValueChange={(v) => setCategory(v)}>
@@ -265,7 +256,7 @@ export default function SellerNewProductPage() {
                   try {
                     if (!supabase) throw new Error("Supabase is not configured");
                     if (!user) throw new Error("Not signed in");
-                    if (categoryOptions.length === 0) throw new Error("No categories available yet");
+                    if (categoryOptions.length === 0) throw new Error("No categories available");
                     if (!category.trim()) throw new Error("Please select a category");
 
                     let resolvedVendorId = vendorId;
