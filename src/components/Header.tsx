@@ -89,23 +89,65 @@ export const Header = () => {
             {/* Desktop Nav Items */}
             <div className="hidden md:flex items-center gap-2 ml-auto">
               {user ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
-                  {user.picture ? (
-                    <img src={user.picture} alt={user.name ?? "User"} className="h-7 w-7 rounded-full" />
-                  ) : (
-                    <User size={22} className="text-gray-600" />
-                  )}
-                  <div className="hidden lg:block">
-                    <div className="text-xs text-gray-500 leading-tight">Signed in</div>
-                    <div className="text-sm font-semibold text-gray-900 leading-tight line-clamp-1">{user.name ?? user.email ?? "Account"}</div>
+                <div className="relative group/profile">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
+                    {user.picture ? (
+                      <img src={user.picture} alt={user.name ?? "User"} className="h-9 w-9 rounded-full ring-2 ring-iwanyu-primary/20" />
+                    ) : (
+                      <div className="h-9 w-9 rounded-full bg-gradient-to-br from-iwanyu-primary to-orange-500 flex items-center justify-center text-white font-semibold">
+                        {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="hidden lg:block">
+                      <div className="text-xs text-gray-500 leading-tight">Welcome back</div>
+                      <div className="text-sm font-semibold text-gray-900 leading-tight line-clamp-1">{user.name ?? user.email ?? "Account"}</div>
+                    </div>
+                    <ChevronDown size={16} className="text-gray-400" />
+                  </button>
+                  
+                  {/* Profile Dropdown */}
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all z-50">
+                    <div className="p-4 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        {user.picture ? (
+                          <img src={user.picture} alt={user.name ?? "User"} className="h-12 w-12 rounded-full" />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-iwanyu-primary to-orange-500 flex items-center justify-center text-white font-bold text-lg">
+                            {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-gray-900 truncate">{user.name ?? "User"}</div>
+                          <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <Link to="/account" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <User size={18} className="text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">My Account</span>
+                      </Link>
+                      <Link to="/orders" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Package size={18} className="text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">Orders</span>
+                      </Link>
+                      <Link to="/wishlist" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Heart size={18} className="text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">Wishlist</span>
+                      </Link>
+                    </div>
+                    <div className="p-2 border-t border-gray-100">
+                      <button 
+                        onClick={() => void signOut()}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors text-red-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span className="text-sm font-medium">Sign Out</span>
+                      </button>
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="rounded-full ml-2"
-                    onClick={() => void signOut()}
-                  >
-                    Sign out
-                  </Button>
                 </div>
               ) : (
                 <Link
@@ -116,16 +158,6 @@ export const Header = () => {
                   <span className="text-xs font-medium text-gray-700 mt-0.5">Sign in</span>
                 </Link>
               )}
-
-              {user ? (
-                <Link
-                  to="/account"
-                  className="flex flex-col items-center justify-center px-3 py-2 rounded-lg hover:bg-gray-50 transition-all group"
-                >
-                  <User size={24} className="text-gray-600 group-hover:text-iwanyu-primary transition-colors" />
-                  <span className="text-xs font-medium text-gray-700 mt-0.5">Account</span>
-                </Link>
-              ) : null}
 
               <Link
                 to="/orders"
