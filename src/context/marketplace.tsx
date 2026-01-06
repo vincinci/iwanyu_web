@@ -56,7 +56,11 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
+    console.log('[MarketplaceContext] Refresh called');
+    console.log('[MarketplaceContext] Supabase client exists:', !!supabase);
+    
     if (!supabase) {
+      console.error('[MarketplaceContext] No Supabase client - setting empty state');
       setVendors([]);
       setProducts([]);
       setLoading(false);
@@ -64,6 +68,8 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
     }
 
     setLoading(true);
+    console.log('[MarketplaceContext] Starting data fetch...');
+    
     try {
       const [{ data: vendorRows, error: vendorsErr }, { data: productRows, error: productsErr }] = await Promise.all([
         supabase
@@ -78,8 +84,17 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
           .order("created_at", { ascending: false }),
       ]);
 
-      if (vendorsErr) throw vendorsErr;
-      if (productsErr) throw productsErr;
+      console.log('[MarketplaceContext] Vendors response:', { count: vendorRows?.length, error: vendorsErr });
+      console.log('[MarketplaceContext] Products response:', { count: productRows?.length, error: productsErr });
+
+      if (vendorsErr) {
+        console.error('[MarketplaceContext] Vendors error:', vendorsErr);
+        throw vendorsErr;
+      }
+      if (productsErr) {
+        console.error('[MarketplaceContext] Products error:', productsErr);
+        throw productsErr;
+      }
 
       const nextVendors = ((vendorRows ?? []) as DbVendorRow[]).map((v) => ({
         id: v.id,
@@ -105,10 +120,16 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         discountPercentage: Math.max(0, Math.min(100, Number(p.discount_percentage ?? 0))),
       }));
 
+      console.log('[MarketplaceContext] Setting state - Vendors:', nextVendors.length, 'Products:', nextProducts.length);
       setVendors(nextVendors);
       setProducts(nextProducts);
+    } catch (error) {
+      console.error('[MarketplaceContext] Fatal error during refresh:', error);
+      setVendors([]);
+      setProducts([]);
     } finally {
       setLoading(false);
+      console.log('[MarketplaceContext] Refresh complete');
     }
   }, [supabase]);
 
