@@ -141,4 +141,21 @@
   .button-hover {
     @apply transition-colors duration-200 ease-in-out;
   }
+  
+  .product-card {
+    @apply relative overflow-hidden rounded-2xl border border-iwanyu-border/60 bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-iwanyu-primary/20;
+  }
+  
+  .product-image {
+    @apply relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100;
+  }
+  
+  .scroll-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scroll-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

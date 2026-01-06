@@ -44,18 +44,19 @@ const Index = () => {
         <CategoryNav />
         
         {/* Category Sections with Horizontal Scrolling */}
-        <div className="container py-8">
+        <div className="container py-12">
           {loading ? (
             <div className="space-y-12">
               {[1, 2, 3].map((i) => (
                 <div key={i}>
-                  <div className="h-8 bg-gray-200 rounded w-48 mb-6 animate-pulse"></div>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                    {[...Array(5)].map((_, j) => (
+                  <div className="h-8 bg-gray-200 rounded-xl w-48 mb-6 animate-pulse"></div>
+                  <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                    {[...Array(6)].map((_, j) => (
                       <div key={j} className="animate-pulse">
-                        <div className="bg-gray-200 aspect-square rounded-lg mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                        <div className="bg-gray-200 aspect-[4/3] rounded-2xl mb-3"></div>
+                        <div className="h-4 bg-gray-200 rounded-lg mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded-lg w-3/4 mb-2"></div>
+                        <div className="h-5 bg-gray-200 rounded-lg w-2/3"></div>
                       </div>
                     ))}
                   </div>
@@ -91,11 +92,11 @@ const Index = () => {
         </div>
 
         {/* Promo Banner */}
-        <div className="container py-4">
-          <div className="rounded-lg border border-iwanyu-border bg-gradient-to-r from-yellow-50 to-amber-50 p-6 shadow-subtle">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="container py-8">
+          <div className="rounded-2xl border border-iwanyu-border bg-gradient-to-r from-yellow-50 to-amber-50 p-8 shadow-xl">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
               <div>
-                <span className="inline-block rounded bg-iwanyu-primary/10 px-2.5 py-1 text-xs font-medium text-iwanyu-primary">
+                <span className="inline-block rounded-full bg-iwanyu-primary/10 px-3 py-1.5 text-sm font-medium text-iwanyu-primary">
                   Limited Offer
                 </span>
                 <h2 className="mt-2 text-2xl font-bold text-iwanyu-foreground">
@@ -153,11 +154,11 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
   return (
     <div className="relative">
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">{category}</h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-3xl font-bold text-gray-900">{category}</h2>
         <Link 
           to={`/category/${categoryId}`}
-          className="text-sm font-medium text-iwanyu-primary hover:text-iwanyu-primary/80 transition-colors"
+          className="text-sm font-medium text-iwanyu-primary hover:text-iwanyu-primary/80 transition-colors px-4 py-2 rounded-full bg-iwanyu-primary/10 hover:bg-iwanyu-primary/20"
         >
           View all ({products.length}) →
         </Link>
@@ -187,7 +188,7 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
         {/* Horizontal Scrolling Product Grid */}
         <div
           ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide pb-4"
+          className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
@@ -196,7 +197,7 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
           {products.slice(0, 15).map((product) => (
             <div
               key={product.id}
-              className="flex-none w-[180px] sm:w-[200px] md:w-[220px]"
+              className="flex-none w-[200px] sm:w-[240px] md:w-[260px] lg:w-[280px] xl:w-[300px]"
             >
               <ProductCard product={product} />
             </div>

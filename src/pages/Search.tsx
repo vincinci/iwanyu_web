@@ -30,20 +30,20 @@ const Search = () => {
       <Header />
       
       <main className="flex-1">
-        <div className="container py-8">
+        <div className="container py-12">
           {/* Search Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Search Results</h1>
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-gray-900 mb-3">Search Results</h1>
             {query && (
-              <p className="text-gray-600">
-                Showing {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for <span className="font-semibold">"{query}"</span>
+              <p className="text-lg text-gray-600">
+                Showing {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for <span className="font-semibold text-iwanyu-primary">"{query}"</span>
               </p>
             )}
           </div>
 
           {/* Search Results */}
           {searchResults.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
               {searchResults.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}

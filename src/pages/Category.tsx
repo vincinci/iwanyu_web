@@ -31,23 +31,29 @@ export default function CategoryPage() {
 
   return (
     <StorefrontPage>
-      <div className="container py-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="container py-12">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-iwanyu-foreground">{title}</h1>
-            <p className="mt-1 text-gray-600">Browse products in this category.</p>
+            <h1 className="text-4xl font-bold text-iwanyu-foreground">{title}</h1>
+            <p className="mt-2 text-lg text-gray-600">Browse products in this category.</p>
           </div>
-          <Link to="/" className="text-sm font-medium text-iwanyu-primary hover:underline">
-            Back to home
+          <Link to="/" className="text-sm font-medium text-iwanyu-primary hover:underline px-4 py-2 rounded-full bg-iwanyu-primary/10 transition-colors">
+            ← Back to home
           </Link>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="mt-8 rounded-lg border border-iwanyu-border bg-white p-6 text-gray-600">
-            No products found.
+          <div className="mt-8 rounded-2xl border border-iwanyu-border bg-white p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+            <p className="text-gray-600">Try browsing other categories or check back later.</p>
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:gap-6">
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
             {filtered.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
