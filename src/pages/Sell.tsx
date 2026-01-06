@@ -100,55 +100,131 @@ export default function SellPage() {
               </div>
 
               {myVendors.length > 0 ? (
-                <div className="text-sm text-gray-700">
-                  <div className="text-gray-600">Store ready:</div>
-                  <div className="mt-1 font-semibold text-gray-900">{myVendors[0].name}</div>
+                <div className="space-y-4">
+                  <div className="text-sm text-gray-700">
+                    <div className="text-gray-600">Your store is ready:</div>
+                    <div className="mt-1 font-semibold text-2xl text-gray-900">{myVendors[0].name}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Link to="/seller">
+                      <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">
+                        Go to Seller Dashboard
+                      </Button>
+                    </Link>
+                    <Link to="/seller/products/new">
+                      <Button variant="outline" className="rounded-full">Upload a product</Button>
+                    </Link>
+                  </div>
                 </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Store name</label>
-                    <Input className="mt-1" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Your store name" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Location</label>
-                    <Input className="mt-1" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, Country" />
+              ) : application?.status === "pending" ? (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
+                  <div className="font-semibold text-gray-900 text-lg mb-2">Application Pending</div>
+                  <div className="text-gray-700 space-y-2">
+                    <div>Store name: <span className="font-medium">{application.store_name}</span></div>
+                    <div>Location: <span className="font-medium">{application.location}</span></div>
+                    <div className="mt-4 text-sm text-gray-600">
+                      Your application is being reviewed by our team. You'll receive an email once it's approved.
+                    </div>
                   </div>
                 </div>
-              )}
-
-              {myVendors.length === 0 && application ? (
-                <div className="rounded-lg border border-iwanyu-border bg-white p-4 text-sm text-gray-700">
-                  <div className="font-semibold text-gray-900">Vendor application</div>
-                  <div className="mt-1 text-gray-600">
-                    Status: <span className="font-medium text-gray-900">{application.status}</span>
+              ) : application?.status === "approved" ? (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-6">
+                  <div className="font-semibold text-gray-900 text-lg mb-2">Application Approved!</div>
+                  <div className="text-gray-700">
+                    Your store "{application.store_name}" has been approved. Refresh the page to access your seller dashboard.
                   </div>
-                  <div className="mt-1 text-gray-600">
-                    Store: <span className="font-medium text-gray-900">{application.store_name}</span>
+                  <Button onClick={() => window.location.reload()} className="mt-4 rounded-full">
+                    Refresh Page
+                  </Button>
+                </div>
+              ) : application?.status === "rejected" ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-6 mb-6">
+                  <div className="font-semibold text-gray-900 text-lg mb-2">Application Rejected</div>
+                  <div className="text-gray-700 mb-4">
+                    Your previous application for "{application.store_name}" was not approved. You can submit a new application below.
                   </div>
-                  {application.status === "pending" ? (
-                    <div className="mt-2 text-gray-600">Your application is pending admin approval.</div>
-                  ) : null}
-                  {application.status === "approved" ? (
-                    <div className="mt-2 text-gray-600">Approved. Your store will appear shortly.</div>
-                  ) : null}
-                  {application.status === "rejected" ? (
-                    <div className="mt-2 text-gray-600">Rejected. You can submit a new application.</div>
-                  ) : null}
                 </div>
               ) : null}
 
-              <div className="flex flex-wrap gap-3">
-                <Link to={myVendors.length > 0 ? "/seller" : "/vendor-application"}>
-                  <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">
-                    {myVendors.length > 0 ? "Go to Seller Dashboard" : "Start Vendor Application"}
-                  </Button>
-                </Link>
+              {myVendors.length === 0 && (!application || application.status === "rejected") && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!supabase || !user) return;
 
-                <Link to="/seller/products/new">
-                  <Button variant="outline" className="rounded-full">Upload a product</Button>
-                </Link>
-              </div>
+                    if (!storeName.trim()) {
+                      alert("Please enter a store name");
+                      return;
+                    }
+
+                    try {
+                      const appId = createId("app");
+                      const { error } = await supabase.from("vendor_applications").insert({
+                        id: appId,
+                        owner_user_id: user.id,
+                        store_name: storeName.trim(),
+                        location: location.trim() || null,
+                        status: "pending",
+                      });
+
+                      if (error) throw error;
+
+                      alert("Application submitted successfully! We'll review it shortly.");
+                      window.location.reload();
+                    } catch (error) {
+                      console.error("Error submitting application:", error);
+                      alert("Failed to submit application. Please try again.");
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-2">
+                        Store name *
+                      </label>
+                      <Input
+                        required
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        placeholder="e.g., Davy's Electronics"
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-2">
+                        Location
+                      </label>
+                      <Input
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="City, Country"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      type="submit"
+                      className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                    >
+                      Submit Application
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => {
+                        setStoreName("");
+                        setLocation("Kigali, Rwanda");
+                      }}
+                    >
+                      Clear Form
+                    </Button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
         </div>

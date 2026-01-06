@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
@@ -7,10 +7,11 @@ import { Footer } from "@/components/Footer";
 import { useMarketplace } from "@/context/marketplace";
 import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const { products, loading } = useMarketplace();
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Enhanced debug logging
   console.log('=== MARKETPLACE DEBUG ===');
@@ -20,22 +21,18 @@ const Index = () => {
   console.log('Supabase URL configured:', !!import.meta.env.VITE_SUPABASE_URL);
   console.log('========================');
 
-  // Filter products by selected category
-  const filteredProducts = selectedCategory === "all" 
-    ? products
-    : products.filter(product => {
-        const normalizedCategory = normalizeCategoryName(product.category);
-        return normalizedCategory === selectedCategory;
-      });
-
-  // Get category counts
-  const categoryCounts = CATEGORIES.map(category => {
-    const count = products.filter(product => {
+  // Group products by category
+  const productsByCategory = CATEGORIES.map(category => {
+    const categoryProducts = products.filter(product => {
       const normalizedProductCategory = normalizeCategoryName(product.category);
       return normalizedProductCategory === category.name;
-    }).length;
-    return { ...category, count };
-  });
+    });
+    return {
+      ...category,
+      products: categoryProducts,
+      count: categoryProducts.length
+    };
+  }).filter(cat => cat.count > 0);
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -46,47 +43,23 @@ const Index = () => {
         
         <CategoryNav />
         
-        {/* Products Section */}
+        {/* Category Sections with Horizontal Scrolling */}
         <div className="container py-8">
-          {/* Category Tabs */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Shop All Products</h2>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              <Button
-                variant={selectedCategory === "all" ? "default" : "outline"}
-                className="rounded-full whitespace-nowrap"
-                onClick={() => setSelectedCategory("all")}
-              >
-                All Products ({products.length})
-              </Button>
-              {categoryCounts.filter(cat => cat.count > 0).map(category => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.name ? "default" : "outline"}
-                  className="rounded-full whitespace-nowrap"
-                  onClick={() => setSelectedCategory(category.name)}
-                >
-                  {category.name} ({category.count})
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Product Grid */}
           {loading ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 aspect-square rounded-lg mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            <div className="space-y-12">
+              {[1, 2, 3].map((i) => (
+                <div key={i}>
+                  <div className="h-8 bg-gray-200 rounded w-48 mb-6 animate-pulse"></div>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {[...Array(5)].map((_, j) => (
+                      <div key={j} className="animate-pulse">
+                        <div className="bg-gray-200 aspect-square rounded-lg mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : products.length === 0 ? (
@@ -104,15 +77,15 @@ const Index = () => {
               <Button onClick={() => window.location.reload()}>Reload Page</Button>
             </div>
           ) : (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No products found</h3>
-              <p className="text-gray-600 mb-6">Try selecting a different category</p>
-              <Button onClick={() => setSelectedCategory("all")}>View All Products</Button>
+            <div className="space-y-12">
+              {productsByCategory.map((category) => (
+                <CategorySection
+                  key={category.id}
+                  category={category.name}
+                  products={category.products}
+                  categoryId={category.id}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -146,6 +119,90 @@ const Index = () => {
       </main>
       
       <Footer />
+    </div>
+  );
+};
+
+// Category Section Component with Horizontal Scrolling
+interface CategorySectionProps {
+  category: string;
+  products: Array<any>;
+  categoryId: string;
+}
+
+const CategorySection = ({ category, products, categoryId }: CategorySectionProps) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 400;
+      const currentScroll = scrollContainerRef.current.scrollLeft;
+      const newScroll = direction === 'left' 
+        ? currentScroll - scrollAmount 
+        : currentScroll + scrollAmount;
+      
+      scrollContainerRef.current.scrollTo({
+        left: newScroll,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  if (products.length === 0) return null;
+
+  return (
+    <div className="relative">
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">{category}</h2>
+        <Link 
+          to={`/category/${categoryId}`}
+          className="text-sm font-medium text-iwanyu-primary hover:text-iwanyu-primary/80 transition-colors"
+        >
+          View all ({products.length}) →
+        </Link>
+      </div>
+
+      {/* Scroll Controls */}
+      <div className="relative group">
+        {products.length > 5 && (
+          <>
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/95 hover:bg-white shadow-lg rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-6 h-6 text-gray-700" />
+            </button>
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/95 hover:bg-white shadow-lg rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-6 h-6 text-gray-700" />
+            </button>
+          </>
+        )}
+
+        {/* Horizontal Scrolling Product Grid */}
+        <div
+          ref={scrollContainerRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-4"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          {products.slice(0, 15).map((product) => (
+            <div
+              key={product.id}
+              className="flex-none w-[180px] sm:w-[200px] md:w-[220px]"
+            >
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

@@ -46,10 +46,9 @@ export default function LoginPage() {
 
       if (signInError) throw signInError;
 
-      navigate(nextPath);
+      // Don't navigate here - let the useEffect handle it when user state updates
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign in failed");
-    } finally {
       setLoading(false);
     }
   };
