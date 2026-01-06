@@ -57,7 +57,7 @@ export default function VendorApplicationPage() {
         location: location.trim(),
         verified: false,
         owner_user_id: user.id,
-        revoked: false,
+        status: 'approved',
       });
 
       if (vendorErr) throw new Error(vendorErr.message);

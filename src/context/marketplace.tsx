@@ -30,7 +30,7 @@ type DbVendorRow = {
   location: string | null;
   verified: boolean;
   owner_user_id: string | null;
-  revoked: boolean | null;
+  status: string;
 };
 
 type DbProductRow = {
@@ -74,7 +74,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       const [{ data: vendorRows, error: vendorsErr }, { data: productRows, error: productsErr }] = await Promise.all([
         supabase
           .from("vendors")
-          .select("id, name, location, verified, owner_user_id, revoked")
+          .select("id, name, location, verified, owner_user_id, status")
           .order("created_at", { ascending: false }),
         supabase
           .from("products")
@@ -102,7 +102,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         location: v.location ?? undefined,
         verified: v.verified,
         ownerUserId: v.owner_user_id ?? undefined,
-        revoked: v.revoked ?? false,
+        status: v.status,
       }));
 
       const nextProducts = ((productRows ?? []) as DbProductRow[]).map((p) => ({
@@ -153,7 +153,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
           location: vendor.location ?? null,
           verified: Boolean(vendor.verified),
           owner_user_id: vendor.ownerUserId ?? null,
-          revoked: false,
+          status: vendor.status ?? 'approved',
         });
         if (error) throw new Error(error.message);
 
