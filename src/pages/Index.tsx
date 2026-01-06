@@ -9,11 +9,16 @@ import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { products } = useMarketplace();
+  const { products, loading } = useMarketplace();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  // Debug: Log products
-  console.log('Products loaded:', products.length, products.slice(0, 3));
+  // Enhanced debug logging
+  console.log('=== MARKETPLACE DEBUG ===');
+  console.log('Products loaded:', products.length);
+  console.log('Loading state:', loading);
+  console.log('Sample products:', products.slice(0, 3));
+  console.log('Supabase URL configured:', !!import.meta.env.VITE_SUPABASE_URL);
+  console.log('========================');
 
   // Filter products by selected category
   const filteredProducts = selectedCategory === "all" 
@@ -68,11 +73,35 @@ const Index = () => {
           </div>
 
           {/* Product Grid */}
-          {filteredProducts.length > 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 aspect-square rounded-lg mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No products available</h3>
+              <p className="text-gray-600 mb-2">Database connection issue detected</p>
+              <p className="text-sm text-gray-500 mb-6">
+                Please check the browser console for error details or contact support.
+              </p>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
             </div>
           ) : (
             <div className="text-center py-16">
