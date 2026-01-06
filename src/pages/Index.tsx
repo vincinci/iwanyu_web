@@ -11,12 +11,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
-  const { products, loading } = useMarketplace();
+  const { products, loading, error } = useMarketplace();
 
   // Enhanced debug logging
   console.log('=== MARKETPLACE DEBUG ===');
   console.log('Products loaded:', products.length);
   console.log('Loading state:', loading);
+  console.log('Marketplace error:', error);
   console.log('Sample products:', products.slice(0, 3));
   console.log('Supabase URL configured:', !!import.meta.env.VITE_SUPABASE_URL);
   console.log('========================');
