@@ -29,6 +29,7 @@ import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
 import { AuthProvider } from "./context/auth";
 import { WishlistProvider } from "@/context/wishlist";
+import { RecentlyViewedProvider } from "@/context/recentlyViewed";
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import LogoutPage from "./pages/Logout";
@@ -181,12 +182,14 @@ const App = () => (
       <AuthProvider>
         <MarketplaceProvider>
           <WishlistProvider>
-            <CartProvider>
-              <BrowserRouter>
-                <ScrollToTop />
-                <AppContent />
-              </BrowserRouter>
-            </CartProvider>
+            <RecentlyViewedProvider>
+              <CartProvider>
+                <BrowserRouter>
+                  <ScrollToTop />
+                  <AppContent />
+                </BrowserRouter>
+              </CartProvider>
+            </RecentlyViewedProvider>
           </WishlistProvider>
         </MarketplaceProvider>
       </AuthProvider>

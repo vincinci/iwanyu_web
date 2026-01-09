@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 import { useMarketplace } from '@/context/marketplace';
+import { useWishlist } from '@/context/wishlist';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
 
 export const Header = () => {
@@ -15,6 +16,7 @@ export const Header = () => {
   const { itemCount } = useCart();
   const { user, signOut } = useAuth();
   const { products } = useMarketplace();
+  const { count: wishlistCount } = useWishlist();
   const navigate = useNavigate();
 
   const categories = useMemo(() => {
@@ -243,7 +245,14 @@ export const Header = () => {
                 to="/wishlist"
                 className="relative flex flex-col items-center justify-center px-3 py-2 rounded-lg hover:bg-gray-50 transition-all group"
               >
-                <Heart size={24} className="text-gray-600 group-hover:text-red-500 transition-colors" />
+                <div className="relative">
+                  <Heart size={24} className="text-gray-600 group-hover:text-red-500 transition-colors" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -right-2 -top-2 flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-md">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs font-medium text-gray-700 mt-0.5">Wishlist</span>
               </Link>
 

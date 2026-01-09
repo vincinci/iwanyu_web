@@ -57,14 +57,14 @@ export const Footer = () => {
       {/* Back to top button */}
       <button
         onClick={scrollToTop}
-        className="flex w-full items-center justify-center bg-iwanyu-light py-3.5 text-sm text-white hover:bg-iwanyu-light/90"
+        className="flex w-full items-center justify-center bg-iwanyu-light py-2.5 text-sm text-white hover:bg-iwanyu-light/90"
       >
         <ArrowUp size={16} className="mr-2" />
         Back to top
       </button>
       
       {/* Main footer content */}
-      <div className="border-t border-iwanyu-border bg-iwanyu-muted py-10">
+      <div className="border-t border-iwanyu-border bg-iwanyu-muted py-6">
         <div className="container">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:gap-12">
             {footerLinks.map((column) => (
@@ -134,7 +134,7 @@ export const Footer = () => {
       </div>
       
       {/* Copyright */}
-      <div className="border-t border-iwanyu-border bg-white py-4 text-center">
+      <div className="border-t border-iwanyu-border bg-white py-3 text-center">
         <div className="container">
           <p className="text-xs text-gray-500">
             &copy; {currentYear} iwanyu store. All rights reserved.

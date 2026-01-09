@@ -5,13 +5,21 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { ProductCard } from "@/components/ProductCard";
 import { Footer } from "@/components/Footer";
 import { useMarketplace } from "@/context/marketplace";
+import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
   const { products, loading, error } = useMarketplace();
+  const { productIds: recentlyViewedIds, clear: clearRecentlyViewed } = useRecentlyViewed();
+
+  // Get recently viewed products
+  const recentlyViewedProducts = recentlyViewedIds
+    .map(id => products.find(p => p.id === id))
+    .filter(Boolean)
+    .slice(0, 8);
 
   // Enhanced debug logging
   console.log('=== MARKETPLACE DEBUG ===');
@@ -44,6 +52,37 @@ const Index = () => {
         
         <CategoryNav />
         
+        {/* Recently Viewed Products */}
+        {recentlyViewedProducts.length > 0 && !loading && (
+          <div className="container py-8">
+            <div className="rounded-2xl border border-iwanyu-border bg-gradient-to-r from-slate-50 to-gray-50 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-gray-200">
+                    <Clock className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Recently Viewed</h2>
+                    <p className="text-sm text-gray-500">Continue where you left off</p>
+                  </div>
+                </div>
+                <button
+                  onClick={clearRecentlyViewed}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  <X size={14} />
+                  Clear history
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+                {recentlyViewedProducts.map((product) => (
+                  <ProductCard key={product!.id} product={product!} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Category Sections with Horizontal Scrolling */}
         <div className="container py-12">
           {loading ? (
