@@ -2,13 +2,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { AuthRole } from "@/types/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import type { User } from "@supabase/supabase-js";
 
 export type AuthUser = {
   id: string;
   name?: string;
   email?: string;
   picture?: string;
-  role?: AuthRole;
+  role: AuthRole;
 };
 
 type AuthContextValue = {
@@ -16,144 +17,95 @@ type AuthContextValue = {
   isReady: boolean;
   signOut: () => Promise<void>;
   setRole: (role: AuthRole) => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-type DbProfile = {
-  role: AuthRole;
-  full_name: string | null;
-  avatar_url: string | null;
-};
+/**
+ * Load user profile from database and merge with auth metadata
+ */
+async function buildAuthUser(supabase: ReturnType<typeof getSupabaseClient>, authUser: User): Promise<AuthUser> {
+  if (!supabase) {
+    // Fallback if no supabase client
+    return {
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+      picture: authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
+      role: "buyer",
+    };
+  }
 
-async function loadProfileRole(supabase: ReturnType<typeof getSupabaseClient>, userId: string) {
-  if (!supabase) return null;
-  const { data, error } = await supabase
+  // Fetch profile from database
+  const { data: profile } = await supabase
     .from("profiles")
     .select("role, full_name, avatar_url")
-    .eq("id", userId)
+    .eq("id", authUser.id)
     .maybeSingle();
-  if (error) return null;
-  return (data ?? null) as DbProfile | null;
+
+  // Merge database profile with OAuth metadata
+  return {
+    id: authUser.id,
+    email: authUser.email,
+    name: profile?.full_name || authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+    picture: profile?.avatar_url || authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
+    role: profile?.role || "buyer",
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
-
   const supabase = getSupabaseClient();
 
-  console.log('AuthProvider render - user:', user ? { email: user.email, name: user.name, id: user.id } : 'null', 'isReady:', isReady);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      console.log('=== AUTH INIT START ===');
-      if (!supabase) {
-        console.log('No supabase client');
-        if (!cancelled) setIsReady(true);
-        return;
-      }
-
-      const { data } = await supabase.auth.getSession();
-      const s = data.session;
-      
-      console.log('Auth init - session check:', { 
-        hasSession: !!s, 
-        email: s?.user?.email,
-        userId: s?.user?.id,
-        hasUserMetadata: !!s?.user?.user_metadata,
-        metadata: s?.user?.user_metadata 
-      });
-      
-      if (s?.user) {
-        console.log('Session found, loading profile...');
-        const profile = await loadProfileRole(supabase, s.user.id);
-        console.log('Profile loaded:', profile);
-        const metadata = s.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string; picture?: string } | null;
-
-        const next: AuthUser = {
-          id: s.user.id,
-          email: s.user.email ?? undefined,
-          name:
-            profile?.full_name ??
-            metadata?.full_name ??
-            metadata?.name,
-          picture:
-            profile?.avatar_url ??
-            metadata?.avatar_url ??
-            metadata?.picture,
-          role: profile?.role ?? "buyer",
-        };
-        console.log('Auth init - SETTING USER:', next);
-        if (!cancelled) {
-          setUserState(next);
-          console.log('User state SET successfully');
-        }
-      } else {
-        console.log('Auth init - no session found');
-        if (!cancelled) setUserState(null);
-      }
-
-      if (!cancelled) setIsReady(true);
-      console.log('=== AUTH INIT END ===');
+  /**
+   * Load user from current session
+   */
+  const loadUser = async () => {
+    if (!supabase) {
+      setIsReady(true);
+      return;
     }
 
-    void init();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      const authUser = await buildAuthUser(supabase, session.user);
+      setUser(authUser);
+    } else {
+      setUser(null);
+    }
+    
+    setIsReady(true);
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
+  /**
+   * Initialize auth on mount
+   */
+  useEffect(() => {
+    loadUser();
+  }, []);
 
+  /**
+   * Listen for auth state changes
+   */
   useEffect(() => {
     if (!supabase) return;
-    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('=== AUTH STATE CHANGE EVENT ===');
-      console.log('Event:', event);
-      console.log('Session:', { 
-        hasSession: !!session, 
-        email: session?.user?.email,
-        userId: session?.user?.id 
-      });
-      
-      if (event === "SIGNED_IN" && session?.user) {
-        console.log('SIGNED_IN event - loading profile...');
-        const profile = await loadProfileRole(supabase, session.user.id);
-        console.log('Profile loaded:', profile);
-        const metadata = session.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string; picture?: string } | null;
 
-        const next: AuthUser = {
-          id: session.user.id,
-          email: session.user.email ?? undefined,
-          name:
-            profile?.full_name ??
-            metadata?.full_name ??
-            metadata?.name,
-          picture:
-            profile?.avatar_url ??
-            metadata?.avatar_url ??
-            metadata?.picture,
-          role: profile?.role ?? "buyer",
-        };
-        console.log('SIGNED_IN - SETTING USER STATE:', next);
-        setUserState(next);
-        console.log('User state SET via SIGNED_IN event');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        const authUser = await buildAuthUser(supabase, session.user);
+        setUser(authUser);
       } else if (event === "SIGNED_OUT") {
-        console.log('SIGNED_OUT - clearing user state');
-        setUserState(null);
+        setUser(null);
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
-        console.log('TOKEN_REFRESHED - keeping existing user');
-        // Don't reload profile on every token refresh
-      } else {
-        console.log('Other event:', event, '- no action');
+        // Keep existing user, don't reload from database on every token refresh
       }
-      console.log('=== AUTH STATE CHANGE END ===');
     });
 
     return () => {
-      data.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [supabase]);
 
@@ -162,19 +114,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isReady,
       signOut: async () => {
-        if (!supabase) {
-          setUserState(null);
-          return;
+        if (supabase) {
+          await supabase.auth.signOut();
         }
-        await supabase.auth.signOut();
-        setUserState(null);
+        setUser(null);
       },
-      setRole: async (role) => {
+      setRole: async (role: AuthRole) => {
         if (!supabase) throw new Error("Supabase is not configured");
         if (!user) throw new Error("Not signed in");
-        const { error } = await supabase.from("profiles").update({ role }).eq("id", user.id);
+        
+        // Update role in database
+        const { error } = await supabase
+          .from("profiles")
+          .update({ role })
+          .eq("id", user.id);
+        
         if (error) throw new Error(error.message);
-        setUserState((prev) => (prev ? { ...prev, role } : prev));
+        
+        // Update local state
+        setUser((prev) => (prev ? { ...prev, role } : prev));
+      },
+      refreshUser: async () => {
+        await loadUser();
       },
     }),
     [user, isReady, supabase]

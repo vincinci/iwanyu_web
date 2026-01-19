@@ -15,57 +15,29 @@ export default function LoginPage() {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const supabase = getSupabaseClient();
-
   const state = location.state as { from?: { pathname?: string } } | null;
   const nextPath = state?.from?.pathname || "/account";
 
-  // Handle OAuth callback
-  useEffect(() => {
-    if (!supabase) return;
-
-    const handleOAuthCallback = async () => {
-      // Check for OAuth code in URL params (PKCE flow)
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      
-      // Also check for access_token in hash (implicit flow)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      
-      if (code || accessToken) {
-        console.log('=== OAUTH CALLBACK DETECTED ===');
-        console.log('Has code:', !!code, 'Has token:', !!accessToken);
-        
-        // Clear the OAuth parameters from URL immediately
-        window.history.replaceState(null, '', window.location.pathname);
-        
-        // The auth state will be updated by onAuthStateChange listener in auth context
-        // We don't need to manually navigate - the useEffect below will handle it
-        // when the user state is updated
-        console.log('Waiting for auth state to update...');
-      }
-    };
-
-    handleOAuthCallback();
-  }, [supabase]);
-
-  // Navigate to account page once user is logged in
+  /**
+   * Redirect if already logged in
+   */
   useEffect(() => {
     if (user) {
-      console.log('User is now logged in, navigating to:', nextPath);
       navigate(nextPath, { replace: true });
     }
   }, [user, navigate, nextPath]);
 
+  /**
+   * Email/Password login
+   */
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      setError("Supabase is not configured");
+      setError("Authentication service is not configured");
       return;
     }
 
@@ -73,38 +45,35 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      console.log('Attempting email login...');
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      if (signInError) {
-        console.error('Email login error:', signInError);
-        throw signInError;
-      }
+      if (signInError) throw signInError;
 
-      console.log('Email login successful, waiting for auth state update...');
-      // Don't navigate here - let the useEffect handle it when user state updates
-      // The loading state will be cleared when navigation happens
+      // Auth context will handle navigation via useEffect above
     } catch (e) {
-      console.error('Login failed:', e);
       setError(e instanceof Error ? e.message : "Sign in failed");
       setLoading(false);
     }
   };
 
+  /**
+   * Google OAuth login
+   */
   const handleGoogleLogin = async () => {
     if (!supabase) {
-      setError("Supabase is not configured");
+      setError("Authentication service is not configured");
       return;
     }
 
     setError(null);
+    setLoading(true);
 
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { 
+      options: {
         redirectTo: `${window.location.origin}/login`,
         queryParams: {
           access_type: 'offline',
@@ -113,7 +82,10 @@ export default function LoginPage() {
       },
     });
 
-    if (e) setError(e.message);
+    if (e) {
+      setError(e.message);
+      setLoading(false);
+    }
   };
 
   return (
