@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, ShoppingCart, User, X, Heart, Package, Sparkles, XCircle } from 'lucide-react';
+import { Menu, Search, ShoppingCart, User, X, Heart, Package, Sparkles, XCircle, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
@@ -181,33 +181,58 @@ export const Header = () => {
               </Link>
 
               {user ? (
-                <div className="relative group/profile flex flex-col items-center cursor-pointer">
-                  <User size={20} className="text-black group-hover:scale-110 transition-transform" strokeWidth={1.5} />
-                  <span className="text-[10px] uppercase font-bold text-black mt-1 line-clamp-1 max-w-[60px]">
-                    {user.name?.split(' ')[0] ?? "Account"}
-                  </span>
+                <div className="relative group/profile">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-iwanyu-primary text-black font-bold text-sm">
+                      {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
+                    </div>
+                    <div className="hidden lg:flex flex-col items-start">
+                      <span className="text-xs text-gray-500">Hello,</span>
+                      <span className="text-sm font-bold text-black leading-none">{user.name?.split(' ')[0] ?? "User"}</span>
+                    </div>
+                    <ChevronDown size={16} className="text-gray-400 hidden lg:block" />
+                  </button>
                   
                   {/* Profile Dropdown */}
-                  <div className="absolute right-0 top-full pt-4 w-56 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all z-50">
-                    <div className="bg-white border border-gray-200 shadow-xl p-0 rounded-xl overflow-hidden">
-                      <div className="p-4 border-b border-gray-100 bg-gray-50">
-                          <div className="font-bold text-gray-900 truncate">{user.name ?? "User"}</div>
-                          <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                  <div className="absolute right-0 top-full pt-2 w-64 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all z-50">
+                    <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+                      <div className="p-4 border-b border-gray-100 bg-gradient-to-br from-iwanyu-primary/10 to-iwanyu-primary/5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-iwanyu-primary text-black font-bold text-lg">
+                            {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-gray-900 truncate">{user.name ?? "User"}</div>
+                            <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-0">
+                      <div className="p-2">
                         {user.role === 'seller' && (
-                          <Link to="/seller" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-sm font-bold border-b border-gray-100 text-iwanyu-primary">
-                            Seller Dashboard
+                          <Link to="/seller" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium border-b border-gray-100 mb-2">
+                            <Sparkles size={16} className="text-iwanyu-primary" />
+                            <span>Seller Dashboard</span>
                           </Link>
                         )}
-                        <Link to="/account" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-sm font-medium border-b border-gray-100">
-                          My Account
+                        <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                          <Settings size={16} className="text-gray-400" />
+                          <span>Account Settings</span>
                         </Link>
+                        <Link to="/orders" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                          <Package size={16} className="text-gray-400" />
+                          <span>My Orders</span>
+                        </Link>
+                        <Link to="/wishlist" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                          <Heart size={16} className="text-gray-400" />
+                          <span>My Wishlist</span>
+                        </Link>
+                        <hr className="my-2 border-gray-100" />
                         <button 
                           onClick={() => void signOut()}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-iwanyu-primary text-sm font-medium"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 rounded-lg transition-colors text-red-600 text-sm font-medium"
                         >
-                          Sign Out
+                          <LogOut size={16} />
+                          <span>Sign Out</span>
                         </button>
                       </div>
                     </div>
