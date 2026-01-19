@@ -36,8 +36,7 @@ export default function SellPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
-  // Removed usage of direct Supabase client for reading products
-  // const supabase = getSupabaseClient();
+  const supabase = getSupabaseClient();
 
   const myVendors = useMemo(() => (user ? getVendorsForOwner(user.id) : []), [user, getVendorsForOwner]);
 
