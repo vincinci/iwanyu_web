@@ -54,6 +54,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data } = await supabase.auth.getSession();
       const s = data.session;
+      
+      console.log('Auth init - session check:', { hasSession: !!s, email: s?.user?.email });
+      
       if (s?.user) {
         const profile = await loadProfileRole(supabase, s.user.id);
 
@@ -70,8 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (s.user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture,
           role: profile?.role ?? "buyer",
         };
+        console.log('Auth init - setting user:', next);
         setUserState(next);
       } else {
+        console.log('Auth init - no session found');
         setUserState(null);
       }
 

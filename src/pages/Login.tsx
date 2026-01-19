@@ -35,29 +35,23 @@ export default function LoginPage() {
       if (accessToken) {
         console.log('OAuth callback detected, access token found');
         
-        // Small delay to ensure session is set
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Clear the hash to clean up URL
+        window.history.replaceState(null, '', window.location.pathname);
         
-        // Force session refresh
-        const { data, error } = await supabase.auth.getSession();
-        console.log('Session check result:', { hasSession: !!data.session, error });
+        // Force a session refresh by triggering storage event
+        // This will cause the auth context to re-check the session
+        window.dispatchEvent(new Event('storage'));
         
-        if (data.session) {
-          console.log('Session confirmed, user:', data.session.user.email);
-          // Clear the hash to clean up URL
-          window.history.replaceState(null, '', window.location.pathname);
-          // Navigate after a small delay to ensure auth context updates
-          setTimeout(() => {
-            navigate(nextPath, { replace: true });
-          }, 100);
-        } else {
-          console.error('No session found after OAuth callback');
-        }
+        // Small delay to ensure session is processed
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force page reload to ensure auth context re-initializes
+        window.location.href = nextPath;
       }
     };
 
     handleOAuthCallback();
-  }, [supabase, navigate, nextPath]);
+  }, [supabase, nextPath]);
 
   useEffect(() => {
     if (user) navigate(nextPath, { replace: true });
