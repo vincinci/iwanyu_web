@@ -102,7 +102,7 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
       toast({
         title: "Missing information",
         description: "Please enter your full name.",
-        variant: "destructive",
+        variant: "warning" as any,
       });
       return;
     }
@@ -123,8 +123,9 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
       if (error) throw error;
 
       toast({
-        title: "Profile completed",
-        description: "Your profile has been saved.",
+        title: "✓ Profile completed",
+        description: "Your profile has been saved successfully.",
+        variant: "success" as any,
       });
 
       // Clear draft from localStorage
@@ -133,7 +134,7 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
       onComplete();
     } catch {
       toast({
-        title: "Error",
+        title: "⚠ Error",
         description: "Failed to save profile. Please try again.",
         variant: "destructive",
       });

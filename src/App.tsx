@@ -58,29 +58,14 @@ const AppContent = () => {
           .from('profiles')
           .select('profile_completed, full_name')
           .eq('id', user.id)
-          .maybeSingle();
+          .single();
 
-        if (!data) {
-          // Profile doesn't exist, create it
-          await supabase.from('profiles').insert({
-            id: user.id,
-            email: user.email,
-            full_name: user.name || null,
-            avatar_url: user.picture || null,
-            profile_completed: false,
-          });
-          setShowProfileCompletion(true);
-          setProfileCheckDone(true);
-          return;
-        }
-
-        // Show profile completion if profile is incomplete
-        const needsCompletion = !data.profile_completed || !data.full_name?.trim();
+        // Show profile completion if user has no profile or incomplete profile
+        const needsCompletion = !data || !data.profile_completed || !data.full_name?.trim();
         setShowProfileCompletion(needsCompletion);
         setProfileCheckDone(true);
       } catch (error) {
-        console.error('Profile check error:', error);
-        // If error, assume profile needs completion
+        // If no profile exists, show completion
         setShowProfileCompletion(true);
         setProfileCheckDone(true);
       }

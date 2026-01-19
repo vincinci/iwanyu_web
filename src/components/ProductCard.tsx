@@ -45,8 +45,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     e.stopPropagation();
     addItem({ productId: id, title, price, image });
     toast({
-      title: "Added to cart",
+      title: "✓ Added to cart",
       description: `${title} has been added to your cart.`,
+      variant: "success" as any,
     });
   };
 
@@ -56,12 +57,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     try {
       const result = await toggle(id);
       toast({
-        title: result.added ? "Added to wishlist" : "Removed from wishlist",
+        title: result.added ? "♥ Added to wishlist" : "Removed from wishlist",
         description: `${title} has been ${result.added ? "added to" : "removed from"} your wishlist.`,
+        variant: result.added ? "success" as any : "default",
       });
     } catch {
       toast({
-        title: "Wishlist update failed",
+        title: "⚠ Wishlist update failed",
         description: "Please try again.",
         variant: "destructive",
       });

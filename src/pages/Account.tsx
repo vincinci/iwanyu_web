@@ -124,15 +124,16 @@ export default function AccountPage() {
       if (error) throw error;
 
       toast({
-        title: "Profile saved",
-        description: "Your profile has been updated.",
+        title: "✓ Profile saved",
+        description: "Your profile has been updated successfully.",
+        variant: "success" as any,
       });
 
       // Clear draft from localStorage after successful save
       localStorage.removeItem('account_form_draft');
     } catch {
       toast({
-        title: "Could not save profile",
+        title: "⚠ Could not save profile",
         description: "Please try again.",
         variant: "destructive",
       });
@@ -144,30 +145,6 @@ export default function AccountPage() {
   return (
     <StorefrontPage>
       <div className="container min-h-screen py-12">
-        {/* Logged-in Status Banner */}
-        {user && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-              <span className="font-semibold text-green-800">Logged in as:</span>
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-green-900">{user.name || user.email}</div>
-              {user.name && user.email && (
-                <div className="text-sm text-green-700">{user.email}</div>
-              )}
-            </div>
-            {user.role && (
-              <div className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-xs font-bold uppercase">
-                {user.role}
-              </div>
-            )}
-          </div>
-        )}
-        
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-iwanyu-foreground mb-4">My Account</h1>
           <p className="text-lg text-gray-600">Manage your account settings and preferences</p>

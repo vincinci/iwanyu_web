@@ -15,29 +15,23 @@ export default function LoginPage() {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const supabase = getSupabaseClient();
+
   const state = location.state as { from?: { pathname?: string } } | null;
   const nextPath = state?.from?.pathname || "/account";
 
-  /**
-   * Redirect if already logged in
-   */
   useEffect(() => {
-    if (user) {
-      navigate(nextPath, { replace: true });
-    }
+    if (user) navigate(nextPath, { replace: true });
   }, [user, navigate, nextPath]);
 
-  /**
-   * Email/Password login
-   */
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      setError("Authentication service is not configured");
+      setError("Supabase is not configured");
       return;
     }
 
@@ -52,40 +46,27 @@ export default function LoginPage() {
 
       if (signInError) throw signInError;
 
-      // Auth context will handle navigation via useEffect above
+      // Don't navigate here - let the useEffect handle it when user state updates
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign in failed");
       setLoading(false);
     }
   };
 
-  /**
-   * Google OAuth login
-   */
   const handleGoogleLogin = async () => {
     if (!supabase) {
-      setError("Authentication service is not configured");
+      setError("Supabase is not configured");
       return;
     }
 
     setError(null);
-    setLoading(true);
 
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/login`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        }
-      },
+      options: { redirectTo: `${window.location.origin}/login` },
     });
 
-    if (e) {
-      setError(e.message);
-      setLoading(false);
-    }
+    if (e) setError(e.message);
   };
 
   return (
