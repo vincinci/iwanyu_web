@@ -100,9 +100,9 @@ export default function OrdersPage() {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-100 mb-6">
               <LogIn className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
               Sign in to see your orders
-            </h3>
+            </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
               Your order history, tracking information, and purchase details are available after signing in.
             </p>
