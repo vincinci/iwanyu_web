@@ -47,6 +47,9 @@ export function getSupabaseClient(): SupabaseClient | null {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      storage: window.localStorage,
+      storageKey: 'iwanyu-auth-token',
+      flowType: 'pkce',
     },
   });
 
