@@ -6,7 +6,7 @@ import pg from 'pg';
 
 const pool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: true,
+    ssl: { rejectUnauthorized: false },
     max: 1 // Low connection usage for serverless
 });
 
@@ -17,9 +17,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { type } = req.query;
 
-    const client = await pool.connect();
-
+    let client;
     try {
+        client = await pool.connect();
         if (type === 'products') {
             const { rows } = await client.query(`
                 SELECT 
@@ -68,8 +68,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     } catch (error: any) {
         console.error('API Error:', error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message, details: error.stack });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 }
