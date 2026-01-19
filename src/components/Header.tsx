@@ -198,24 +198,30 @@ export const Header = () => {
                   <button 
                     onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                     onMouseEnter={() => setShowProfileDropdown(true)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex flex-col items-center justify-center group relative"
                   >
-                    {user.picture ? (
-                      <img 
-                        src={user.picture} 
-                        alt={user.name ?? 'User'} 
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-iwanyu-primary text-black font-bold text-sm">
-                        {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
-                      </div>
-                    )}
-                    <div className="hidden lg:flex flex-col items-start">
-                      <span className="text-xs text-gray-500">Hello,</span>
-                      <span className="text-sm font-bold text-black leading-none">{user.name?.split(' ')[0] ?? "User"}</span>
+                    <div className="relative">
+                      {user.picture ? (
+                        <img 
+                          src={user.picture} 
+                          alt={user.name ?? 'User'} 
+                          className="w-8 h-8 rounded-full object-cover border-2 border-iwanyu-primary"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-iwanyu-primary text-black font-bold text-sm border-2 border-iwanyu-primary">
+                          {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
+                        </div>
+                      )}
+                      {/* Online indicator */}
+                      <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 border border-white"></span>
+                      </span>
                     </div>
-                    <ChevronDown size={16} className={`text-gray-400 hidden lg:block transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                    <span className="text-[10px] uppercase font-bold text-black mt-1 max-w-[60px] truncate">
+                      {user.name?.split(' ')[0] ?? "Account"}
+                    </span>
+                    <ChevronDown size={12} className={`text-gray-400 absolute -bottom-1 transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   
                   {/* Profile Dropdown */}
