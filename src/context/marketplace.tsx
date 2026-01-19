@@ -70,64 +70,30 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const readClient = publicSupabase ?? supabase;
-    if (!readClient) {
-      console.warn('[MarketplaceContext] Supabase not configured - using empty marketplace state');
-      setVendors([]);
-      setProducts([]);
-      setLoading(false);
-      setError('Supabase not configured');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const [{ data: vendorRows, error: vendorsErr }, { data: productRows, error: productsErr }] = await withTimeout(
-        Promise.all([
-          readClient
-            .from("vendors")
-            .select("id, name, location, verified, owner_user_id, status")
-            .order("created_at", { ascending: false }),
-          readClient
-            .from("products")
-            .select(
-              "id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage"
-            )
-            .order("created_at", { ascending: false }),
-        ]),
-        15_000,
-        'Marketplace refresh'
-      );
+      // Fetch combined marketplace data (products + vendors)
+      const res = await fetch('/api/marketplace');
+      if (!res.ok) throw new Error(`Failed to fetch marketplace data: ${res.statusText}`);
 
-      if (vendorsErr || productsErr) {
-        const vendorMsg = vendorsErr
-          ? (vendorsErr instanceof Error ? vendorsErr.message : String(vendorsErr))
-          : null;
-        const productMsg = productsErr
-          ? (productsErr instanceof Error ? productsErr.message : String(productsErr))
-          : null;
-        console.warn('[MarketplaceContext] Marketplace refresh failed; using empty state', {
-          vendors: vendorMsg,
-          products: productMsg,
-        });
-        setError(vendorMsg || productMsg || 'Marketplace refresh failed');
-        setVendors([]);
-        setProducts([]);
-        return;
-      }
+      const data = await res.json();
 
-      const nextVendors = ((vendorRows ?? []) as DbVendorRow[]).map((v) => ({
+      const vendorRows: DbVendorRow[] = data.vendors || [];
+      const productRows: DbProductRow[] = data.products || [];
+
+
+      const nextVendors = vendorRows.map((v) => ({
         id: v.id,
         name: v.name,
         location: v.location ?? undefined,
         verified: v.verified,
         ownerUserId: v.owner_user_id ?? undefined,
-        status: v.status,
+        status: v.status as "pending" | "approved" | "rejected",
       }));
 
-      const nextProducts = ((productRows ?? []) as DbProductRow[]).map((p) => ({
+      const nextProducts = productRows.map((p) => ({
         id: p.id,
         vendorId: p.vendor_id,
         title: p.title,
@@ -145,14 +111,15 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       setVendors(nextVendors);
       setProducts(nextProducts);
     } catch (error) {
-      console.warn('[MarketplaceContext] Marketplace refresh error; using empty state', error);
+      console.error('[MarketplaceContext] Refresh error:', error);
       setError(error instanceof Error ? error.message : String(error));
+      // Keep empty state on error
       setVendors([]);
       setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [publicSupabase, supabase]);
+  }, []);
 
   useEffect(() => {
     void refresh();
