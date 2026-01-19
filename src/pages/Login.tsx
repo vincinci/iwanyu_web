@@ -73,15 +73,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log('Attempting email login...');
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      if (signInError) throw signInError;
+      if (signInError) {
+        console.error('Email login error:', signInError);
+        throw signInError;
+      }
 
+      console.log('Email login successful, waiting for auth state update...');
       // Don't navigate here - let the useEffect handle it when user state updates
+      // The loading state will be cleared when navigation happens
     } catch (e) {
+      console.error('Login failed:', e);
       setError(e instanceof Error ? e.message : "Sign in failed");
       setLoading(false);
     }
@@ -98,7 +105,7 @@ export default function LoginPage() {
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { 
-        redirectTo: `${window.location.origin}/account`,
+        redirectTo: `${window.location.origin}/login`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
