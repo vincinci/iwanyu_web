@@ -24,6 +24,29 @@ export default function LoginPage() {
   const state = location.state as { from?: { pathname?: string } } | null;
   const nextPath = state?.from?.pathname || "/account";
 
+  // Handle OAuth callback
+  useEffect(() => {
+    if (!supabase) return;
+
+    const handleOAuthCallback = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      
+      if (accessToken) {
+        // OAuth callback detected, session should be automatically set
+        console.log('OAuth callback detected');
+        // Force session check
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          console.log('Session found, navigating...');
+          navigate(nextPath, { replace: true });
+        }
+      }
+    };
+
+    handleOAuthCallback();
+  }, [supabase, navigate, nextPath]);
+
   useEffect(() => {
     if (user) navigate(nextPath, { replace: true });
   }, [user, navigate, nextPath]);
@@ -63,7 +86,13 @@ export default function LoginPage() {
 
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: { 
+        redirectTo: `${window.location.origin}/account`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      },
     });
 
     if (e) setError(e.message);
