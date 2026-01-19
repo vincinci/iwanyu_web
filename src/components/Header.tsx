@@ -228,7 +228,10 @@ export const Header = () => {
                         </Link>
                         <hr className="my-2 border-gray-100" />
                         <button 
-                          onClick={() => void signOut()}
+                          onClick={async () => {
+                            await signOut();
+                            window.location.href = '/';
+                          }}
                           className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 rounded-lg transition-colors text-red-600 text-sm font-medium"
                         >
                           <LogOut size={16} />
@@ -364,7 +367,16 @@ export const Header = () => {
                     <Link to="/wishlist" onClick={toggleMobileMenu} className="block py-2 text-sm text-gray-700">Wishlist</Link>
                     <Link to="/account" onClick={toggleMobileMenu} className="block py-2 text-sm text-gray-700">Profile</Link>
                     {user && (
-                         <button onClick={() => { signOut(); toggleMobileMenu(); }} className="block w-full text-left py-2 text-sm text-iwanyu-primary mt-2">Sign Out</button>
+                         <button 
+                           onClick={async () => { 
+                             await signOut(); 
+                             toggleMobileMenu(); 
+                             window.location.href = '/';
+                           }} 
+                           className="block w-full text-left py-2 text-sm text-iwanyu-primary mt-2"
+                         >
+                           Sign Out
+                         </button>
                     )}
                 </div>
             </div>

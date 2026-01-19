@@ -8,8 +8,11 @@ export default function LogoutPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    signOut();
-    navigate("/", { replace: true });
+    async function handleSignOut() {
+      await signOut();
+      navigate("/", { replace: true });
+    }
+    void handleSignOut();
   }, [navigate, signOut]);
 
   return (
