@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (type === 'products') {
             const { data, error } = await supabase
                 .from('products')
-                .select('id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage')
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(1000);
             
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (type === 'vendors') {
             const { data, error } = await supabase
                 .from('vendors')
-                .select('id, name, location, verified, owner_user_id, status')
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(1000);
             
@@ -43,12 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const [productsRes, vendorsRes] = await Promise.all([
             supabase
                 .from('products')
-                .select('id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage')
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(1000),
             supabase
                 .from('vendors')
-                .select('id, name, location, verified, owner_user_id, status')
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(1000)
         ]);
