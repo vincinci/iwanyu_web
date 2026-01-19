@@ -69,11 +69,11 @@ export default function AccountPage() {
           }
 
           setForm({
-            fullName: draftData?.fullName || profileData?.full_name ?? user.name ?? "",
-            phone: draftData?.phone || profileData?.phone ?? "",
-            address: draftData?.address || profileData?.address ?? "",
-            city: draftData?.city || profileData?.city ?? "",
-            country: draftData?.country || profileData?.country ?? "Rwanda",
+            fullName: draftData?.fullName || (profileData?.full_name ?? (user.name ?? "")),
+            phone: draftData?.phone || (profileData?.phone ?? ""),
+            address: draftData?.address || (profileData?.address ?? ""),
+            city: draftData?.city || (profileData?.city ?? ""),
+            country: draftData?.country || (profileData?.country ?? "Rwanda"),
           });
         }
 
