@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthRole } from "@/types/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
@@ -22,61 +22,93 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-/**
- * Load user profile from database and merge with auth metadata
- */
-async function buildAuthUser(supabase: ReturnType<typeof getSupabaseClient>, authUser: User): Promise<AuthUser> {
-  // Start with basic user info immediately
-  const baseUser: AuthUser = {
+function buildBaseUser(authUser: User): AuthUser {
+  return {
     id: authUser.id,
     email: authUser.email,
     name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
     picture: authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
     role: "buyer",
   };
+}
 
-  if (!supabase) {
-    return baseUser;
-  }
+type ProfileRow = {
+  role: AuthRole | null;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
-  // Fetch profile from database with timeout
-  try {
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
-    );
-    
-    const profilePromise = supabase
-      .from("profiles")
-      .select("role, full_name, avatar_url")
-      .eq("id", authUser.id)
-      .maybeSingle();
-
-    const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
-
-    // Merge database profile with base user
-    return {
-      ...baseUser,
-      name: profile?.full_name || baseUser.name,
-      picture: profile?.avatar_url || baseUser.picture,
-      role: profile?.role || "buyer",
-    };
-  } catch (error) {
-    // On timeout or error, return base user
-    console.warn('Profile fetch failed, using base user:', error);
-    return baseUser;
-  }
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = window.setTimeout(() => reject(new Error("timeout")), ms);
+    promise
+      .then((value) => {
+        window.clearTimeout(id);
+        resolve(value);
+      })
+      .catch((err) => {
+        window.clearTimeout(id);
+        reject(err);
+      });
+  });
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
   const supabase = getSupabaseClient();
+  const activeUserIdRef = useRef<string | null>(null);
+
+  const hydrateFromProfile = useCallback(
+    async (authUser: User, baseUser: AuthUser) => {
+      if (!supabase) return;
+
+      try {
+        const result = await withTimeout(
+          supabase
+            .from("profiles")
+            .select("role, full_name, avatar_url")
+            .eq("id", authUser.id)
+            .maybeSingle(),
+          6000
+        );
+
+        if (result.error) return;
+        const profile = (result.data ?? null) as ProfileRow | null;
+
+        const hydrated: AuthUser = {
+          ...baseUser,
+          name: profile?.full_name || baseUser.name,
+          picture: profile?.avatar_url || baseUser.picture,
+          role: (profile?.role ?? "buyer") as AuthRole,
+        };
+
+        if (activeUserIdRef.current === baseUser.id) {
+          setUser(hydrated);
+        }
+      } catch {
+        // Non-blocking: keep base user if profile is slow/unavailable.
+      }
+    },
+    [supabase]
+  );
+
+  const setUserFromAuth = useCallback(
+    (authUser: User) => {
+      const baseUser = buildBaseUser(authUser);
+      activeUserIdRef.current = baseUser.id;
+      setUser(baseUser);
+      void hydrateFromProfile(authUser, baseUser);
+    },
+    [hydrateFromProfile]
+  );
 
   /**
    * Load user from current session
    */
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     if (!supabase) {
+      setUser(null);
       setIsReady(true);
       return;
     }
@@ -84,21 +116,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
-      const authUser = await buildAuthUser(supabase, session.user);
-      setUser(authUser);
+      setUserFromAuth(session.user);
     } else {
+      activeUserIdRef.current = null;
       setUser(null);
     }
     
     setIsReady(true);
-  };
+  }, [supabase, setUserFromAuth]);
 
   /**
    * Initialize auth on mount
    */
   useEffect(() => {
-    loadUser();
-  }, []);
+    void loadUser();
+  }, [loadUser]);
 
   /**
    * Listen for auth state changes
@@ -108,9 +140,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        const authUser = await buildAuthUser(supabase, session.user);
-        setUser(authUser);
+        setUserFromAuth(session.user);
+        setIsReady(true);
       } else if (event === "SIGNED_OUT") {
+        activeUserIdRef.current = null;
         setUser(null);
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Keep existing user, don't reload from database on every token refresh
@@ -120,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, setUserFromAuth]);
 
   const value: AuthContextValue = useMemo(
     () => ({
@@ -151,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await loadUser();
       },
     }),
-    [user, isReady, supabase]
+    [user, isReady, supabase, loadUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

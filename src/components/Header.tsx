@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, ShoppingCart, User, X, Heart, Package, Sparkles, XCircle, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, Search, ShoppingCart, User, X, Heart, Package, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
@@ -208,10 +208,16 @@ export const Header = () => {
                         </div>
                       </div>
                       <div className="p-2">
-                        {user.role === 'seller' && (
+                        {(user.role === 'seller' || user.role === 'admin') && (
                           <Link to="/seller" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium border-b border-gray-100 mb-2">
                             <Sparkles size={16} className="text-iwanyu-primary" />
                             <span>Seller Dashboard</span>
+                          </Link>
+                        )}
+                        {user.role === 'admin' && (
+                          <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium border-b border-gray-100 mb-2">
+                            <Shield size={16} className="text-iwanyu-primary" />
+                            <span>Admin Dashboard</span>
                           </Link>
                         )}
                         <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
