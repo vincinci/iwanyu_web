@@ -26,32 +26,45 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
  * Load user profile from database and merge with auth metadata
  */
 async function buildAuthUser(supabase: ReturnType<typeof getSupabaseClient>, authUser: User): Promise<AuthUser> {
-  if (!supabase) {
-    // Fallback if no supabase client
-    return {
-      id: authUser.id,
-      email: authUser.email,
-      name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
-      picture: authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
-      role: "buyer",
-    };
-  }
-
-  // Fetch profile from database
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, full_name, avatar_url")
-    .eq("id", authUser.id)
-    .maybeSingle();
-
-  // Merge database profile with OAuth metadata
-  return {
+  // Start with basic user info immediately
+  const baseUser: AuthUser = {
     id: authUser.id,
     email: authUser.email,
-    name: profile?.full_name || authUser.user_metadata?.name || authUser.user_metadata?.full_name,
-    picture: profile?.avatar_url || authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
-    role: profile?.role || "buyer",
+    name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+    picture: authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
+    role: "buyer",
   };
+
+  if (!supabase) {
+    return baseUser;
+  }
+
+  // Fetch profile from database with timeout
+  try {
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+    );
+    
+    const profilePromise = supabase
+      .from("profiles")
+      .select("role, full_name, avatar_url")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
+
+    // Merge database profile with base user
+    return {
+      ...baseUser,
+      name: profile?.full_name || baseUser.name,
+      picture: profile?.avatar_url || baseUser.picture,
+      role: profile?.role || "buyer",
+    };
+  } catch (error) {
+    // On timeout or error, return base user
+    console.warn('Profile fetch failed, using base user:', error);
+    return baseUser;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
