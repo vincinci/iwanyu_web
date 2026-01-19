@@ -75,15 +75,15 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				iwanyu: {
-					primary: 'hsl(36 100% 50%)',
-					'primary-glow': 'hsl(36 100% 60%)',
-					secondary: 'hsl(207 80% 40%)',
-					dark: 'hsl(213 33% 10%)',
-					light: 'hsl(213 30% 18%)',
+					primary: 'hsl(42 100% 55%)',
+					'primary-glow': 'hsl(42 100% 65%)',
+					secondary: 'hsl(0 100% 50%)',
+					dark: 'hsl(0 0% 0%)',
+					light: 'hsl(0 0% 20%)',
 					background: 'hsl(0 0% 100%)',
-					foreground: 'hsl(0 0% 7%)',
+					foreground: 'hsl(0 0% 0%)',
 					muted: 'hsl(0 0% 96%)',
-					hover: 'hsl(210 20% 97%)',
+					hover: 'hsl(42 100% 90%)',
 					border: 'hsl(0 0% 90%)'
 				}
 			},
@@ -144,8 +144,12 @@ export default {
 				'slide-in-right': 'slide-in-right 0.3s ease-out'
 			},
 			fontFamily: {
-				sans: ['Inter', 'sans-serif'],
-				heading: ['Inter', 'sans-serif']
+				sans: ['"Roboto"', 'sans-serif'],
+				heading: ['"Montserrat"', 'sans-serif'],
+				poppins: ['"Poppins"', 'sans-serif'],
+				ubuntu: ['"Ubuntu"', 'sans-serif'],
+				montserrat: ['"Montserrat"', 'sans-serif'],
+				roboto: ['"Roboto"', 'sans-serif'],
 			},
 			boxShadow: {
 				'product': '0 4px 20px rgba(0, 0, 0, 0.05)',

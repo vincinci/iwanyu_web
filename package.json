@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "import:products": "node scripts/import-products-from-csv.mjs"
+    "import:products": "node scripts/import-products-from-csv.mjs",
+    "import:shopify": "node scripts/import-shopify-full.mjs"
   },
   "dependencies": {
     "@cloudinary/react": "^1.14.3",

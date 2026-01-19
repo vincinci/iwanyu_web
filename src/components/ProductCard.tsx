@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, ShoppingCart, Check } from 'lucide-react';
+import { Heart, Star, ShoppingCart, Check, Plus } from 'lucide-react';
 import { Product } from '@/types/product';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +38,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   const vendorName = vendorId ? getVendorById(vendorId)?.name : undefined;
   const isFavorite = contains(id);
+  const soldCount = Math.max(reviewCount * 7 + 12, 5); // Mock sold count based on reviews
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,133 +71,85 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   return (
     <Link
       to={`/product/${id}`}
-      className="group block"
+      className="group block relative bg-white transition-all hover:bg-white"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative overflow-hidden rounded-2xl border border-iwanyu-border/60 bg-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:border-iwanyu-primary/20">
-        {/* Product Image */}
-        <div className="relative aspect-[4/5] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="relative border border-gray-100 hover:border-black transition-colors duration-200 rounded-xl overflow-hidden">
+        
+        {/* Discount Badge - Sharp, Rectangular */}
+        {typeof discountPercentage === "number" && discountPercentage > 0 ? (
+            <div className="absolute left-0 top-0 z-10 bg-iwanyu-primary text-black font-bold text-xs px-2 py-1 uppercase tracking-wider rounded-br-lg">
+              -{discountPercentage}%
+            </div>
+          ) : null}
+
+        {/* Product Image - Square Aspect Ratio */}
+        <div className="relative aspect-square overflow-hidden bg-gray-50">
           {image ? (
             <img
               src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600, quality: 85 })}
               alt={title}
-              className="absolute inset-0 h-full w-full object-contain transition-all duration-700 group-hover:scale-105"
+              className="absolute inset-0 h-full w-full object-cover mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-              <div className="text-center">
-                <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-gray-300 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                  </svg>
-                </div>
-                <span className="text-xs text-gray-500 font-medium">No image available</span>
-              </div>
+            <div className="flex h-full w-full items-center justify-center bg-gray-100">
+               <span className="text-xs text-gray-400">No Image</span>
             </div>
           )}
-
-          {/* Discount Badge */}
-          {typeof discountPercentage === "number" && discountPercentage > 0 ? (
-            <div className="absolute left-3 top-3 z-10">
-              <Badge className="bg-red-500 text-white font-bold text-xs px-2 py-1 rounded-full shadow-lg">
-                -{discountPercentage}%
-              </Badge>
-            </div>
-          ) : null}
           
-          {/* Favorite Button */}
-          <button
-            className={`absolute right-3 top-3 z-10 rounded-full p-2 backdrop-blur-sm transition-all duration-200 ${
-              isFavorite 
-                ? 'bg-red-500/90 text-white shadow-lg transform scale-110' 
-                : 'bg-white/90 text-gray-600 hover:bg-red-50 hover:text-red-500 shadow-md hover:shadow-lg hover:scale-110'
-            }`}
-            onClick={handleToggleFavorite}
-            aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
-          >
-            <Heart size={16} fill={isFavorite ? "currentColor" : "none"} strokeWidth={2} />
-          </button>
-          
-          {/* Quick Add to Cart - Shows on Hover */}
-          <div 
-            className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent p-4 pt-12 transition-all duration-300 ${
-              isHovered ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-            }`}
-          >
-            <Button 
+          {/* Quick Add Button - Floating Circle on Hover */}
+           <button 
               onClick={handleAddToCart}
               disabled={!inStock}
-              className={`w-full rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${
-                inStock 
-                  ? 'bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90 shadow-lg' 
-                  : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-              }`}
+              className={`absolute bottom-3 right-3 h-10 w-10 bg-black text-white flex items-center justify-center transition-all duration-300 rounded-full ${
+                isHovered ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+              } hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              title="Add to Cart"
             >
-              <ShoppingCart size={16} className="mr-2" />
-              {inStock ? 'Add to Cart' : 'Out of Stock'}
-            </Button>
-          </div>
+              <Plus size={20} strokeWidth={3} />
+            </button>
         </div>
         
-        {/* Product Details */}
+        {/* Product Details - Dense Layout */}
         <div className="p-3">
-          <h3 className="mb-2 text-sm font-semibold text-iwanyu-foreground line-clamp-2 leading-tight group-hover:text-iwanyu-primary transition-colors duration-200">
+          
+          {/* Price - Huge & Bold */}
+          <div className="flex items-baseline gap-2 mb-1">
+             <span className="text-lg font-black text-iwanyu-primary tracking-tight">
+              {formatMoney(price)}
+            </span>
+             {discountPercentage && discountPercentage > 0 && (
+                 <span className="text-xs text-gray-400 line-through">
+                     {formatMoney(price * (1 + discountPercentage / 100))}
+                 </span>
+             )}
+          </div>
+
+          <h3 className="mb-1 text-xs font-normal text-black line-clamp-2 min-h-[2.5em] leading-tight">
             {title}
           </h3>
 
-          {vendorName ? (
-            <div className="mb-2 text-xs text-gray-600 font-medium">by {vendorName}</div>
-          ) : null}
-          
-          {/* Category and Rating Row */}
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              {category ? (
-                <Badge variant="secondary" className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                  {category}
-                </Badge>
-              ) : null}
-            </div>
-            
-            {/* Rating */}
-            <div className="flex items-center">
-              <div className="flex items-center gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={12}
-                    className={i < Math.floor(rating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}
-                    fill={i < Math.floor(rating) ? "currentColor" : "none"}
-                  />
-                ))}
-              </div>
-              <span className="ml-1 text-xs text-gray-500 font-medium">({reviewCount})</span>
-            </div>
-          </div>
-          
-          {/* Price */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-lg font-bold text-iwanyu-foreground">
-              {formatMoney(price)}
-            </span>
-            
-            {/* Free Shipping Badge */}
-            {freeShipping && (
-              <div className="flex items-center text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
-                <Check size={10} className="mr-1" />
-                Free
-              </div>
-            )}
-          </div>
-          
-          {/* Stock Status */}
-          <div className={`text-xs font-medium ${
-            inStock ? 'text-green-600' : 'text-red-500'
-          }`}>
-            {inStock ? '✓ In Stock' : '✗ Out of Stock'}
-          </div>
+           <div className="flex items-center gap-2 mb-1">
+                {/* Rating - Compact */}
+                <div className="flex items-center">
+                    <Star size={10} className="fill-black text-black" />
+                    <span className="ml-0.5 text-xs font-bold text-black">{rating.toFixed(1)}</span>
+                </div>
+                 <div className="h-2 w-px bg-gray-300"></div>
+                 {/* Sold Count - AliExpress Style */}
+                <span className="text-xs text-gray-500">{soldCount} sold</span>
+           </div>
+           
+           <div className="flex flex-wrap gap-1 mt-2">
+                {freeShipping && (
+                    <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-1 py-0.5 uppercase">Free Shipping</span>
+                )}
+                {vendorName && (
+                     <span className="text-[10px] text-gray-400 truncate max-w-[100px]">{vendorName}</span>
+                )}
+           </div>
         </div>
       </div>
     </Link>

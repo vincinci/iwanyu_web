@@ -1,43 +1,46 @@
-
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, Youtube, ArrowUp } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Youtube, ArrowUp, Mail, MapPin, Phone } from 'lucide-react';
 
 const footerLinks = [
   {
-    title: 'Get to Know Us',
+    title: 'Products',
     links: [
-      { name: 'About iwanyu', url: '/about' },
+      { name: 'Shoes', url: '/category/shoes' },
+      { name: 'Clothing', url: '/category/clothing' },
+      { name: 'Accessories', url: '/category/accessories' },
+      { name: 'New Arrivals', url: '/category/new-arrivals' },
+      { name: 'Release Dates', url: '/releases' },
+      { name: 'Top Sellers', url: '/top-sellers' }
+    ]
+  },
+  {
+    title: 'Sports',
+    links: [
+      { name: 'Soccer', url: '/sport/soccer' },
+      { name: 'Running', url: '/sport/running' },
+      { name: 'Basketball', url: '/sport/basketball' },
+      { name: 'Training', url: '/sport/training' },
+      { name: 'Outdoor', url: '/sport/outdoor' }
+    ]
+  },
+  {
+    title: 'Support',
+    links: [
+      { name: 'Help', url: '/help' },
+      { name: 'Returns & Exchanges', url: '/returns' },
+      { name: 'Shipping', url: '/shipping' },
+      { name: 'Order Tracker', url: '/track' },
+      { name: 'Store Locator', url: '/stores' }
+    ]
+  },
+  {
+    title: 'Company Info',
+    links: [
+      { name: 'About Us', url: '/about' },
       { name: 'Careers', url: '/careers' },
-      { name: 'Corporate Information', url: '/corporate' },
-      { name: 'iwanyu Science', url: '/science' }
-    ]
-  },
-  {
-    title: 'Make Money with Us',
-    links: [
-      { name: 'Sell on iwanyu', url: '/sell' },
-      { name: 'Become an Affiliate', url: '/affiliate' },
-      { name: 'Advertise Your Products', url: '/advertise' },
-      { name: 'Self-Publish', url: '/publish' }
-    ]
-  },
-  {
-    title: 'iwanyu Payment Products',
-    links: [
-      { name: 'iwanyu Business Card', url: '/business-card' },
-      { name: 'Shop with Points', url: '/points' },
-      { name: 'Reload Your Balance', url: '/reload' },
-      { name: 'iwanyu Currency Converter', url: '/currency' }
-    ]
-  },
-  {
-    title: 'Let Us Help You',
-    links: [
-      { name: 'Your Account', url: '/account' },
-      { name: 'Your Orders', url: '/orders' },
-      { name: 'Shipping Rates & Policies', url: '/shipping' },
-      { name: 'Returns & Replacements', url: '/returns' },
-      { name: 'Help', url: '/help' }
+      { name: 'Press', url: '/press' },
+      { name: 'Mobile Apps', url: '/apps' },
+      { name: 'Sustainability', url: '/sustainability' }
     ]
   }
 ];
@@ -53,31 +56,31 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white">
+    <footer className="bg-white text-black border-t border-gray-200">
       {/* Back to top button */}
       <button
         onClick={scrollToTop}
-        className="flex w-full items-center justify-center bg-iwanyu-light py-2.5 text-sm text-white hover:bg-iwanyu-light/90"
+        className="flex w-full items-center justify-center bg-gray-100 py-4 text-xs font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors rounded-t-2xl text-gray-900"
       >
         <ArrowUp size={16} className="mr-2" />
         Back to top
       </button>
       
       {/* Main footer content */}
-      <div className="border-t border-iwanyu-border bg-iwanyu-muted py-6">
-        <div className="container">
+      <div className="py-12 border-b border-gray-100">
+        <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:gap-12">
             {footerLinks.map((column) => (
               <div key={column.title}>
-                <h3 className="mb-4 text-sm font-bold text-iwanyu-foreground">
+                <h3 className="mb-6 text-sm font-bold uppercase tracking-widest text-black">
                   {column.title}
                 </h3>
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {column.links.map((link) => (
                     <li key={link.name}>
                       <Link
                         to={link.url}
-                        className="text-xs text-gray-600 hover:text-iwanyu-primary hover:underline"
+                        className="text-xs text-gray-500 hover:text-black transition-colors"
                       >
                         {link.name}
                       </Link>
@@ -87,69 +90,32 @@ export const Footer = () => {
               </div>
             ))}
           </div>
-          
-          {/* Social links & branding */}
-          <div className="mt-12 flex flex-col items-center">
-            <Link to="/" className="mb-6 flex items-center">
-              <img
-                src="/logo.png"
-                alt="iwanyu"
-                className="h-12 w-auto md:h-14"
-                loading="lazy"
-              />
-            </Link>
-            
-            <div className="mb-6 flex space-x-4">
-              <a
-                href="#"
-                className="rounded-full bg-iwanyu-dark p-2 text-white hover:bg-iwanyu-primary"
-                aria-label="Facebook"
-              >
-                <Facebook size={18} />
-              </a>
-              <a
-                href="#"
-                className="rounded-full bg-iwanyu-dark p-2 text-white hover:bg-iwanyu-primary"
-                aria-label="Twitter"
-              >
-                <Twitter size={18} />
-              </a>
-              <a
-                href="#"
-                className="rounded-full bg-iwanyu-dark p-2 text-white hover:bg-iwanyu-primary"
-                aria-label="Instagram"
-              >
-                <Instagram size={18} />
-              </a>
-              <a
-                href="#"
-                className="rounded-full bg-iwanyu-dark p-2 text-white hover:bg-iwanyu-primary"
-                aria-label="YouTube"
-              >
-                <Youtube size={18} />
-              </a>
-            </div>
-          </div>
         </div>
       </div>
-      
-      {/* Copyright */}
-      <div className="border-t border-iwanyu-border bg-white py-3 text-center">
-        <div className="container">
-          <p className="text-xs text-gray-500">
-            &copy; {currentYear} iwanyu store. All rights reserved.
-          </p>
-          <div className="mt-2 flex justify-center space-x-4">
-            <Link to="/privacy" className="text-xs text-gray-500 hover:text-iwanyu-primary hover:underline">
-              Privacy Policy
-            </Link>
-            <Link to="/terms" className="text-xs text-gray-500 hover:text-iwanyu-primary hover:underline">
-              Terms of Use
-            </Link>
-            <Link to="/cookies" className="text-xs text-gray-500 hover:text-iwanyu-primary hover:underline">
-              Cookie Policy
-            </Link>
-          </div>
+
+      {/* Bottom Bar */}
+      <div className="bg-gray-50 py-8">
+        <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                
+                {/* Socials */}
+                <div className="flex items-center gap-6">
+                    <a href="#" className="text-gray-500 hover:text-black transition-colors"><Facebook size={20} /></a>
+                    <a href="#" className="text-gray-500 hover:text-black transition-colors"><Instagram size={20} /></a>
+                    <a href="#" className="text-gray-500 hover:text-black transition-colors"><Twitter size={20} /></a>
+                    <a href="#" className="text-gray-500 hover:text-black transition-colors"><Youtube size={20} /></a>
+                </div>
+
+                <div className="flex flex-wrap gap-4 justify-center md:justify-end text-xs text-gray-500">
+                    <Link to="/privacy" className="hover:text-black">Privacy Policy</Link>
+                    <span>|</span>
+                    <Link to="/terms" className="hover:text-black">Terms and Conditions</Link>
+                    <span>|</span>
+                    <Link to="/cookies" className="hover:text-black">Cookie Settings</Link>
+                    <span>|</span>
+                    <span>© {currentYear} Iwanyu Marketplace</span>
+                </div>
+            </div>
         </div>
       </div>
     </footer>

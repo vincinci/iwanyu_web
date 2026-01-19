@@ -53,7 +53,7 @@ export const CategoryProductSection = ({
         </div>
 
         {isEmpty ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
             <p className="text-sm text-gray-500">No products in this category yet. Check back soon!</p>
           </div>
         ) : (

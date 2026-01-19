@@ -1,8 +1,7 @@
-import { BarChart3, Package, ShoppingBag, Store, Wallet } from "lucide-react";
+import { BarChart3, Package, ShoppingBag, Store, Wallet, Bell, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
@@ -17,18 +16,19 @@ type VendorNotification = {
   read_at: string | null;
 };
 
-const nav = [
+const navItems = [
   { label: "Overview", icon: BarChart3, href: "/seller" },
   { label: "Products", icon: Package, href: "/seller/products" },
   { label: "Orders", icon: ShoppingBag, href: "/seller/orders" },
-  { label: "Payouts", icon: Wallet, href: "/seller" },
-  { label: "Store", icon: Store, href: "/seller" },
+  { label: "Payouts", icon: Wallet, href: "/seller/payouts" },
+  { label: "Store Settings", icon: Store, href: "/seller/settings" },
 ];
 
 export default function SellerDashboardPage() {
   const { user } = useAuth();
   const { getVendorsForOwner, products } = useMarketplace();
   const supabase = getSupabaseClient();
+  const location = useLocation();
   const [notifications, setNotifications] = useState<VendorNotification[]>([]);
 
   const [metrics, setMetrics] = useState<{ productCount: number; orderCount: number; salesRwf: number }>(
@@ -36,6 +36,7 @@ export default function SellerDashboardPage() {
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
+  // Check roles
   const isSellerOrAdmin = Boolean(user && (user.role === "seller" || user.role === "admin"));
 
   const ownedVendorIds = useMemo(() => {
@@ -83,7 +84,6 @@ export default function SellerDashboardPage() {
     async function loadMetrics() {
       if (!supabase || !user) return;
 
-      // Admin dashboard has its own view; keep seller metrics focused.
       if (user.role === "admin") {
         setMetrics({
           productCount: products.length,
@@ -103,7 +103,6 @@ export default function SellerDashboardPage() {
         const ownedSet = new Set(ownedVendorIds);
         const productCount = products.filter((p) => ownedSet.has(p.vendorId)).length;
 
-        // Best-effort order metrics from order_items.
         const { data, error } = await supabase
           .from("order_items")
           .select("order_id, price_rwf, quantity, vendor_id")
@@ -132,17 +131,11 @@ export default function SellerDashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container py-10">
-          <div className="rounded-lg border border-iwanyu-border bg-white p-6">
-            <div className="text-lg font-semibold text-gray-900">Sign in required</div>
-            <div className="mt-1 text-sm text-gray-600">Please sign in to access seller tools.</div>
-            <div className="mt-4">
-              <Link to="/login">
-                <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Go to login</Button>
-              </Link>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Access Restricted</h2>
+            <p className="mb-4 text-gray-500">You must be logged in to view this page.</p>
+            <Link to="/login"><Button>Log In</Button></Link>
         </div>
       </div>
     );
@@ -150,20 +143,21 @@ export default function SellerDashboardPage() {
 
   if (!isSellerOrAdmin) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container py-10">
-          <div className="rounded-lg border border-iwanyu-border bg-white p-6">
-            <div className="text-lg font-semibold text-gray-900">Seller role required</div>
-            <div className="mt-1 text-sm text-gray-600">Apply to become a vendor before listing products.</div>
-            <div className="mt-4 flex gap-3">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+        <div className="max-w-md text-center">
+           <Store size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+           <h1 className="text-2xl font-bold text-gray-900 mb-2">Seller Account Required</h1>
+           <p className="text-gray-500 mb-8">
+             You need a seller account to access the dashboard. Apply now to start selling on Iwanyu.
+           </p>
+           <div className="flex flex-col gap-3 sm:flex-row justify-center">
               <Link to="/vendor-application">
-                <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Apply to sell</Button>
+                <Button className="w-full sm:w-auto rounded-full bg-black text-white hover:bg-gray-800">Apply to Become a Seller</Button>
               </Link>
               <Link to="/">
-                <Button variant="outline" className="rounded-full">Storefront</Button>
+                <Button variant="outline" className="w-full sm:w-auto rounded-full border-gray-200">Return Home</Button>
               </Link>
-            </div>
-          </div>
+           </div>
         </div>
       </div>
     );
@@ -171,106 +165,148 @@ export default function SellerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200 bg-white">
-        <div className="container py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-iwanyu-foreground">Seller Dashboard</h1>
-            <p className="text-sm text-gray-600">Multi-vendor tools (starter).</p>
+      {/* Top Bar */}
+      <div className="border-b border-gray-100">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg tracking-tight">Seller Studio</span>
+            <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Beta</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
             <Link to="/">
-              <Button variant="outline" className="rounded-full">Storefront</Button>
+               <Button variant="ghost" className="text-sm font-medium hover:bg-transparent hover:text-iwanyu-primary">Go to Store</Button>
             </Link>
-            <Link to="/sell">
-              <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Onboarding</Button>
-            </Link>
+            <div className="h-8 w-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
+                {user.name?.charAt(0) || "S"}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="container py-6 grid gap-6 lg:grid-cols-[240px_1fr]">
-        <aside className="rounded-lg border border-gray-200 bg-white p-3 h-fit">
-          <nav className="space-y-1">
-            {nav.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <item.icon size={18} className="text-gray-500" />
-                {item.label}
-              </a>
-            ))}
-          </nav>
-        </aside>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-12">
+            
+            {/* Minimal Sidebar */}
+            <aside className="w-full lg:w-48 shrink-0">
+                <nav className="flex flex-col gap-1">
+                    {navItems.map((item) => {
+                        const isActive = location.pathname === item.href;
+                        return (
+                            <Link
+                                key={item.label}
+                                to={item.href}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    isActive 
+                                    ? "bg-black text-white" 
+                                    : "text-gray-500 hover:text-black hover:bg-gray-50"
+                                }`}
+                            >
+                                <item.icon size={16} />
+                                {item.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </aside>
 
-        <section className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Sales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{metricsLoading ? "…" : formatMoney(metrics.salesRwf)}</div>
-                <div className="text-xs text-gray-600">Order items total</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Orders</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{metricsLoading ? "…" : metrics.orderCount}</div>
-                <div className="text-xs text-gray-600">Unique orders</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Products</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{metricsLoading ? "…" : metrics.productCount}</div>
-                <div className="text-xs text-gray-600">Listings</div>
-              </CardContent>
-            </Card>
-          </div>
+            {/* Main Content Area */}
+            <main className="flex-1">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold mb-2">Overview</h1>
+                    <p className="text-gray-500 text-sm">Welcome back, {user.name?.split(' ')[0]}. Here's what's happening today.</p>
+                </div>
 
-          {user?.role !== "admin" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-gray-700">
-                {notifications.length === 0 ? (
-                  <div className="text-gray-600">No notifications.</div>
-                ) : (
-                  <div className="space-y-3">
-                    {notifications.map((n) => (
-                      <div key={n.id} className="rounded-lg border border-iwanyu-border bg-white p-3">
-                        <div className="font-semibold text-gray-900">{n.title}</div>
-                        <div className="mt-1 text-gray-600">{n.message}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
+                {/* Stats Grid - Ultra Minimal */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                    <div>
+                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Revenue</p>
+                        <h2 className="text-4xl font-bold tracking-tight text-black">
+                            {metricsLoading ? "..." : formatMoney(metrics.salesRwf)}
+                        </h2>
+                    </div>
+                    <div>
+                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Orders Processed</p>
+                        <h2 className="text-4xl font-bold tracking-tight text-black">
+                             {metricsLoading ? "..." : metrics.orderCount}
+                        </h2>
+                    </div>
+                    <div>
+                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Active Products</p>
+                        <h2 className="text-4xl font-bold tracking-tight text-black">
+                             {metricsLoading ? "..." : metrics.productCount}
+                        </h2>
+                    </div>
+                </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>What a modern marketplace seller must have</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-700 space-y-2">
-              <div>• Product management (variants, inventory, media)</div>
-              <div>• Order management (fulfillment, refunds, returns)</div>
-              <div>• Payouts + statements</div>
-              <div>• Store profile + policies</div>
-              <div>• Messaging & support tickets</div>
-              <div>• Events/audit log (who changed what, when)</div>
-            </CardContent>
-          </Card>
-        </section>
+                {/* Content Split */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {/* Notifications */}
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold">Notifications</h3>
+                            <Link to="#" className="text-xs text-iwanyu-primary font-bold hover:underline">View All</Link>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            {notifications.length === 0 ? (
+                                <div className="p-8 border border-dashed border-gray-200 rounded-xl text-center">
+                                    <Bell size={24} className="mx-auto text-gray-300 mb-2" />
+                                    <p className="text-sm text-gray-500">All caught up! No new notifications.</p>
+                                </div>
+                            ) : (
+                                notifications.map((n) => (
+                                    <div key={n.id} className="pb-4 border-b border-gray-100 last:border-0">
+                                        <p className="font-semibold text-sm mb-1">{n.title}</p>
+                                        <p className="text-gray-500 text-xs line-clamp-2">{n.message}</p>
+                                        <span className="text-[10px] text-gray-400 mt-2 block">{new Date(n.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Quick Actions / Getting Started */}
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold">Quick Actions</h3>
+                        </div>
+
+                        <div className="grid gap-3">
+                             <Link to="/seller/products/new" className="group flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-black transition-colors">
+                                 <div>
+                                     <div className="font-bold text-sm">Add New Product</div>
+                                     <div className="text-gray-500 text-xs">Create a listing for the marketplace</div>
+                                 </div>
+                                 <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
+                                     <ArrowRight size={14} />
+                                 </div>
+                             </Link>
+                             
+                             <Link to="/seller/orders" className="group flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-black transition-colors">
+                                 <div>
+                                     <div className="font-bold text-sm">Manage Orders</div>
+                                     <div className="text-gray-500 text-xs">Track shipments and returns</div>
+                                 </div>
+                                 <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
+                                     <ArrowRight size={14} />
+                                 </div>
+                             </Link>
+
+                             <Link to="/help" className="group flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-black transition-colors">
+                                 <div>
+                                     <div className="font-bold text-sm">Seller Support</div>
+                                     <div className="text-gray-500 text-xs">Get help with your store</div>
+                                 </div>
+                                 <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
+                                     <ArrowRight size={14} />
+                                 </div>
+                             </Link>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
       </div>
     </div>
   );

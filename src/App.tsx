@@ -25,6 +25,8 @@ import StaticPage from "./pages/StaticPage";
 import SellerProductsPage from "./pages/seller/SellerProducts";
 import SellerNewProductPage from "./pages/seller/SellerNewProduct";
 import SellerOrdersPage from "./pages/seller/SellerOrders";
+import SellerPayoutsPage from "./pages/seller/SellerPayouts";
+import SellerSettingsPage from "./pages/seller/SellerSettings";
 import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
 import { AuthProvider } from "./context/auth";
@@ -133,6 +135,22 @@ const AppContent = () => {
           }
         />
         <Route
+          path="/seller/payouts"
+          element={
+            <RequireAuth roles={["seller", "admin"]}>
+              <SellerPayoutsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/seller/settings"
+          element={
+            <RequireAuth roles={["seller", "admin"]}>
+              <SellerSettingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/admin"
           element={
             <RequireAuth roles={["admin"]}>
@@ -147,6 +165,11 @@ const AppContent = () => {
         <Route path="/corporate" element={<StaticPage title="Corporate Information" />} />
         <Route path="/science" element={<StaticPage title="iwanyu Science" />} />
         <Route path="/affiliate" element={<StaticPage title="Affiliate Program" />} />
+        <Route path="/about" element={<StaticPage title="About Us" />} />
+        <Route path="/careers" element={<StaticPage title="Careers" />} />
+        <Route path="/corporate" element={<StaticPage title="Corporate Information" />} />
+        <Route path="/science" element={<StaticPage title="Iwanyu Science" />} />
+        <Route path="/affiliate" element={<StaticPage title="Become an Affiliate" />} />
         <Route path="/advertise" element={<StaticPage title="Advertise Your Products" />} />
         <Route path="/publish" element={<StaticPage title="Self-Publish" />} />
         <Route path="/business-card" element={<StaticPage title="iwanyu Business Card" />} />
@@ -158,6 +181,18 @@ const AppContent = () => {
         <Route path="/help" element={<StaticPage title="Help" />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
+        
+        {/* New Footer/Header Links Mapped to Static Pages */}
+        <Route path="/track-order" element={<StaticPage title="Track Your Order" />} />
+        <Route path="/track" element={<StaticPage title="Order Tracker" />} />
+        <Route path="/stores" element={<StaticPage title="Store Locator" />} />
+        <Route path="/releases" element={<StaticPage title="Latest Releases" />} />
+        <Route path="/top-sellers" element={<StaticPage title="Top Sellers" />} />
+         <Route path="/sport/:sportName" element={<StaticPage title="Shop by Sport" />} />
+        <Route path="/apps" element={<StaticPage title="Mobile Apps" />} />
+        <Route path="/sustainability" element={<StaticPage title="Sustainability" />} />
+        <Route path="/press" element={<StaticPage title="Press" />} />
+
 
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
