@@ -19,6 +19,9 @@ export const Header = () => {
   const { count: wishlistCount } = useWishlist();
   const navigate = useNavigate();
 
+  // Debug: Log user state
+  console.log('Header render - user:', user ? { email: user.email, name: user.name } : 'Not logged in');
+
   const categories = useMemo(() => {
     return getNavCategoriesWithCounts(products).map(({ id, name }) => ({ id, name }));
   }, [products]);

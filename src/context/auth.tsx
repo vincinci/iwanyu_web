@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = getSupabaseClient();
 
+  console.log('AuthProvider render - user:', user ? { email: user.email, isReady } : 'null', 'isReady:', isReady);
+
   useEffect(() => {
     let cancelled = false;
 
