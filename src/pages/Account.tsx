@@ -180,24 +180,26 @@ export default function AccountPage() {
                 </nav>
               </div>
 
-              <div className="mt-6 grid gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Quick Links</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-wrap gap-3">
-                    <Link to="/orders">
-                      <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">View orders</Button>
-                    </Link>
-                    <Link to="/seller">
-                      <Button variant="outline" className="rounded-full">Seller dashboard</Button>
-                    </Link>
-                    <Link to="/admin">
-                      <Button variant="outline" className="rounded-full">Admin dashboard</Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              </div>
+              {(user.role === 'seller' || user.role === 'admin') && (
+                <div className="mt-6 grid gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Quick Links</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-3">
+                      <Link to="/orders">
+                        <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">View orders</Button>
+                      </Link>
+                      <Link to="/seller">
+                        <Button variant="outline" className="rounded-full">Seller dashboard</Button>
+                      </Link>
+                      <Link to="/admin">
+                        <Button variant="outline" className="rounded-full">Admin dashboard</Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
 
             <div className="lg:col-span-2 space-y-8">
