@@ -51,8 +51,9 @@ export default function LoginPage() {
           // Clear the OAuth parameters from URL
           window.history.replaceState(null, '', window.location.pathname);
           
-          // Navigate to account page
-          window.location.href = nextPath;
+          // The onAuthStateChange listener in AuthProvider will handle the user state update
+          // Just navigate using React Router
+          navigate(nextPath, { replace: true });
         } else {
           console.error('No session found after OAuth callback');
           // Retry once more
@@ -60,14 +61,14 @@ export default function LoginPage() {
           const { data: retryData } = await supabase.auth.getSession();
           if (retryData.session) {
             window.history.replaceState(null, '', window.location.pathname);
-            window.location.href = nextPath;
+            navigate(nextPath, { replace: true });
           }
         }
       }
     };
 
     handleOAuthCallback();
-  }, [supabase, nextPath]);
+  }, [supabase, nextPath, navigate]);
 
   useEffect(() => {
     if (user) navigate(nextPath, { replace: true });

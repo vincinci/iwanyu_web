@@ -61,21 +61,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (s?.user) {
         const profile = await loadProfileRole(supabase, s.user.id);
+        const metadata = s.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string; picture?: string } | null;
 
         const next: AuthUser = {
           id: s.user.id,
           email: s.user.email ?? undefined,
           name:
             profile?.full_name ??
-            (s.user.user_metadata as { full_name?: string; name?: string } | null)?.full_name ??
-            (s.user.user_metadata as { full_name?: string; name?: string } | null)?.name,
+            metadata?.full_name ??
+            metadata?.name,
           picture:
             profile?.avatar_url ??
-            (s.user.user_metadata as { avatar_url?: string; picture?: string } | null)?.avatar_url ??
-            (s.user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture,
+            metadata?.avatar_url ??
+            metadata?.picture,
           role: profile?.role ?? "buyer",
         };
-        console.log('Auth init - setting user:', next);
+        console.log('Auth init - setting user:', next, 'metadata:', metadata);
         setUserState(next);
       } else {
         console.log('Auth init - no session found');
@@ -99,21 +100,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (session?.user) {
         const profile = await loadProfileRole(supabase, session.user.id);
+        const metadata = session.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string; picture?: string } | null;
 
         const next: AuthUser = {
           id: session.user.id,
           email: session.user.email ?? undefined,
           name:
             profile?.full_name ??
-            (session.user.user_metadata as { full_name?: string; name?: string } | null)?.full_name ??
-            (session.user.user_metadata as { full_name?: string; name?: string } | null)?.name,
+            metadata?.full_name ??
+            metadata?.name,
           picture:
             profile?.avatar_url ??
-            (session.user.user_metadata as { avatar_url?: string; picture?: string } | null)?.avatar_url ??
-            (session.user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture,
+            metadata?.avatar_url ??
+            metadata?.picture,
           role: profile?.role ?? "buyer",
         };
-        console.log('Setting user state:', next);
+        console.log('Setting user state:', next, 'metadata:', metadata);
         setUserState(next);
       } else {
         console.log('Clearing user state');
