@@ -37,6 +37,10 @@ create table if not exists public.profiles (
     email text,
     full_name text,
     avatar_url text,
+    phone text,
+    city text,
+    address text,
+    country text,
     role text not null default 'buyer' check (role in ('buyer','seller','admin')),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -108,9 +112,12 @@ alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
 -- RLS Policies
--- Profiles: Anyone can read, users can update their own
+-- Profiles: Anyone can read, users can insert/update their own
 create policy "profiles_select_all" on public.profiles
 for select using (true);
+
+create policy "profiles_insert_own" on public.profiles
+for insert with check (auth.uid() = id);
 
 create policy "profiles_update_own" on public.profiles
 for update using (auth.uid() = id);
