@@ -87,7 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!supabase) return;
-    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, 'User:', session?.user?.email);
+      
       if (session?.user) {
         const profile = await loadProfileRole(supabase, session.user.id);
 
@@ -104,8 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (session.user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture,
           role: profile?.role ?? "buyer",
         };
+        console.log('Setting user state:', next);
         setUserState(next);
       } else {
+        console.log('Clearing user state');
         setUserState(null);
       }
     });

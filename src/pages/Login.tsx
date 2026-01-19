@@ -33,13 +33,25 @@ export default function LoginPage() {
       const accessToken = hashParams.get('access_token');
       
       if (accessToken) {
-        // OAuth callback detected, session should be automatically set
-        console.log('OAuth callback detected');
-        // Force session check
-        const { data } = await supabase.auth.getSession();
+        console.log('OAuth callback detected, access token found');
+        
+        // Small delay to ensure session is set
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Force session refresh
+        const { data, error } = await supabase.auth.getSession();
+        console.log('Session check result:', { hasSession: !!data.session, error });
+        
         if (data.session) {
-          console.log('Session found, navigating...');
-          navigate(nextPath, { replace: true });
+          console.log('Session confirmed, user:', data.session.user.email);
+          // Clear the hash to clean up URL
+          window.history.replaceState(null, '', window.location.pathname);
+          // Navigate after a small delay to ensure auth context updates
+          setTimeout(() => {
+            navigate(nextPath, { replace: true });
+          }, 100);
+        } else {
+          console.error('No session found after OAuth callback');
         }
       }
     };
