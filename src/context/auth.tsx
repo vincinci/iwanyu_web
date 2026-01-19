@@ -43,13 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = getSupabaseClient();
 
-  console.log('AuthProvider render - user:', user ? { email: user.email, isReady } : 'null', 'isReady:', isReady);
+  console.log('AuthProvider render - user:', user ? { email: user.email, name: user.name, id: user.id } : 'null', 'isReady:', isReady);
 
   useEffect(() => {
     let cancelled = false;
 
     async function init() {
+      console.log('=== AUTH INIT START ===');
       if (!supabase) {
+        console.log('No supabase client');
         if (!cancelled) setIsReady(true);
         return;
       }
@@ -57,10 +59,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = await supabase.auth.getSession();
       const s = data.session;
       
-      console.log('Auth init - session check:', { hasSession: !!s, email: s?.user?.email });
+      console.log('Auth init - session check:', { 
+        hasSession: !!s, 
+        email: s?.user?.email,
+        userId: s?.user?.id,
+        hasUserMetadata: !!s?.user?.user_metadata,
+        metadata: s?.user?.user_metadata 
+      });
       
       if (s?.user) {
+        console.log('Session found, loading profile...');
         const profile = await loadProfileRole(supabase, s.user.id);
+        console.log('Profile loaded:', profile);
         const metadata = s.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string; picture?: string } | null;
 
         const next: AuthUser = {
@@ -76,14 +86,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             metadata?.picture,
           role: profile?.role ?? "buyer",
         };
-        console.log('Auth init - setting user:', next, 'metadata:', metadata);
-        setUserState(next);
+        console.log('Auth init - SETTING USER:', next);
+        if (!cancelled) {
+          setUserState(next);
+          console.log('User state SET successfully');
+        }
       } else {
         console.log('Auth init - no session found');
-        setUserState(null);
+        if (!cancelled) setUserState(null);
       }
 
       if (!cancelled) setIsReady(true);
+      console.log('=== AUTH INIT END ===');
     }
 
     void init();
@@ -96,10 +110,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!supabase) return;
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, 'User:', session?.user?.email);
+      console.log('=== AUTH STATE CHANGE EVENT ===');
+      console.log('Event:', event);
+      console.log('Session:', { 
+        hasSession: !!session, 
+        email: session?.user?.email,
+        userId: session?.user?.id 
+      });
       
-      if (session?.user) {
+      if (event === "SIGNED_IN" && session?.user) {
+        console.log('SIGNED_IN event - loading profile...');
         const profile = await loadProfileRole(supabase, session.user.id);
+        console.log('Profile loaded:', profile);
         const metadata = session.user.user_metadata as { full_name?: string; name?: string; avatar_url?: string; picture?: string } | null;
 
         const next: AuthUser = {
@@ -115,12 +137,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             metadata?.picture,
           role: profile?.role ?? "buyer",
         };
-        console.log('Setting user state:', next, 'metadata:', metadata);
+        console.log('SIGNED_IN - SETTING USER STATE:', next);
         setUserState(next);
-      } else {
-        console.log('Clearing user state');
+        console.log('User state SET via SIGNED_IN event');
+      } else if (event === "SIGNED_OUT") {
+        console.log('SIGNED_OUT - clearing user state');
         setUserState(null);
+      } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        console.log('TOKEN_REFRESHED - keeping existing user');
+        // Don't reload profile on every token refresh
+      } else {
+        console.log('Other event:', event, '- no action');
       }
+      console.log('=== AUTH STATE CHANGE END ===');
     });
 
     return () => {

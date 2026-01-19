@@ -14,13 +14,22 @@ export const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const { itemCount } = useCart();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isReady } = useAuth();
   const { products } = useMarketplace();
   const { count: wishlistCount } = useWishlist();
   const navigate = useNavigate();
 
   // Debug: Log user state
-  console.log('Header render - user:', user ? { email: user.email, name: user.name } : 'Not logged in');
+  console.log('=== HEADER RENDER ===', { 
+    user: user ? { 
+      id: user.id, 
+      email: user.email, 
+      name: user.name,
+      picture: user.picture,
+      role: user.role 
+    } : null,
+    isReady 
+  });
 
   const categories = useMemo(() => {
     return getNavCategoriesWithCounts(products).map(({ id, name }) => ({ id, name }));

@@ -38,40 +38,29 @@ export default function LoginPage() {
       const accessToken = hashParams.get('access_token');
       
       if (code || accessToken) {
-        console.log('OAuth callback detected', { hasCode: !!code, hasToken: !!accessToken });
+        console.log('=== OAUTH CALLBACK DETECTED ===');
+        console.log('Has code:', !!code, 'Has token:', !!accessToken);
         
-        // Give Supabase time to exchange the code for a session
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Clear the OAuth parameters from URL immediately
+        window.history.replaceState(null, '', window.location.pathname);
         
-        // Check if session exists
-        const { data } = await supabase.auth.getSession();
-        console.log('Session after OAuth:', { hasSession: !!data.session, email: data.session?.user?.email });
-        
-        if (data.session) {
-          // Clear the OAuth parameters from URL
-          window.history.replaceState(null, '', window.location.pathname);
-          
-          // Force a full page reload to ensure auth state is properly initialized
-          // This is more reliable than React Router navigation for OAuth callbacks
-          window.location.href = nextPath;
-        } else {
-          console.error('No session found after OAuth callback');
-          // Retry once more
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const { data: retryData } = await supabase.auth.getSession();
-          if (retryData.session) {
-            window.history.replaceState(null, '', window.location.pathname);
-            window.location.href = nextPath;
-          }
-        }
+        // The auth state will be updated by onAuthStateChange listener in auth context
+        // We don't need to manually navigate - the useEffect below will handle it
+        // when the user state is updated
+        console.log('Waiting for auth state to update...');
       }
     };
 
     handleOAuthCallback();
-  }, [supabase, nextPath, navigate]);
+  }, [supabase]);
 
+  // Navigate to account page once user is logged in
   useEffect(() => {
-    if (user) navigate(nextPath, { replace: true });
+    if (user) {
+      console.log('User is now logged in, navigating to:', nextPath);
+      navigate(nextPath, { replace: true });
+    }
+  }, [user, navigate, nextPath]);
   }, [user, navigate, nextPath]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
