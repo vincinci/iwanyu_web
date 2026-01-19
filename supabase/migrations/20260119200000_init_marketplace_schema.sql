@@ -41,6 +41,7 @@ create table if not exists public.profiles (
     city text,
     address text,
     country text,
+    profile_completed boolean not null default false,
     role text not null default 'buyer' check (role in ('buyer','seller','admin')),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -72,6 +73,15 @@ create table if not exists public.order_items (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     primary key (order_id, product_id)
+);
+
+-- Wishlist items table
+create table if not exists public.wishlist_items (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    product_id text not null references public.products(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    unique(user_id, product_id)
 );
 
 -- Trigger function for new user profiles
@@ -110,6 +120,7 @@ alter table public.vendors enable row level security;
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+alter table public.wishlist_items enable row level security;
 
 -- RLS Policies
 -- Profiles: Anyone can read, users can insert/update their own
@@ -145,3 +156,13 @@ for select using (
         where o.id = order_id and o.buyer_user_id = auth.uid()
     )
 );
+
+-- Wishlist: Users can manage their own wishlist
+create policy "wishlist_select_own" on public.wishlist_items
+for select using (auth.uid() = user_id);
+
+create policy "wishlist_insert_own" on public.wishlist_items
+for insert with check (auth.uid() = user_id);
+
+create policy "wishlist_delete_own" on public.wishlist_items
+for delete using (auth.uid() = user_id);

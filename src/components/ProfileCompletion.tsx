@@ -35,6 +35,26 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Load saved draft from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('profile_draft');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        setProfile(prev => ({ ...prev, ...draft }));
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+  }, []);
+
+  // Save draft to localStorage whenever form changes
+  useEffect(() => {
+    if (profile.full_name || profile.phone || profile.address || profile.city) {
+      localStorage.setItem('profile_draft', JSON.stringify(profile));
+    }
+  }, [profile]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -106,6 +126,9 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
         title: "Profile completed",
         description: "Your profile has been saved.",
       });
+
+      // Clear draft from localStorage
+      localStorage.removeItem('profile_draft');
 
       onComplete();
     } catch {

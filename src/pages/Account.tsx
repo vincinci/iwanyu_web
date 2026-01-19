@@ -35,6 +35,13 @@ export default function AccountPage() {
 
   const addressCount = useMemo(() => (form.address.trim() ? 1 : 0), [form.address]);
 
+  // Save draft to localStorage whenever form changes
+  useEffect(() => {
+    if (form.fullName || form.phone || form.address || form.city) {
+      localStorage.setItem('account_form_draft', JSON.stringify(form));
+    }
+  }, [form]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -50,12 +57,23 @@ export default function AccountPage() {
           .maybeSingle();
 
         if (!cancelled) {
+          // Check for draft first
+          const saved = localStorage.getItem('account_form_draft');
+          let draftData = null;
+          if (saved) {
+            try {
+              draftData = JSON.parse(saved);
+            } catch {
+              // Invalid JSON, ignore
+            }
+          }
+
           setForm({
-            fullName: profileData?.full_name ?? user.name ?? "",
-            phone: profileData?.phone ?? "",
-            address: profileData?.address ?? "",
-            city: profileData?.city ?? "",
-            country: profileData?.country ?? "Rwanda",
+            fullName: draftData?.fullName || profileData?.full_name ?? user.name ?? "",
+            phone: draftData?.phone || profileData?.phone ?? "",
+            address: draftData?.address || profileData?.address ?? "",
+            city: draftData?.city || profileData?.city ?? "",
+            country: draftData?.country || profileData?.country ?? "Rwanda",
           });
         }
 
@@ -109,6 +127,9 @@ export default function AccountPage() {
         title: "Profile saved",
         description: "Your profile has been updated.",
       });
+
+      // Clear draft from localStorage after successful save
+      localStorage.removeItem('account_form_draft');
     } catch {
       toast({
         title: "Could not save profile",
