@@ -13,6 +13,7 @@ export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const { itemCount } = useCart();
   const { user, signOut, isReady } = useAuth();
   const { products } = useMarketplace();
@@ -193,8 +194,12 @@ export const Header = () => {
               </Link>
 
               {user ? (
-                <div className="relative group/profile">
-                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                    onMouseEnter={() => setShowProfileDropdown(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     {user.picture ? (
                       <img 
                         src={user.picture} 
@@ -210,61 +215,69 @@ export const Header = () => {
                       <span className="text-xs text-gray-500">Hello,</span>
                       <span className="text-sm font-bold text-black leading-none">{user.name?.split(' ')[0] ?? "User"}</span>
                     </div>
-                    <ChevronDown size={16} className="text-gray-400 hidden lg:block" />
+                    <ChevronDown size={16} className={`text-gray-400 hidden lg:block transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   
                   {/* Profile Dropdown */}
-                  <div className="absolute right-0 top-full pt-2 w-64 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all z-50">
-                    <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
-                      <div className="p-4 border-b border-gray-100 bg-gradient-to-br from-iwanyu-primary/10 to-iwanyu-primary/5">
-                        <div className="flex items-center gap-3">
-                          {user.picture ? (
-                            <img 
-                              src={user.picture} 
-                              alt={user.name ?? 'User'} 
-                              className="w-12 h-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-iwanyu-primary text-black font-bold text-lg">
-                              {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
+                  {showProfileDropdown && (
+                    <div 
+                      className="absolute right-0 top-full mt-2 w-64 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                      onMouseLeave={() => setShowProfileDropdown(false)}
+                    >
+                      <div className="bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 bg-gradient-to-br from-iwanyu-primary/10 to-iwanyu-primary/5">
+                          <div className="flex items-center gap-3">
+                            {user.picture ? (
+                              <img 
+                                src={user.picture} 
+                                alt={user.name ?? 'User'} 
+                                className="w-12 h-12 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-iwanyu-primary text-black font-bold text-lg">
+                                {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-gray-900 truncate">{user.name ?? "User"}</div>
+                              <div className="text-xs text-gray-500 truncate">{user.email}</div>
                             </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-gray-900 truncate">{user.name ?? "User"}</div>
-                            <div className="text-xs text-gray-500 truncate">{user.email}</div>
                           </div>
                         </div>
-                      </div>
-                      <div className="p-2">
-                        {user.role === 'seller' && (
-                          <Link to="/seller" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium border-b border-gray-100 mb-2">
-                            <Sparkles size={16} className="text-iwanyu-primary" />
-                            <span>Seller Dashboard</span>
+                        <div className="p-2">
+                          {user.role === 'seller' && (
+                            <Link to="/seller" onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium border-b border-gray-100 mb-2">
+                              <Sparkles size={16} className="text-iwanyu-primary" />
+                              <span>Seller Dashboard</span>
+                            </Link>
+                          )}
+                          <Link to="/account" onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                            <Settings size={16} className="text-gray-400" />
+                            <span>Account Settings</span>
                           </Link>
-                        )}
-                        <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
-                          <Settings size={16} className="text-gray-400" />
-                          <span>Account Settings</span>
-                        </Link>
-                        <Link to="/orders" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
-                          <Package size={16} className="text-gray-400" />
-                          <span>My Orders</span>
-                        </Link>
-                        <Link to="/wishlist" className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
-                          <Heart size={16} className="text-gray-400" />
-                          <span>My Wishlist</span>
-                        </Link>
-                        <hr className="my-2 border-gray-100" />
-                        <button 
-                          onClick={() => void signOut()}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 rounded-lg transition-colors text-red-600 text-sm font-medium"
-                        >
-                          <LogOut size={16} />
-                          <span>Sign Out</span>
-                        </button>
+                          <Link to="/orders" onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                            <Package size={16} className="text-gray-400" />
+                            <span>My Orders</span>
+                          </Link>
+                          <Link to="/wishlist" onClick={() => setShowProfileDropdown(false)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium">
+                            <Heart size={16} className="text-gray-400" />
+                            <span>My Wishlist</span>
+                          </Link>
+                          <hr className="my-2 border-gray-100" />
+                          <button 
+                            onClick={() => {
+                              setShowProfileDropdown(false);
+                              void signOut();
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 rounded-lg transition-colors text-red-600 text-sm font-medium"
+                          >
+                            <LogOut size={16} />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <Link
