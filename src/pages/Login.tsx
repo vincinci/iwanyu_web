@@ -51,9 +51,9 @@ export default function LoginPage() {
           // Clear the OAuth parameters from URL
           window.history.replaceState(null, '', window.location.pathname);
           
-          // The onAuthStateChange listener in AuthProvider will handle the user state update
-          // Just navigate using React Router
-          navigate(nextPath, { replace: true });
+          // Force a full page reload to ensure auth state is properly initialized
+          // This is more reliable than React Router navigation for OAuth callbacks
+          window.location.href = nextPath;
         } else {
           console.error('No session found after OAuth callback');
           // Retry once more
@@ -61,7 +61,7 @@ export default function LoginPage() {
           const { data: retryData } = await supabase.auth.getSession();
           if (retryData.session) {
             window.history.replaceState(null, '', window.location.pathname);
-            navigate(nextPath, { replace: true });
+            window.location.href = nextPath;
           }
         }
       }
