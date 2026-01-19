@@ -29,24 +29,40 @@ export default function LoginPage() {
     if (!supabase) return;
 
     const handleOAuthCallback = async () => {
+      // Check for OAuth code in URL params (PKCE flow)
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      
+      // Also check for access_token in hash (implicit flow)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       
-      if (accessToken) {
-        console.log('OAuth callback detected, access token found');
+      if (code || accessToken) {
+        console.log('OAuth callback detected', { hasCode: !!code, hasToken: !!accessToken });
         
-        // Clear the hash to clean up URL
-        window.history.replaceState(null, '', window.location.pathname);
+        // Give Supabase time to exchange the code for a session
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Force a session refresh by triggering storage event
-        // This will cause the auth context to re-check the session
-        window.dispatchEvent(new Event('storage'));
+        // Check if session exists
+        const { data } = await supabase.auth.getSession();
+        console.log('Session after OAuth:', { hasSession: !!data.session, email: data.session?.user?.email });
         
-        // Small delay to ensure session is processed
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Force page reload to ensure auth context re-initializes
-        window.location.href = nextPath;
+        if (data.session) {
+          // Clear the OAuth parameters from URL
+          window.history.replaceState(null, '', window.location.pathname);
+          
+          // Navigate to account page
+          window.location.href = nextPath;
+        } else {
+          console.error('No session found after OAuth callback');
+          // Retry once more
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const { data: retryData } = await supabase.auth.getSession();
+          if (retryData.session) {
+            window.history.replaceState(null, '', window.location.pathname);
+            window.location.href = nextPath;
+          }
+        }
       }
     };
 
