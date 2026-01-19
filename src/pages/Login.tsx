@@ -61,7 +61,6 @@ export default function LoginPage() {
       navigate(nextPath, { replace: true });
     }
   }, [user, navigate, nextPath]);
-  }, [user, navigate, nextPath]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
