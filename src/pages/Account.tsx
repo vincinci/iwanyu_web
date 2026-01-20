@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/auth";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 type ProfileFormState = {
@@ -17,7 +17,7 @@ type ProfileFormState = {
 };
 
 export default function AccountPage() {
-  const { user, setRole } = useAuth();
+  const { user, setRole, refreshUser } = useAuth();
   const supabase = getSupabaseClient();
   const { toast } = useToast();
 
@@ -32,6 +32,8 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [wishlistCount, setWishlistCount] = useState<number | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const addressCount = useMemo(() => (form.address.trim() ? 1 : 0), [form.address]);
 
@@ -42,69 +44,79 @@ export default function AccountPage() {
     }
   }, [form]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadAccountData = useCallback(async () => {
+    if (!user || !supabase) return;
+    setLoading(true);
 
-    async function load() {
-      if (!user || !supabase) return;
-      setLoading(true);
+    try {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("full_name, phone, address, city, country")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      try {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("full_name, phone, address, city, country")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (!cancelled) {
-          // Check for draft first
-          const saved = localStorage.getItem('account_form_draft');
-          let draftData = null;
-          if (saved) {
-            try {
-              draftData = JSON.parse(saved);
-            } catch {
-              // Invalid JSON, ignore
-            }
-          }
-
-          setForm({
-            fullName: draftData?.fullName || (profileData?.full_name ?? (user.name ?? "")),
-            phone: draftData?.phone || (profileData?.phone ?? ""),
-            address: draftData?.address || (profileData?.address ?? ""),
-            city: draftData?.city || (profileData?.city ?? ""),
-            country: draftData?.country || (profileData?.country ?? "Rwanda"),
-          });
+      // Check for draft first
+      const saved = localStorage.getItem('account_form_draft');
+      let draftData: any = null;
+      if (saved) {
+        try {
+          draftData = JSON.parse(saved);
+        } catch {
+          // Invalid JSON, ignore
         }
-
-        const { count: ordersCnt } = await supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("buyer_user_id", user.id);
-
-        if (!cancelled) setOrderCount(ordersCnt ?? 0);
-
-        const { count: wishlistCnt } = await supabase
-          .from("wishlist_items")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-
-        if (!cancelled) setWishlistCount(wishlistCnt ?? 0);
-      } catch {
-        if (!cancelled) {
-          setOrderCount(0);
-          setWishlistCount(0);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    }
 
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, supabase]);
+      setForm({
+        fullName: draftData?.fullName || (profileData?.full_name ?? (user.name ?? "")),
+        phone: draftData?.phone || (profileData?.phone ?? ""),
+        address: draftData?.address || (profileData?.address ?? ""),
+        city: draftData?.city || (profileData?.city ?? ""),
+        country: draftData?.country || (profileData?.country ?? "Rwanda"),
+      });
+
+      const [{ count: ordersCnt }, { count: wishlistCnt }] = await Promise.all([
+        supabase.from("orders").select("id", { count: "exact", head: true }).eq("buyer_user_id", user.id),
+        supabase.from("wishlist_items").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      ]);
+
+      setOrderCount(ordersCnt ?? 0);
+      setWishlistCount(wishlistCnt ?? 0);
+    } catch {
+      setOrderCount(0);
+      setWishlistCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, user]);
+
+  useEffect(() => {
+    void loadAccountData();
+  }, [loadAccountData, refreshNonce]);
+
+  const refreshAccount = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
+    try {
+      // Force fresh role resolution
+      try {
+        localStorage.removeItem(`iwanyu:role:${user.id}`);
+      } catch {
+        // ignore
+      }
+
+      await refreshUser();
+      setRefreshNonce((n) => n + 1);
+      toast({ title: "Refreshed", description: "Account and role reloaded." });
+    } catch (e) {
+      toast({
+        title: "Refresh failed",
+        description: e instanceof Error ? e.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshUser, toast, user]);
 
   async function saveProfile() {
     if (!user || !supabase) return;
@@ -332,8 +344,8 @@ export default function AccountPage() {
                     >
                       {saving ? "Saving..." : "Save profile"}
                     </Button>
-                    <Button variant="outline" className="rounded-full" onClick={() => window.location.reload()} disabled={loading}>
-                      Refresh
+                    <Button variant="outline" className="rounded-full" onClick={refreshAccount} disabled={loading || refreshing}>
+                      {refreshing ? "Refreshing..." : "Refresh account"}
                     </Button>
                   </div>
                 </div>
