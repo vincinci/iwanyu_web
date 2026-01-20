@@ -78,6 +78,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const supabase = getSupabaseClient();
   const activeUserIdRef = useRef<string | null>(null);
+  const sellerCheckDoneRef = useRef<Set<string>>(new Set());
+
+  const hydrateSellerRoleFromVendors = useCallback(
+    async (authUser: User) => {
+      if (!supabase) return;
+      if (sellerCheckDoneRef.current.has(authUser.id)) return;
+      sellerCheckDoneRef.current.add(authUser.id);
+
+      try {
+        const result = await withTimeout(
+          supabase
+            .from("vendors")
+            .select("id")
+            .eq("owner_user_id", authUser.id)
+            .eq("status", "approved")
+            .limit(1)
+            .maybeSingle(),
+          4000
+        );
+
+        if (result.error) return;
+        if (!result.data) return;
+
+        if (activeUserIdRef.current !== authUser.id) return;
+
+        setUser((prev) => {
+          if (!prev) return prev;
+          if (prev.id !== authUser.id) return prev;
+          if (prev.role === "seller" || prev.role === "admin") return prev;
+          const updated = { ...prev, role: "seller" as AuthRole };
+          writeCachedRole(authUser.id, updated.role);
+          return updated;
+        });
+      } catch {
+        // ignore
+      }
+    },
+    [supabase]
+  );
 
   const hydrateFromProfile = useCallback(
     async (authUser: User, baseUser: AuthUser) => {
@@ -121,8 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activeUserIdRef.current = baseUser.id;
       setUser(baseUser);
       void hydrateFromProfile(authUser, baseUser);
+      // Fallback: if profile hydration is slow/stale but vendor exists, promote UI to seller.
+      void hydrateSellerRoleFromVendors(authUser);
     },
-    [hydrateFromProfile]
+    [hydrateFromProfile, hydrateSellerRoleFromVendors]
   );
 
   /**
@@ -201,6 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Update local state
         setUser((prev) => (prev ? { ...prev, role } : prev));
+        writeCachedRole(user.id, role);
       },
       refreshUser: async () => {
         await loadUser();
