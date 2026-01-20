@@ -97,7 +97,13 @@ export const Header = () => {
           <div className="flex items-center gap-6 lg:gap-8">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0 group">
-              <span className="text-lg font-semibold tracking-tight text-foreground">iwanyu</span>
+              <img
+                src="/logo.png"
+                alt="iwanyu"
+                className="h-8 w-auto object-contain"
+                loading="eager"
+              />
+              <span className="sr-only">iwanyu</span>
             </Link>
             
             {/* Search Bar - AliExpress Style (Wide, detailed) */}

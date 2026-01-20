@@ -1,4 +1,14 @@
 
+export type ProductVariantColor = {
+  name: string;
+  hex: string;
+};
+
+export type ProductVariants = {
+  colors?: ProductVariantColor[];
+  sizes?: string[];
+};
+
 export interface Product {
   id: string;
   vendorId?: string;
@@ -13,4 +23,5 @@ export interface Product {
   inStock: boolean;
   freeShipping?: boolean;
   discountPercentage?: number;
+  variants?: ProductVariants;
 }

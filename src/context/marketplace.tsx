@@ -47,6 +47,7 @@ type DbProductRow = {
   rating: number;
   review_count: number;
   discount_percentage?: number | null;
+  variants?: unknown | null;
 };
 
 const CACHE_KEY = "iwanyu:marketplace:v1";
@@ -116,6 +117,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         rating: Number(p.rating ?? 0),
         reviewCount: Number(p.review_count ?? 0),
         discountPercentage: Math.max(0, Math.min(100, Number(p.discount_percentage ?? 0))),
+        variants: (p.variants ?? undefined) as Product["variants"],
       }));
 
       setVendors(nextVendors);
@@ -145,16 +147,30 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       } catch {
         if (!publicSupabase) throw new Error("Supabase is not configured");
 
-        const [vendorsRes, productsRes] = await Promise.all([
-          withTimeout(
-            publicSupabase
-              .from("vendors")
-              .select("id, name, location, verified, owner_user_id, status")
-              .limit(500),
-            4000,
-            "vendors fetch"
-          ),
-          withTimeout(
+        const vendorsRes = await withTimeout(
+          publicSupabase
+            .from("vendors")
+            .select("id, name, location, verified, owner_user_id, status")
+            .limit(500),
+          4000,
+          "vendors fetch"
+        );
+        if (vendorsRes.error) throw new Error(vendorsRes.error.message);
+        vendorRows = (vendorsRes.data ?? []) as DbVendorRow[];
+
+        let productsRes = await withTimeout(
+          publicSupabase
+            .from("products")
+            .select(
+              "id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage, variants"
+            )
+            .limit(2000),
+          5000,
+          "products fetch"
+        );
+
+        if (productsRes.error && /column\s+\"variants\"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
+          productsRes = await withTimeout(
             publicSupabase
               .from("products")
               .select(
@@ -163,13 +179,10 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
               .limit(2000),
             5000,
             "products fetch"
-          ),
-        ]);
+          );
+        }
 
-        if (vendorsRes.error) throw new Error(vendorsRes.error.message);
         if (productsRes.error) throw new Error(productsRes.error.message);
-
-        vendorRows = (vendorsRes.data ?? []) as DbVendorRow[];
         productRows = (productsRes.data ?? []) as DbProductRow[];
       }
 
@@ -196,6 +209,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         rating: Number(p.rating ?? 0),
         reviewCount: Number(p.review_count ?? 0),
         discountPercentage: Math.max(0, Math.min(100, Number(p.discount_percentage ?? 0))),
+        variants: (p.variants ?? undefined) as Product["variants"],
       }));
 
       setVendors(nextVendors);
@@ -280,6 +294,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
           rating: Number(product.rating ?? 0),
           review_count: Number(product.reviewCount ?? 0),
           discount_percentage: Math.max(0, Math.min(100, Number(product.discountPercentage ?? 0))),
+          variants: product.variants ?? null,
         });
         if (error) throw new Error(error.message);
 

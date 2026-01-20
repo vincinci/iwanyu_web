@@ -7,7 +7,10 @@ export function Footer() {
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div>
-            <h3 className="text-sm font-semibold tracking-tight">IWANYU</h3>
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="iwanyu" className="h-8 w-auto object-contain" loading="lazy" />
+              <span className="sr-only">iwanyu</span>
+            </div>
             <p className="mt-3 text-sm text-muted-foreground">
               Nigeria&apos;s marketplace connecting buyers with trusted vendors.
             </p>
