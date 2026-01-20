@@ -8,8 +8,9 @@ import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, X, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { Product } from "@/types/product";
 
 const Index = () => {
   const { products, loading, error } = useMarketplace();
@@ -18,17 +19,8 @@ const Index = () => {
   // Get recently viewed products
   const recentlyViewedProducts = recentlyViewedIds
     .map(id => products.find(p => p.id === id))
-    .filter(Boolean)
+    .filter((p): p is Product => Boolean(p))
     .slice(0, 8);
-
-  // Enhanced debug logging
-  console.log('=== MARKETPLACE DEBUG ===');
-  console.log('Products loaded:', products.length);
-  console.log('Loading state:', loading);
-  console.log('Marketplace error:', error);
-  console.log('Sample products:', products.slice(0, 3));
-  console.log('Supabase URL configured:', !!import.meta.env.VITE_SUPABASE_URL);
-  console.log('========================');
 
   // Group products by category
   const productsByCategory = CATEGORIES.map(category => {
@@ -44,7 +36,7 @@ const Index = () => {
   }).filter(cat => cat.count > 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
       
       <main className="flex-1">
@@ -54,26 +46,23 @@ const Index = () => {
         
         {/* Recently Viewed Products */}
         {recentlyViewedProducts.length > 0 && !loading && (
-          <div className="container py-8">
-            <div className="border-t border-b border-gray-100 bg-white py-8">
-              <div className="flex items-center justify-between mb-6 px-4">
-                <div>
-                  <h2 className="text-2xl font-black uppercase text-black tracking-tighter">Recently Viewed</h2>
-                </div>
-                <button
-                  onClick={clearRecentlyViewed}
-                  className="text-xs font-bold uppercase text-gray-500 hover:text-black transition-colors"
-                >
-                  Clear History
-                </button>
+          <section className="container py-10">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Recently viewed</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Pick up where you left off.</p>
               </div>
-              <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 border-l border-r border-gray-100">
-                {recentlyViewedProducts.map((product) => (
-                  <ProductCard key={product!.id} product={product!} />
-                ))}
-              </div>
+              <Button variant="ghost" className="h-8 px-2 text-xs" onClick={clearRecentlyViewed}>
+                Clear
+              </Button>
             </div>
-          </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+              {recentlyViewedProducts.map((product) => (
+                <ProductCard key={product!.id} product={product!} />
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Category Sections with Horizontal Scrolling */}
@@ -104,11 +93,9 @@ const Index = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No products available</h3>
-              <p className="text-gray-600 mb-2">Database connection issue detected</p>
-              <p className="text-sm text-gray-500 mb-6">
-                Please check the browser console for error details or contact support.
-              </p>
-              <Button onClick={() => window.location.reload()}>Reload Page</Button>
+              <p className="text-gray-600 mb-2">No products to show yet.</p>
+              <p className="text-sm text-gray-500 mb-6">Try again in a moment.</p>
+              <Button variant="outline" onClick={() => window.location.reload()}>Reload</Button>
             </div>
           ) : (
             <div className="space-y-12">
@@ -125,31 +112,19 @@ const Index = () => {
         </div>
 
         {/* Promo Banner */}
-        <div className="container py-8">
-          <div className="border-t border-b border-black bg-iwanyu-primary p-8">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 items-center">
+        <section className="container py-10">
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <span className="inline-block bg-black px-3 py-1 text-xs font-bold text-white uppercase tracking-wider mb-2">
-                  Limited Offer
-                </span>
-                <h2 className="text-3xl font-black uppercase text-black leading-none">
-                  Free Shipping <br/>First Order
-                </h2>
-                <p className="mt-2 text-black font-medium">
-                  Join the club. Get the perks. No minimum.
-                </p>
+                <h2 className="text-lg font-semibold text-foreground">Free shipping on your first order</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Create an account to unlock perks and faster checkout.</p>
               </div>
-              <div className="flex items-center justify-center md:justify-end">
-                <a 
-                  href="/account" 
-                  className="bg-black px-8 py-3 text-center text-sm font-bold uppercase tracking-widest text-white hover:bg-gray-900 transition-colors"
-                >
-                  Sign Up Now
-                </a>
-              </div>
+              <Link to="/account">
+                <Button className="rounded-md">Create account</Button>
+              </Link>
             </div>
           </div>
-        </div>
+        </section>
       </main>
       
       <Footer />
@@ -160,7 +135,7 @@ const Index = () => {
 // Category Section Component with Horizontal Scrolling
 interface CategorySectionProps {
   category: string;
-  products: Array<any>;
+  products: Product[];
   categoryId: string;
 }
 
@@ -187,11 +162,11 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
   return (
     <div className="relative group/section">
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-6 border-b border-black pb-2">
-        <h2 className="text-2xl font-black uppercase text-black tracking-tighter">{category}</h2>
+      <div className="flex items-center justify-between gap-4 mb-5">
+        <h2 className="text-lg font-semibold text-foreground">{category}</h2>
         <Link 
           to={`/category/${categoryId}`}
-          className="text-xs font-bold uppercase text-black hover:text-iwanyu-primary transition-colors flex items-center gap-1"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
         >
           View all <ArrowRight size={14} />
         </Link>
@@ -203,17 +178,17 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
           <>
             <button
               onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-black p-3 opacity-0 group-hover/section:opacity-100 transition-opacity hover:bg-black hover:text-white hidden highlight-hover-target lg:block"
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-9 w-9 items-center justify-center rounded-full border bg-background shadow-sm opacity-0 group-hover/section:opacity-100 transition-opacity hover:bg-muted"
               aria-label="Scroll left"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-black p-3 opacity-0 group-hover/section:opacity-100 transition-opacity hover:bg-black hover:text-white hidden highlight-hover-target lg:block"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-9 w-9 items-center justify-center rounded-full border bg-background shadow-sm opacity-0 group-hover/section:opacity-100 transition-opacity hover:bg-muted"
               aria-label="Scroll right"
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           </>
         )}
@@ -221,7 +196,7 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
         {/* Horizontal Scrolling Product Grid */}
         <div
           ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 snap-x"
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',

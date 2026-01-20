@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, ShoppingCart, Check, Plus } from 'lucide-react';
+import { Heart, Star, Plus } from 'lucide-react';
 import { Product } from '@/types/product';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart';
 import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
 import { formatMoney } from '@/lib/money';
-import { Badge } from '@/components/ui/badge';
 import { getOptimizedCloudinaryUrl } from '@/lib/cloudinary';
 
 interface ProductCardProps {
@@ -47,7 +45,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     toast({
       title: "✓ Added to cart",
       description: `${title} has been added to your cart.`,
-      variant: "success" as any,
+      variant: "default",
     });
   };
 
@@ -59,7 +57,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       toast({
         title: result.added ? "♥ Added to wishlist" : "Removed from wishlist",
         description: `${title} has been ${result.added ? "added to" : "removed from"} your wishlist.`,
-        variant: result.added ? "success" as any : "default",
+        variant: "default",
       });
     } catch {
       toast({
@@ -73,26 +71,33 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   return (
     <Link
       to={`/product/${id}`}
-      className="group block relative bg-white transition-all hover:bg-white"
+      className="group block"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative border border-gray-100 hover:border-black transition-colors duration-200 rounded-xl overflow-hidden">
+      <div className="relative overflow-hidden rounded-lg border border-border bg-card transition-shadow duration-200 hover:shadow-sm">
         
-        {/* Discount Badge - Sharp, Rectangular */}
         {typeof discountPercentage === "number" && discountPercentage > 0 ? (
-            <div className="absolute left-0 top-0 z-10 bg-iwanyu-primary text-black font-bold text-xs px-2 py-1 uppercase tracking-wider rounded-br-lg">
-              -{discountPercentage}%
-            </div>
-          ) : null}
+          <div className="absolute left-2 top-2 z-10 rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">
+            -{discountPercentage}%
+          </div>
+        ) : null}
 
-        {/* Product Image - Square Aspect Ratio */}
-        <div className="relative aspect-square overflow-hidden bg-gray-50">
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          className="absolute right-2 top-2 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+          aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+        >
+          <Heart size={16} className={isFavorite ? "fill-current text-foreground" : ""} />
+        </button>
+
+        <div className="relative aspect-square overflow-hidden bg-muted">
           {image ? (
             <img
               src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600, quality: 85 })}
               alt={title}
-              className="absolute inset-0 h-full w-full object-cover mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
+              className="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.02]"
               loading="lazy"
             />
           ) : (
@@ -101,57 +106,48 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             </div>
           )}
           
-          {/* Quick Add Button - Floating Circle on Hover */}
-           <button 
-              onClick={handleAddToCart}
-              disabled={!inStock}
-              className={`absolute bottom-3 right-3 h-10 w-10 bg-black text-white flex items-center justify-center transition-all duration-300 rounded-full ${
-                isHovered ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-              } hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed`}
-              title="Add to Cart"
-            >
-              <Plus size={20} strokeWidth={3} />
-            </button>
+          <button
+            onClick={handleAddToCart}
+            disabled={!inStock}
+            className={`absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full border bg-background text-foreground shadow-sm transition-all duration-200 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed ${
+              isHovered ? 'opacity-100' : 'opacity-0'
+            }`}
+            title="Add to cart"
+          >
+            <Plus size={18} strokeWidth={2.5} />
+          </button>
         </div>
         
-        {/* Product Details - Dense Layout */}
         <div className="p-3">
           
-          {/* Price - Huge & Bold */}
-          <div className="flex items-baseline gap-2 mb-1">
-             <span className="text-lg font-black text-iwanyu-primary tracking-tight">
-              {formatMoney(price)}
-            </span>
-             {discountPercentage && discountPercentage > 0 && (
-                 <span className="text-xs text-gray-400 line-through">
-                     {formatMoney(price * (1 + discountPercentage / 100))}
-                 </span>
-             )}
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-base font-semibold text-foreground">{formatMoney(price)}</span>
+            {!inStock ? (
+              <span className="text-[11px] text-muted-foreground">Out of stock</span>
+            ) : null}
           </div>
 
-          <h3 className="mb-1 text-xs font-normal text-black line-clamp-2 min-h-[2.5em] leading-tight">
+          <h3 className="mt-1 line-clamp-2 min-h-[2.5em] text-sm text-foreground leading-snug">
             {title}
           </h3>
 
-           <div className="flex items-center gap-2 mb-1">
-                {/* Rating - Compact */}
-                <div className="flex items-center">
-                    <Star size={10} className="fill-black text-black" />
-                    <span className="ml-0.5 text-xs font-bold text-black">{rating.toFixed(1)}</span>
-                </div>
-                 <div className="h-2 w-px bg-gray-300"></div>
-                 {/* Sold Count - AliExpress Style */}
-                <span className="text-xs text-gray-500">{soldCount} sold</span>
-           </div>
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 text-foreground">
+              <Star size={12} className="fill-current" />
+              <span className="font-medium">{rating.toFixed(1)}</span>
+            </div>
+            <span className="text-muted-foreground">·</span>
+            <span>{soldCount} sold</span>
+          </div>
            
-           <div className="flex flex-wrap gap-1 mt-2">
-                {freeShipping && (
-                    <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-1 py-0.5 uppercase">Free Shipping</span>
-                )}
-                {vendorName && (
-                     <span className="text-[10px] text-gray-400 truncate max-w-[100px]">{vendorName}</span>
-                )}
-           </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {freeShipping ? (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">Free shipping</span>
+            ) : null}
+            {vendorName ? (
+              <span className="truncate text-[11px] text-muted-foreground max-w-[140px]">{vendorName}</span>
+            ) : null}
+          </div>
         </div>
       </div>
     </Link>

@@ -116,8 +116,8 @@ export default function ProductPage() {
     return (
       <StorefrontPage>
         <div className="container py-10">
-          <h1 className="text-2xl font-bold text-iwanyu-foreground">Product not found</h1>
-          <Link to="/" className="mt-2 inline-block text-sm font-medium text-iwanyu-primary hover:underline">
+          <h1 className="text-2xl font-semibold text-foreground">Product not found</h1>
+          <Link to="/" className="mt-2 inline-block text-sm text-muted-foreground hover:text-foreground">
             Back to home
           </Link>
         </div>
@@ -150,10 +150,10 @@ export default function ProductPage() {
 
         <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-7">
-            <Card className="overflow-hidden border-iwanyu-border">
+            <Card className="overflow-hidden border-border">
               <CardContent className="p-0">
                 <div className="p-5 sm:p-6">
-                  <div className="flex items-center justify-center rounded-xl border border-iwanyu-border bg-white p-4">
+                  <div className="flex items-center justify-center rounded-xl border border-border bg-background p-4">
                     {selectedMedia?.kind === "video" ? (
                       <video
                         className="h-[340px] w-full max-w-[560px] rounded-lg object-contain"
@@ -185,8 +185,8 @@ export default function ProductPage() {
                             type="button"
                             onClick={() => setSelectedMediaId(m.id)}
                             className={
-                              "overflow-hidden rounded-lg border bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
-                              (isSelected ? "border-iwanyu-primary" : "border-iwanyu-border hover:border-iwanyu-primary/60")
+                              "overflow-hidden rounded-lg border bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+                              (isSelected ? "border-primary" : "border-border hover:border-primary/60")
                             }
                             aria-label={m.kind === "image" ? "View image" : "View video"}
                           >
@@ -213,7 +213,7 @@ export default function ProductPage() {
           </div>
 
           <div className="lg:col-span-5">
-            <Card className="border-iwanyu-border lg:sticky lg:top-24">
+            <Card className="border-border lg:sticky lg:top-24">
               <CardHeader className="pb-4">
                 <div className="flex flex-wrap items-center gap-2">
                   {product.inStock ? <Badge variant="secondary">In stock</Badge> : <Badge variant="destructive">Out of stock</Badge>}
@@ -222,7 +222,7 @@ export default function ProductPage() {
                   ) : null}
                 </div>
 
-                <CardTitle className="mt-3 text-[22px] leading-snug text-iwanyu-foreground sm:text-2xl">
+                <CardTitle className="mt-3 text-[22px] leading-snug text-foreground sm:text-2xl">
                   {product.title}
                 </CardTitle>
 
@@ -238,7 +238,7 @@ export default function ProductPage() {
                         <Star
                           key={i}
                           size={16}
-                          className={filled ? "text-iwanyu-primary" : "text-muted-foreground"}
+                          className={filled ? "text-primary" : "text-muted-foreground"}
                           fill={filled ? "currentColor" : "none"}
                         />
                       );
@@ -254,7 +254,7 @@ export default function ProductPage() {
 
               <CardContent className="space-y-5">
                 <div className="flex items-end justify-between">
-                  <div className="text-3xl font-bold text-iwanyu-foreground">{formatMoney(product.price)}</div>
+                  <div className="text-3xl font-semibold text-foreground">{formatMoney(product.price)}</div>
                   {product.freeShipping ? <Badge variant="secondary">Free shipping</Badge> : null}
                 </div>
 
@@ -269,11 +269,11 @@ export default function ProductPage() {
                 <div className="grid gap-3 text-sm">
                   <div className="flex items-center justify-between">
                     <div className="text-muted-foreground">Vendor</div>
-                    <div className="font-medium text-iwanyu-foreground">{vendor?.name ?? "—"}</div>
+                    <div className="font-medium text-foreground">{vendor?.name ?? "—"}</div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-muted-foreground">Shipping</div>
-                    <div className="font-medium text-iwanyu-foreground">
+                    <div className="font-medium text-foreground">
                       {product.freeShipping ? "Free" : "Calculated at checkout"}
                     </div>
                   </div>
@@ -304,7 +304,7 @@ export default function ProductPage() {
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <Card className="border-iwanyu-border">
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="text-xl">Description</CardTitle>
               </CardHeader>
@@ -317,18 +317,18 @@ export default function ProductPage() {
           </div>
 
           <div className="lg:col-span-5">
-            <Card className="border-iwanyu-border">
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="text-xl">Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <div className="text-muted-foreground">Availability</div>
-                  <div className="font-medium text-iwanyu-foreground">{product.inStock ? "In stock" : "Out of stock"}</div>
+                  <div className="font-medium text-foreground">{product.inStock ? "In stock" : "Out of stock"}</div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-muted-foreground">Category</div>
-                  <div className="font-medium text-iwanyu-foreground">{product.category}</div>
+                  <div className="font-medium text-foreground">{product.category}</div>
                 </div>
               </CardContent>
             </Card>
@@ -336,9 +336,9 @@ export default function ProductPage() {
         </div>
 
         <div className="mt-14">
-          <h2 className="mb-6 text-2xl font-bold text-iwanyu-foreground">Recommended Products</h2>
+          <h2 className="mb-6 text-xl font-semibold text-foreground">Recommended Products</h2>
           {products.filter((p) => p.category === product.category && p.id !== product.id).length === 0 ? (
-            <div className="rounded-2xl border border-iwanyu-border bg-white p-6 text-gray-600">
+            <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
               No recommendations available right now.
             </div>
           ) : (
@@ -357,8 +357,8 @@ export default function ProductPage() {
         {recentlyViewedIds.filter((id) => id !== product.id).length > 0 && (
           <div className="mt-14">
             <div className="flex items-center gap-3 mb-6">
-              <Clock className="h-6 w-6 text-gray-400" />
-              <h2 className="text-2xl font-bold text-iwanyu-foreground">Recently Viewed</h2>
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-xl font-semibold text-foreground">Recently Viewed</h2>
             </div>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {recentlyViewedIds

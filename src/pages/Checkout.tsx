@@ -46,58 +46,58 @@ export default function CheckoutPage() {
     <StorefrontPage>
       <div className="container min-h-screen py-12">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-iwanyu-foreground">Checkout</h1>
-          <Link to="/cart" className="text-sm font-medium text-iwanyu-primary hover:underline">
+          <h1 className="text-2xl font-semibold text-foreground">Checkout</h1>
+          <Link to="/cart" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Back to cart
           </Link>
         </div>
 
         {items.length === 0 ? (
-          <div className="mt-8 rounded-lg border border-iwanyu-border bg-white p-6">
-            <p className="text-gray-600">Your cart is empty.</p>
+          <div className="mt-8 rounded-lg border border-border bg-card p-6">
+            <p className="text-sm text-muted-foreground">Your cart is empty.</p>
             <Link to="/">
-              <Button className="mt-4 rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">
+              <Button className="mt-4 rounded-md">
                 Shop products
               </Button>
             </Link>
           </div>
         ) : (
           <div className="mt-8 grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 rounded-lg border border-iwanyu-border bg-white p-6">
-              <h2 className="text-lg font-bold text-iwanyu-foreground">Contact</h2>
+            <div className="lg:col-span-2 rounded-lg border border-border bg-card p-6">
+              <h2 className="text-sm font-medium text-foreground">Contact</h2>
               <div className="mt-3">
-                <label className="text-sm font-medium text-gray-700">Email</label>
+                <label className="text-sm font-medium text-muted-foreground">Email</label>
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1" />
               </div>
 
-              <h2 className="mt-6 text-lg font-bold text-iwanyu-foreground">Shipping</h2>
+              <h2 className="mt-6 text-sm font-medium text-foreground">Shipping</h2>
               <div className="mt-3">
-                <label className="text-sm font-medium text-gray-700">Address</label>
+                <label className="text-sm font-medium text-muted-foreground">Address</label>
                 <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, State" className="mt-1" />
               </div>
 
-              <h2 className="mt-6 text-lg font-bold text-iwanyu-foreground">Payment</h2>
-              <div className="mt-3 rounded-lg border border-gray-200 p-4">
+              <h2 className="mt-6 text-sm font-medium text-foreground">Payment</h2>
+              <div className="mt-3 rounded-lg border border-border bg-muted/30 p-4">
                 <RadioGroup value={paymentType} onValueChange={(v) => setPaymentType(v as "card" | "momo")} className="grid gap-3">
                   <div className="flex items-center gap-3">
                     <RadioGroupItem value="momo" id="pay-momo" />
-                    <Label htmlFor="pay-momo" className="font-medium text-gray-900">Mobile Money (MTN / Airtel)</Label>
+                    <Label htmlFor="pay-momo" className="font-medium text-foreground">Mobile Money (MTN / Airtel)</Label>
                   </div>
                   <div className="flex items-center gap-3">
                     <RadioGroupItem value="card" id="pay-card" />
-                    <Label htmlFor="pay-card" className="font-medium text-gray-900">Card (Visa / Mastercard)</Label>
+                    <Label htmlFor="pay-card" className="font-medium text-foreground">Card (Visa / Mastercard)</Label>
                   </div>
                 </RadioGroup>
 
                 {paymentType === "momo" ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Network</label>
+                      <label className="text-sm font-medium text-muted-foreground">Network</label>
                       <div className="mt-1 flex gap-2">
                         <Button
                           type="button"
                           variant={momoNetwork === "MTN" ? "default" : "outline"}
-                          className="rounded-full"
+                          className="rounded-md"
                           onClick={() => setMomoNetwork("MTN")}
                         >
                           MTN
@@ -105,7 +105,7 @@ export default function CheckoutPage() {
                         <Button
                           type="button"
                           variant={momoNetwork === "Airtel" ? "default" : "outline"}
-                          className="rounded-full"
+                          className="rounded-md"
                           onClick={() => setMomoNetwork("Airtel")}
                         >
                           Airtel
@@ -113,7 +113,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Phone</label>
+                      <label className="text-sm font-medium text-muted-foreground">Phone</label>
                       <Input
                         value={momoPhone}
                         onChange={(e) => setMomoPhone(e.target.value)}
@@ -125,7 +125,7 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                   <div className="mt-4">
-                    <label className="text-sm font-medium text-gray-700">Card number</label>
+                    <label className="text-sm font-medium text-muted-foreground">Card number</label>
                     <Input
                       value={cardNumber}
                       onChange={(e) => setCardNumber(e.target.value)}
@@ -133,18 +133,18 @@ export default function CheckoutPage() {
                       className="mt-1"
                       inputMode="numeric"
                     />
-                    <p className="mt-2 text-xs text-gray-500">You will complete payment in a secure Flutterwave window.</p>
+                    <p className="mt-2 text-xs text-muted-foreground">You will complete payment in a secure Flutterwave window.</p>
                   </div>
                 )}
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button variant="outline" className="rounded-full" onClick={() => navigate("/cart")}
+                <Button variant="outline" className="rounded-md" onClick={() => navigate("/cart")}
                 >
                   Back
                 </Button>
                 <Button
-                  className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                  className="rounded-md"
                   disabled={!canPlaceOrder || isPlacing}
                   onClick={async () => {
                     if (isPlacing) return;
@@ -278,21 +278,21 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-iwanyu-border bg-white p-5 h-fit">
-              <h2 className="text-lg font-bold text-iwanyu-foreground">Summary</h2>
+            <div className="rounded-lg border border-border bg-card p-5 h-fit">
+              <h2 className="text-sm font-medium text-foreground">Summary</h2>
               <div className="mt-4 space-y-3 text-sm">
                 {items.map((i) => (
                   <div key={i.productId} className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium text-gray-900">{i.title}</div>
-                      <div className="text-gray-600">Qty {i.quantity}</div>
+                      <div className="font-medium text-foreground">{i.title}</div>
+                      <div className="text-muted-foreground">Qty {i.quantity}</div>
                     </div>
-                    <div className="font-semibold text-gray-900">{formatMoney(i.price * i.quantity)}</div>
+                    <div className="font-medium text-foreground">{formatMoney(i.price * i.quantity)}</div>
                   </div>
                 ))}
                 <div className="border-t pt-3 flex items-center justify-between">
-                  <span className="text-gray-700 font-semibold">Total</span>
-                  <span className="text-gray-900 font-bold">{formatMoney(subtotal)}</span>
+                  <span className="text-foreground font-medium">Total</span>
+                  <span className="text-foreground font-semibold">{formatMoney(subtotal)}</span>
                 </div>
               </div>
             </div>
