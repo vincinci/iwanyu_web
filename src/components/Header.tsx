@@ -100,7 +100,7 @@ export const Header = () => {
               <img
                 src="/logo.png"
                 alt="iwanyu"
-                className="h-8 w-auto object-contain"
+                className="h-12 w-auto object-contain"
                 loading="eager"
               />
               <span className="sr-only">iwanyu</span>
