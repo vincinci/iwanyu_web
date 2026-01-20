@@ -144,12 +144,22 @@ export default {
 				'slide-in-right': 'slide-in-right 0.3s ease-out'
 			},
 			fontFamily: {
-				sans: ['"Roboto"', 'sans-serif'],
-				heading: ['"Montserrat"', 'sans-serif'],
-				poppins: ['"Poppins"', 'sans-serif'],
-				ubuntu: ['"Ubuntu"', 'sans-serif'],
-				montserrat: ['"Montserrat"', 'sans-serif'],
-				roboto: ['"Roboto"', 'sans-serif'],
+				sans: [
+					'ui-sans-serif',
+					'system-ui',
+					'-apple-system',
+					'BlinkMacSystemFont',
+					'"Segoe UI"',
+					'sans-serif',
+				],
+				heading: [
+					'ui-sans-serif',
+					'system-ui',
+					'-apple-system',
+					'BlinkMacSystemFont',
+					'"Segoe UI"',
+					'sans-serif',
+				],
 			},
 			boxShadow: {
 				'product': '0 4px 20px rgba(0, 0, 0, 0.05)',

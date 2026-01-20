@@ -1,32 +1,31 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { ProfileCompletion } from "@/components/ProfileCompletion";
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Deals from "./pages/Deals";
-import Search from "./pages/Search";
-import CategoryPage from "./pages/Category";
-import ProductPage from "./pages/Product";
-import CartPage from "./pages/Cart";
-import CheckoutPage from "./pages/Checkout";
-import AccountPage from "./pages/Account";
-import OrdersPage from "./pages/Orders";
-import WishlistPage from "./pages/Wishlist";
-import SellPage from "./pages/Sell";
-import SellerDashboardPage from "./pages/seller/SellerDashboard";
-import AdminDashboardPage from "./pages/admin/AdminDashboard";
-import StaticPage from "./pages/StaticPage";
-import SellerProductsPage from "./pages/seller/SellerProducts";
-import SellerNewProductPage from "./pages/seller/SellerNewProduct";
-import SellerOrdersPage from "./pages/seller/SellerOrders";
-import SellerPayoutsPage from "./pages/seller/SellerPayouts";
-import SellerSettingsPage from "./pages/seller/SellerSettings";
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Deals = lazy(() => import("./pages/Deals"));
+const Search = lazy(() => import("./pages/Search"));
+const CategoryPage = lazy(() => import("./pages/Category"));
+const ProductPage = lazy(() => import("./pages/Product"));
+const CartPage = lazy(() => import("./pages/Cart"));
+const CheckoutPage = lazy(() => import("./pages/Checkout"));
+const AccountPage = lazy(() => import("./pages/Account"));
+const OrdersPage = lazy(() => import("./pages/Orders"));
+const WishlistPage = lazy(() => import("./pages/Wishlist"));
+const SellPage = lazy(() => import("./pages/Sell"));
+const SellerDashboardPage = lazy(() => import("./pages/seller/SellerDashboard"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboard"));
+const StaticPage = lazy(() => import("./pages/StaticPage"));
+const SellerProductsPage = lazy(() => import("./pages/seller/SellerProducts"));
+const SellerNewProductPage = lazy(() => import("./pages/seller/SellerNewProduct"));
+const SellerOrdersPage = lazy(() => import("./pages/seller/SellerOrders"));
+const SellerPayoutsPage = lazy(() => import("./pages/seller/SellerPayouts"));
+const SellerSettingsPage = lazy(() => import("./pages/seller/SellerSettings"));
 import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
 import { AuthProvider } from "./context/auth";
@@ -35,13 +34,25 @@ import { RecentlyViewedProvider } from "@/context/recentlyViewed";
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import LogoutPage from "./pages/Logout";
-import VendorApplicationPage from "./pages/VendorApplication";
-import PrivacyPolicyPage from "./pages/PrivacyPolicy";
-import TermsOfServicePage from "./pages/TermsOfService";
+const VendorApplicationPage = lazy(() => import("./pages/VendorApplication"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfService"));
 import RequireAuth from "./components/RequireAuth";
 import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
+
+function PageFallback() {
+  return (
+    <div className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-10 text-sm text-muted-foreground">
+      Loading...
+    </div>
+  );
+}
+
+function withSuspense(node: JSX.Element) {
+  return <Suspense fallback={<PageFallback />}>{node}</Suspense>;
+}
 
 const AppContent = () => {
   const { user, isReady } = useAuth();
@@ -86,19 +97,19 @@ const AppContent = () => {
     <>
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/deals" element={<Deals />} />
-        <Route path="/category/:categoryId" element={<CategoryPage />} />
-        <Route path="/product/:productId" element={<ProductPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/account" element={<AccountPage />} />
-        <Route path="/orders" element={<OrdersPage />} />
-        <Route path="/wishlist" element={<WishlistPage />} />
-        <Route path="/sell" element={<SellPage />} />
+        <Route path="/search" element={withSuspense(<Search />)} />
+        <Route path="/deals" element={withSuspense(<Deals />)} />
+        <Route path="/category/:categoryId" element={withSuspense(<CategoryPage />)} />
+        <Route path="/product/:productId" element={withSuspense(<ProductPage />)} />
+        <Route path="/cart" element={withSuspense(<CartPage />)} />
+        <Route path="/checkout" element={withSuspense(<CheckoutPage />)} />
+        <Route path="/account" element={withSuspense(<AccountPage />)} />
+        <Route path="/orders" element={withSuspense(<OrdersPage />)} />
+        <Route path="/wishlist" element={withSuspense(<WishlistPage />)} />
+        <Route path="/sell" element={withSuspense(<SellPage />)} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/vendor-application" element={<VendorApplicationPage />} />
+        <Route path="/vendor-application" element={withSuspense(<VendorApplicationPage />)} />
         <Route path="/logout" element={<LogoutPage />} />
 
         {/* Dashboards */}
@@ -106,7 +117,7 @@ const AppContent = () => {
           path="/seller"
           element={
             <RequireAuth roles={["seller", "admin"]}>
-              <SellerDashboardPage />
+              {withSuspense(<SellerDashboardPage />)}
             </RequireAuth>
           }
         />
@@ -114,7 +125,7 @@ const AppContent = () => {
           path="/seller/products"
           element={
             <RequireAuth roles={["seller", "admin"]}>
-              <SellerProductsPage />
+              {withSuspense(<SellerProductsPage />)}
             </RequireAuth>
           }
         />
@@ -122,7 +133,7 @@ const AppContent = () => {
           path="/seller/products/new"
           element={
             <RequireAuth roles={["seller", "admin"]}>
-              <SellerNewProductPage />
+              {withSuspense(<SellerNewProductPage />)}
             </RequireAuth>
           }
         />
@@ -130,7 +141,7 @@ const AppContent = () => {
           path="/seller/orders"
           element={
             <RequireAuth roles={["seller", "admin"]}>
-              <SellerOrdersPage />
+              {withSuspense(<SellerOrdersPage />)}
             </RequireAuth>
           }
         />
@@ -138,7 +149,7 @@ const AppContent = () => {
           path="/seller/payouts"
           element={
             <RequireAuth roles={["seller", "admin"]}>
-              <SellerPayoutsPage />
+              {withSuspense(<SellerPayoutsPage />)}
             </RequireAuth>
           }
         />
@@ -146,7 +157,7 @@ const AppContent = () => {
           path="/seller/settings"
           element={
             <RequireAuth roles={["seller", "admin"]}>
-              <SellerSettingsPage />
+              {withSuspense(<SellerSettingsPage />)}
             </RequireAuth>
           }
         />
@@ -154,48 +165,45 @@ const AppContent = () => {
           path="/admin"
           element={
             <RequireAuth roles={["admin"]}>
-              <AdminDashboardPage />
+              {withSuspense(<AdminDashboardPage />)}
             </RequireAuth>
           }
         />
 
         {/* Footer / info pages */}
-        <Route path="/about" element={<StaticPage title="About iwanyu" />} />
-        <Route path="/careers" element={<StaticPage title="Careers" />} />
-        <Route path="/corporate" element={<StaticPage title="Corporate Information" />} />
-        <Route path="/science" element={<StaticPage title="iwanyu Science" />} />
-        <Route path="/affiliate" element={<StaticPage title="Affiliate Program" />} />
-        <Route path="/about" element={<StaticPage title="About Us" />} />
-        <Route path="/careers" element={<StaticPage title="Careers" />} />
-        <Route path="/corporate" element={<StaticPage title="Corporate Information" />} />
-        <Route path="/science" element={<StaticPage title="Iwanyu Science" />} />
-        <Route path="/affiliate" element={<StaticPage title="Become an Affiliate" />} />
-        <Route path="/advertise" element={<StaticPage title="Advertise Your Products" />} />
-        <Route path="/publish" element={<StaticPage title="Self-Publish" />} />
-        <Route path="/business-card" element={<StaticPage title="iwanyu Business Card" />} />
-        <Route path="/shop-with-points" element={<StaticPage title="Shop with Points" />} />
-        <Route path="/reload" element={<StaticPage title="Reload Your Balance" />} />
-        <Route path="/currency" element={<StaticPage title="Currency Converter" />} />
-        <Route path="/shipping" element={<StaticPage title="Shipping Rates & Policies" />} />
-        <Route path="/returns" element={<StaticPage title="Returns & Replacements" />} />
-        <Route path="/help" element={<StaticPage title="Help" />} />
-        <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/about" element={withSuspense(<StaticPage title="About iwanyu" />)} />
+        <Route path="/careers" element={withSuspense(<StaticPage title="Careers" />)} />
+        <Route path="/corporate" element={withSuspense(<StaticPage title="Corporate Information" />)} />
+        <Route path="/science" element={withSuspense(<StaticPage title="iwanyu Science" />)} />
+        <Route path="/affiliate" element={withSuspense(<StaticPage title="Affiliate Program" />)} />
+        <Route path="/about" element={withSuspense(<StaticPage title="About Us" />)} />
+        <Route path="/affiliate" element={withSuspense(<StaticPage title="Become an Affiliate" />)} />
+        <Route path="/advertise" element={withSuspense(<StaticPage title="Advertise Your Products" />)} />
+        <Route path="/publish" element={withSuspense(<StaticPage title="Self-Publish" />)} />
+        <Route path="/business-card" element={withSuspense(<StaticPage title="iwanyu Business Card" />)} />
+        <Route path="/shop-with-points" element={withSuspense(<StaticPage title="Shop with Points" />)} />
+        <Route path="/reload" element={withSuspense(<StaticPage title="Reload Your Balance" />)} />
+        <Route path="/currency" element={withSuspense(<StaticPage title="Currency Converter" />)} />
+        <Route path="/shipping" element={withSuspense(<StaticPage title="Shipping Rates & Policies" />)} />
+        <Route path="/returns" element={withSuspense(<StaticPage title="Returns & Replacements" />)} />
+        <Route path="/help" element={withSuspense(<StaticPage title="Help" />)} />
+        <Route path="/privacy" element={withSuspense(<PrivacyPolicyPage />)} />
+        <Route path="/terms" element={withSuspense(<TermsOfServicePage />)} />
         
         {/* New Footer/Header Links Mapped to Static Pages */}
-        <Route path="/track-order" element={<StaticPage title="Track Your Order" />} />
-        <Route path="/track" element={<StaticPage title="Order Tracker" />} />
-        <Route path="/stores" element={<StaticPage title="Store Locator" />} />
-        <Route path="/releases" element={<StaticPage title="Latest Releases" />} />
-        <Route path="/top-sellers" element={<StaticPage title="Top Sellers" />} />
-         <Route path="/sport/:sportName" element={<StaticPage title="Shop by Sport" />} />
-        <Route path="/apps" element={<StaticPage title="Mobile Apps" />} />
-        <Route path="/sustainability" element={<StaticPage title="Sustainability" />} />
-        <Route path="/press" element={<StaticPage title="Press" />} />
+        <Route path="/track-order" element={withSuspense(<StaticPage title="Track Your Order" />)} />
+        <Route path="/track" element={withSuspense(<StaticPage title="Order Tracker" />)} />
+        <Route path="/stores" element={withSuspense(<StaticPage title="Store Locator" />)} />
+        <Route path="/releases" element={withSuspense(<StaticPage title="Latest Releases" />)} />
+        <Route path="/top-sellers" element={withSuspense(<StaticPage title="Top Sellers" />)} />
+        <Route path="/sport/:sportName" element={withSuspense(<StaticPage title="Shop by Sport" />)} />
+        <Route path="/apps" element={withSuspense(<StaticPage title="Mobile Apps" />)} />
+        <Route path="/sustainability" element={withSuspense(<StaticPage title="Sustainability" />)} />
+        <Route path="/press" element={withSuspense(<StaticPage title="Press" />)} />
 
 
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={withSuspense(<NotFound />)} />
       </Routes>
       
       {/* Profile Completion Modal */}
@@ -213,7 +221,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
       <AuthProvider>
         <MarketplaceProvider>
           <WishlistProvider>
