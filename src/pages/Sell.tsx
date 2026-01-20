@@ -7,6 +7,7 @@ import { useMarketplace } from "@/context/marketplace";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import type { Vendor } from "@/types/vendor";
+import { useToast } from "@/hooks/use-toast";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -21,11 +22,13 @@ type VendorApplication = {
 export default function SellPage() {
   const navigate = useNavigate();
   const { user, setRole } = useAuth();
+  const { toast } = useToast();
   const { createVendor, refresh, products } = useMarketplace();
   const [storeName, setStoreName] = useState("");
   const [location, setLocation] = useState("Kigali, Rwanda");
   const [application, setApplication] = useState<VendorApplication | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
+  const [submittingApplication, setSubmittingApplication] = useState(false);
   
   // Real seller statistics
   const [sellerStats, setSellerStats] = useState({
@@ -93,6 +96,22 @@ export default function SellPage() {
   }, [supabase, user?.id]);
 
   const myVendors = useMemo(() => ownedVendors, [ownedVendors]);
+
+  // If an approved vendor exists for this user, ensure their role becomes seller.
+  // This avoids waiting for a slow profile refresh after admin approval.
+  useEffect(() => {
+    if (!user) return;
+    if (user.role !== "buyer") return;
+    if (myVendors.length === 0) return;
+
+    void (async () => {
+      try {
+        await setRole("seller");
+      } catch {
+        // ignore
+      }
+    })();
+  }, [myVendors.length, setRole, user]);
 
   // Load seller statistics
   const loadSellerStats = async () => {
@@ -325,9 +344,6 @@ export default function SellPage() {
                         Go to Seller Dashboard
                       </Button>
                     </Link>
-                    <Link to="/seller/products/new">
-                      <Button variant="outline" className="rounded-full">Upload a product</Button>
-                    </Link>
                   </div>
                 </div>
               ) : application?.status === "pending" ? (
@@ -344,12 +360,14 @@ export default function SellPage() {
               ) : application?.status === "approved" ? (
                 <div className="rounded-lg border border-green-200 bg-green-50 p-6">
                   <div className="font-semibold text-gray-900 text-lg mb-2">Application Approved!</div>
-                  <div className="text-gray-700">
-                    Your store "{application.store_name}" has been approved. Refresh the page to access your seller dashboard.
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                      onClick={() => navigate("/seller")}
+                    >
+                      Go to Seller Dashboard
+                    </Button>
                   </div>
-                  <Button onClick={() => window.location.reload()} className="mt-4 rounded-full">
-                    Refresh Page
-                  </Button>
                 </div>
               ) : application?.status === "rejected" ? (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-6 mb-6">
@@ -372,22 +390,43 @@ export default function SellPage() {
                     }
 
                     try {
+                      setSubmittingApplication(true);
                       const appId = createId("app");
-                      const { error } = await supabase.from("vendor_applications").insert({
+                      const payload = {
                         id: appId,
                         owner_user_id: user.id,
                         store_name: storeName.trim(),
                         location: location.trim() || null,
                         status: "pending",
-                      });
+                      };
+
+                      const { error } = await supabase.from("vendor_applications").insert(payload);
 
                       if (error) throw error;
 
-                      alert("Application submitted successfully! We'll review it shortly.");
-                      window.location.reload();
+                      setApplication({
+                        id: appId,
+                        owner_user_id: user.id,
+                        store_name: payload.store_name,
+                        location: payload.location,
+                        status: "pending",
+                        vendor_id: null,
+                      });
+
+                      setStoreName("");
+                      toast({
+                        title: "Application submitted",
+                        description: "We'll review it shortly.",
+                      });
                     } catch (error) {
                       console.error("Error submitting application:", error);
-                      alert("Failed to submit application. Please try again.");
+                      toast({
+                        title: "Could not submit",
+                        description: error instanceof Error ? error.message : "Please try again.",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setSubmittingApplication(false);
                     }
                   }}
                   className="space-y-4"
@@ -421,14 +460,16 @@ export default function SellPage() {
                   <div className="flex gap-3 pt-4">
                     <Button
                       type="submit"
+                      disabled={submittingApplication}
                       className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
                     >
-                      Submit Application
+                      {submittingApplication ? "Submitting..." : "Submit Application"}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       className="rounded-full"
+                      disabled={submittingApplication}
                       onClick={() => {
                         setStoreName("");
                         setLocation("Kigali, Rwanda");

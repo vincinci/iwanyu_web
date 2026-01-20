@@ -6,12 +6,13 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1500
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
+  showDescription?: boolean
   action?: ToastActionElement
 }
 
@@ -141,6 +142,18 @@ type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
   const id = genId()
+
+  // Keep toasts minimal by default: show title-only unless it's destructive.
+  const shouldShowDescription =
+    props.variant === "destructive" || props.showDescription === true
+  if (!shouldShowDescription) {
+    props.description = undefined
+  }
+
+  // Default durations: keep success/info very quick, destructive a bit longer.
+  if (props.duration === undefined) {
+    props.duration = props.variant === "destructive" ? 6000 : 2500
+  }
 
   const update = (props: ToasterToast) =>
     dispatch({

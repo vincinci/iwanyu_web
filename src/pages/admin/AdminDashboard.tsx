@@ -150,8 +150,15 @@ export default function AdminDashboardPage() {
       location: app.location,
       verified: false,
       owner_user_id: app.owner_user_id,
+      status: "approved",
     });
     if (vendorErr) throw new Error(vendorErr.message);
+
+    const { error: profileErr } = await supabase
+      .from("profiles")
+      .update({ role: "seller", updated_at: new Date().toISOString() })
+      .eq("id", app.owner_user_id);
+    if (profileErr) throw new Error(profileErr.message);
 
     const { error: appErr } = await supabase
       .from("vendor_applications")
