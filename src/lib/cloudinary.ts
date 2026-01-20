@@ -19,7 +19,11 @@ export async function getCloudinaryUploadSignature(input?: {
   if (!supabaseAnonKey) throw new Error("Missing VITE_SUPABASE_ANON_KEY");
   if (!input?.accessToken) throw new Error("Missing Supabase access token");
 
-  const signUrl = import.meta.env.PROD
+  const runtimeHost = typeof window !== "undefined" ? window.location.hostname : "";
+  const isLocalHost = runtimeHost === "localhost" || runtimeHost === "127.0.0.1";
+  const shouldUseSameOriginApi = Boolean(runtimeHost) && !isLocalHost;
+
+  const signUrl = shouldUseSameOriginApi
     ? "/api/cloudinary-sign"
     : `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/cloudinary-sign`;
 
@@ -29,7 +33,7 @@ export async function getCloudinaryUploadSignature(input?: {
   };
 
   // The Supabase Edge Function expects apikey; our Vercel function does not.
-  if (!import.meta.env.PROD) headers.apikey = supabaseAnonKey;
+  if (!shouldUseSameOriginApi) headers.apikey = supabaseAnonKey;
 
   const res = await fetch(signUrl, {
     method: "POST",
