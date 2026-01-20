@@ -2,12 +2,23 @@ import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
+const supabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "";
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "";
-const apiKey = process.env.CLOUDINARY_API_KEY || "";
-const apiSecret = process.env.CLOUDINARY_API_SECRET || "";
+const supabaseAnonKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
+
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || "";
+const apiKey = process.env.CLOUDINARY_API_KEY || process.env.VITE_CLOUDINARY_API_KEY || "";
+const apiSecret = process.env.CLOUDINARY_API_SECRET || process.env.VITE_CLOUDINARY_API_SECRET || "";
+
+const ALLOW_HEADERS = "content-type, authorization, apikey, x-client-info";
 
 function signCloudinaryParams(params: Record<string, string | number>, secret: string) {
   const sorted = Object.keys(params)
@@ -22,8 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "content-type, authorization");
-    return res.status(200).end();
+    res.setHeader("Access-Control-Allow-Headers", ALLOW_HEADERS);
+    return res.status(204).end();
   }
 
   if (req.method !== "POST") {
@@ -31,10 +42,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return res.status(500).json({ error: "Missing Supabase env (VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY)" });
+    return res.status(500).json({
+      error: "Missing Supabase env",
+      expected: ["SUPABASE_URL", "SUPABASE_ANON_KEY"],
+      fallback: ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"],
+    });
   }
   if (!cloudName || !apiKey || !apiSecret) {
-    return res.status(500).json({ error: "Missing Cloudinary env (CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET)" });
+    return res.status(500).json({
+      error: "Missing Cloudinary env",
+      expected: ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"],
+    });
   }
 
   const authHeader = req.headers.authorization || "";
