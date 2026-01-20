@@ -4,6 +4,11 @@ import type { AuthRole } from "@/types/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
+type CachedProfile = {
+  name?: string;
+  picture?: string;
+};
+
 export type AuthUser = {
   id: string;
   name?: string;
@@ -40,13 +45,43 @@ function writeCachedRole(userId: string, role: AuthRole) {
   }
 }
 
+function readCachedProfile(userId: string): CachedProfile | null {
+  try {
+    const raw = window.localStorage.getItem(`iwanyu:profile:${userId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedProfile;
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      name: typeof parsed.name === "string" ? parsed.name : undefined,
+      picture: typeof parsed.picture === "string" ? parsed.picture : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(userId: string, profile: CachedProfile) {
+  try {
+    window.localStorage.setItem(`iwanyu:profile:${userId}`, JSON.stringify(profile));
+  } catch {
+    // ignore
+  }
+}
+
 function buildBaseUser(authUser: User): AuthUser {
   const cachedRole = readCachedRole(authUser.id);
+  const cachedProfile = readCachedProfile(authUser.id);
   return {
     id: authUser.id,
     email: authUser.email,
-    name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
-    picture: authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
+    name:
+      cachedProfile?.name ||
+      authUser.user_metadata?.name ||
+      authUser.user_metadata?.full_name,
+    picture:
+      cachedProfile?.picture ||
+      authUser.user_metadata?.picture ||
+      authUser.user_metadata?.avatar_url,
     role: cachedRole ?? "buyer",
   };
 }
@@ -55,6 +90,10 @@ type ProfileRow = {
   role: AuthRole | null;
   full_name: string | null;
   avatar_url: string | null;
+};
+
+type VendorRow = {
+  status: string | null;
 };
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
@@ -143,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         writeCachedRole(baseUser.id, hydrated.role);
+        writeCachedProfile(baseUser.id, { name: hydrated.name, picture: hydrated.picture });
 
         if (activeUserIdRef.current === baseUser.id) {
           setUser(hydrated);
@@ -165,6 +205,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [hydrateFromProfile, hydrateSellerRoleFromVendors]
   );
+
+  // Realtime: update profile + role instantly after admin actions.
+  useEffect(() => {
+    if (!supabase) return;
+    if (!user?.id) return;
+
+    const userId = user.id;
+
+    const profileChannel = supabase
+      .channel(`profiles:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => {
+          const next = payload.new as Partial<ProfileRow> | null;
+          if (!next) return;
+
+          setUser((prev) => {
+            if (!prev || prev.id !== userId) return prev;
+            const role = (next.role ?? prev.role) as AuthRole;
+            const name = (next.full_name ?? prev.name) ?? prev.name;
+            const picture = (next.avatar_url ?? prev.picture) ?? prev.picture;
+            const updated: AuthUser = { ...prev, role, name, picture };
+            writeCachedRole(userId, role);
+            writeCachedProfile(userId, { name: updated.name, picture: updated.picture });
+            return updated;
+          });
+        }
+      )
+      .subscribe();
+
+    const vendorsChannel = supabase
+      .channel(`vendors:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vendors", filter: `owner_user_id=eq.${userId}` },
+        (payload) => {
+          const next = payload.new as Partial<VendorRow> | null;
+          if (!next) return;
+          if (next.status !== "approved") return;
+
+          setUser((prev) => {
+            if (!prev || prev.id !== userId) return prev;
+            if (prev.role === "seller" || prev.role === "admin") return prev;
+            const updated: AuthUser = { ...prev, role: "seller" };
+            writeCachedRole(userId, updated.role);
+            return updated;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(profileChannel);
+      void supabase.removeChannel(vendorsChannel);
+    };
+  }, [supabase, user?.id]);
 
   /**
    * Load user from current session
