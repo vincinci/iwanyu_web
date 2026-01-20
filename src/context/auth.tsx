@@ -22,13 +22,32 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function readCachedRole(userId: string): AuthRole | null {
+  try {
+    const raw = window.localStorage.getItem(`iwanyu:role:${userId}`);
+    if (raw === "admin" || raw === "seller" || raw === "buyer") return raw;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedRole(userId: string, role: AuthRole) {
+  try {
+    window.localStorage.setItem(`iwanyu:role:${userId}`, role);
+  } catch {
+    // ignore
+  }
+}
+
 function buildBaseUser(authUser: User): AuthUser {
+  const cachedRole = readCachedRole(authUser.id);
   return {
     id: authUser.id,
     email: authUser.email,
     name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
     picture: authUser.user_metadata?.picture || authUser.user_metadata?.avatar_url,
-    role: "buyer",
+    role: cachedRole ?? "buyer",
   };
 }
 
@@ -38,10 +57,11 @@ type ProfileRow = {
   avatar_url: string | null;
 };
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const id = window.setTimeout(() => reject(new Error("timeout")), ms);
-    promise
+
+    Promise.resolve(promise)
       .then((value) => {
         window.clearTimeout(id);
         resolve(value);
@@ -82,6 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           picture: profile?.avatar_url || baseUser.picture,
           role: (profile?.role ?? "buyer") as AuthRole,
         };
+
+        writeCachedRole(baseUser.id, hydrated.role);
 
         if (activeUserIdRef.current === baseUser.id) {
           setUser(hydrated);

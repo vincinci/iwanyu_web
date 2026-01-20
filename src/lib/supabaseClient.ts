@@ -44,6 +44,7 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   cached = createClient(creds.url, creds.anonKey, {
     auth: {
+      storageKey: "iwanyu-auth",
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
@@ -71,6 +72,7 @@ export function getPublicSupabaseClient(): SupabaseClient | null {
 
   cachedPublic = createClient(creds.url, creds.anonKey, {
     auth: {
+      storageKey: "iwanyu-public",
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,

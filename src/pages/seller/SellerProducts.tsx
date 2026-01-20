@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,16 +7,50 @@ import { formatMoney } from "@/lib/money";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export default function SellerProductsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { products, vendors, deleteProduct, getVendorsForOwner } = useMarketplace();
+  const supabase = getSupabaseClient();
 
   const isAdmin = user?.role === "admin";
-  const ownedVendorIds = new Set(
-    user && !isAdmin ? getVendorsForOwner(user.id).map((v) => v.id) : [],
-  );
+  const [ownedVendorIdList, setOwnedVendorIdList] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwnedVendorIds() {
+      if (!supabase || !user || isAdmin) {
+        setOwnedVendorIdList([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("owner_user_id", user.id)
+        .eq("status", "approved")
+        .limit(200);
+
+      if (cancelled) return;
+      if (error) {
+        // Fallback to marketplace-derived list if available
+        setOwnedVendorIdList(getVendorsForOwner(user.id).map((v) => v.id));
+        return;
+      }
+
+      setOwnedVendorIdList(((data ?? []) as Array<{ id: string }>).map((v) => v.id));
+    }
+
+    void loadOwnedVendorIds();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user, isAdmin, getVendorsForOwner]);
+
+  const ownedVendorIds = new Set(user && !isAdmin ? ownedVendorIdList : []);
 
   const visibleProducts = isAdmin ? products : products.filter((p) => ownedVendorIds.has(p.vendorId));
 

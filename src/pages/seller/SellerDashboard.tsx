@@ -26,7 +26,7 @@ const navItems = [
 
 export default function SellerDashboardPage() {
   const { user } = useAuth();
-  const { getVendorsForOwner, products } = useMarketplace();
+  const { products } = useMarketplace();
   const supabase = getSupabaseClient();
   const location = useLocation();
   const [notifications, setNotifications] = useState<VendorNotification[]>([]);
@@ -39,10 +39,38 @@ export default function SellerDashboardPage() {
   // Check roles
   const isSellerOrAdmin = Boolean(user && (user.role === "seller" || user.role === "admin"));
 
-  const ownedVendorIds = useMemo(() => {
-    if (!user || user.role === "admin") return [];
-    return getVendorsForOwner(user.id).map((v) => v.id);
-  }, [user, getVendorsForOwner]);
+  const [ownedVendorIds, setOwnedVendorIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwnedVendorIds() {
+      if (!supabase || !user || user.role === "admin") {
+        setOwnedVendorIds([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("owner_user_id", user.id)
+        .eq("status", "approved")
+        .limit(200);
+
+      if (cancelled) return;
+      if (error) {
+        setOwnedVendorIds([]);
+        return;
+      }
+
+      setOwnedVendorIds(((data ?? []) as Array<{ id: string }>).map((v) => v.id));
+    }
+
+    void loadOwnedVendorIds();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user]);
 
   useEffect(() => {
     let cancelled = false;

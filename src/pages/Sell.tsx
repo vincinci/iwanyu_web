@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
+import type { Vendor } from "@/types/vendor";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -20,7 +21,7 @@ type VendorApplication = {
 export default function SellPage() {
   const navigate = useNavigate();
   const { user, setRole } = useAuth();
-  const { createVendor, getVendorsForOwner, refresh, products } = useMarketplace();
+  const { createVendor, refresh, products } = useMarketplace();
   const [storeName, setStoreName] = useState("");
   const [location, setLocation] = useState("Kigali, Rwanda");
   const [application, setApplication] = useState<VendorApplication | null>(null);
@@ -38,7 +39,60 @@ export default function SellPage() {
 
   const supabase = getSupabaseClient();
 
-  const myVendors = useMemo(() => (user ? getVendorsForOwner(user.id) : []), [user, getVendorsForOwner]);
+  const [ownedVendors, setOwnedVendors] = useState<Vendor[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwnedVendors() {
+      if (!user || !supabase) {
+        setOwnedVendors([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("vendors")
+        .select("id, name, location, verified, owner_user_id, status")
+        .eq("owner_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (cancelled) return;
+      if (error) {
+        setOwnedVendors([]);
+        return;
+      }
+
+      const rows = (data ?? []) as Array<{
+        id: string;
+        name: string;
+        location: string | null;
+        verified: boolean;
+        owner_user_id: string | null;
+        status: string | null;
+      }>;
+
+      const mapped: Vendor[] = rows
+        .map((v) => ({
+          id: v.id,
+          name: v.name,
+          location: v.location ?? undefined,
+          verified: Boolean(v.verified),
+          ownerUserId: v.owner_user_id ?? undefined,
+          status: (v.status ?? "approved") as Vendor["status"],
+        }))
+        .filter((v) => v.status === "approved");
+
+      setOwnedVendors(mapped);
+    }
+
+    void loadOwnedVendors();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user?.id]);
+
+  const myVendors = useMemo(() => ownedVendors, [ownedVendors]);
 
   // Load seller statistics
   const loadSellerStats = async () => {

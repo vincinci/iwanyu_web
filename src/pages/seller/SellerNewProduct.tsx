@@ -12,6 +12,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { getAllCategoryOptions } from "@/lib/categories";
+import type { Vendor } from "@/types/vendor";
 
 const MAX_MEDIA_FILES = 8;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -26,7 +27,59 @@ export default function SellerNewProductPage() {
   const supabase = getSupabaseClient();
 
   const isAdmin = user?.role === "admin";
-  const myVendors = user ? getVendorsForOwner(user.id) : [];
+  const [ownedVendors, setOwnedVendors] = useState<Vendor[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwnedVendors() {
+      if (!supabase || !user || isAdmin) {
+        setOwnedVendors([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("vendors")
+        .select("id, name, location, verified, owner_user_id, status")
+        .eq("owner_user_id", user.id)
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (cancelled) return;
+      if (error) {
+        setOwnedVendors([]);
+        return;
+      }
+
+      const rows = (data ?? []) as Array<{
+        id: string;
+        name: string;
+        location: string | null;
+        verified: boolean;
+        owner_user_id: string | null;
+        status: string | null;
+      }>;
+
+      setOwnedVendors(
+        rows.map((v) => ({
+          id: v.id,
+          name: v.name,
+          location: v.location ?? undefined,
+          verified: Boolean(v.verified),
+          ownerUserId: v.owner_user_id ?? undefined,
+          status: (v.status ?? "approved") as Vendor["status"],
+        }))
+      );
+    }
+
+    void loadOwnedVendors();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user, isAdmin]);
+
+  const myVendors = user ? ownedVendors : [];
   const vendorOptions = isAdmin ? vendors : myVendors;
 
   const firstVendorId = vendorOptions[0]?.id ?? "";
