@@ -19,13 +19,21 @@ export async function getCloudinaryUploadSignature(input?: {
   if (!supabaseAnonKey) throw new Error("Missing VITE_SUPABASE_ANON_KEY");
   if (!input?.accessToken) throw new Error("Missing Supabase access token");
 
-  const res = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/functions/v1/cloudinary-sign`, {
+  const signUrl = import.meta.env.PROD
+    ? "/api/cloudinary-sign"
+    : `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/cloudinary-sign`;
+
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    authorization: `Bearer ${input.accessToken}`,
+  };
+
+  // The Supabase Edge Function expects apikey; our Vercel function does not.
+  if (!import.meta.env.PROD) headers.apikey = supabaseAnonKey;
+
+  const res = await fetch(signUrl, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      apikey: supabaseAnonKey,
-      authorization: `Bearer ${input.accessToken}`,
-    },
+    headers,
     body: JSON.stringify({ folder: input?.folder }),
   });
 
