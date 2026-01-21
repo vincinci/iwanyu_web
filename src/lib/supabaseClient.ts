@@ -49,6 +49,16 @@ export function getSupabaseClient(): SupabaseClient | null {
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 2,
+      },
+    },
+    global: {
+      headers: {
+        'x-disable-realtime': 'true',
+      },
+    },
   });
 
   return cached;
@@ -76,6 +86,16 @@ export function getPublicSupabaseClient(): SupabaseClient | null {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 2,
+      },
+    },
+    global: {
+      headers: {
+        'x-disable-realtime': 'true',
+      },
     },
   });
 
