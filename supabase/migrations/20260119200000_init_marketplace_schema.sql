@@ -111,6 +111,7 @@ $$;
 -- Trigger for new users
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
+alter table public.wishlist_items enable row level security;
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
@@ -120,7 +121,6 @@ alter table public.vendors enable row level security;
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
-alter table public.wishlist_items enable row level security;
 
 -- RLS Policies
 -- Profiles: Anyone can read, users can insert/update their own
@@ -156,13 +156,3 @@ for select using (
         where o.id = order_id and o.buyer_user_id = auth.uid()
     )
 );
-
--- Wishlist: Users can manage their own wishlist
-create policy "wishlist_select_own" on public.wishlist_items
-for select using (auth.uid() = user_id);
-
-create policy "wishlist_insert_own" on public.wishlist_items
-for insert with check (auth.uid() = user_id);
-
-create policy "wishlist_delete_own" on public.wishlist_items
-for delete using (auth.uid() = user_id);

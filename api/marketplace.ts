@@ -61,8 +61,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             vendors: vendorsRes.data || []
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('API Error:', error);
-        return res.status(500).json({ error: error.message, details: error.stack });
+        return res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error', details: error instanceof Error ? error.stack : undefined });
     }
 }

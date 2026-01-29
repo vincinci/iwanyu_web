@@ -169,7 +169,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
           "products fetch"
         );
 
-        if (productsRes.error && /column\s+\"variants\"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
+        if (productsRes.error && /column\s+"variants"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
           productsRes = await withTimeout(
             publicSupabase
               .from("products")

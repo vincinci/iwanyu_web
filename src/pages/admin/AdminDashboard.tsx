@@ -49,6 +49,15 @@ export default function AdminDashboardPage() {
   const supabase = getSupabaseClient();
   const { products, vendors, refresh } = useMarketplace();
 
+  // All hooks must be called before any conditional returns
+  const [applications, setApplications] = useState<VendorApplication[]>([]);
+  const [loadingApps, setLoadingApps] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
+  const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
+
   if (!user) {
     return (
       <div className="min-h-screen bg-white">
@@ -90,17 +99,6 @@ export default function AdminDashboardPage() {
       </div>
     );
   }
-
-  const [applications, setApplications] = useState<VendorApplication[]>([]);
-  const [loadingApps, setLoadingApps] = useState(false);
-
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
-  const [deleteReason, setDeleteReason] = useState("");
-
-  const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
-
-  const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
 
   async function updateProductCategory(productId: string, category: string) {
     if (!supabase) throw new Error("Supabase is not configured");

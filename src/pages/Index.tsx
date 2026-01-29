@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
 import { ProductCard } from "@/components/ProductCard";
 import { Footer } from "@/components/Footer";
+import { HomeSEO } from "@/components/SEO";
 import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
@@ -36,13 +37,15 @@ const Index = () => {
   }).filter(cat => cat.count > 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      
-      <main className="flex-1">
-        <HeroSection />
+    <>
+      <HomeSEO />
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
         
-        <CategoryNav />
+        <main className="flex-1">
+          <HeroSection />
+          
+          <CategoryNav />
         
         {/* Recently Viewed Products */}
         {recentlyViewedProducts.length > 0 && !loading && (
@@ -129,6 +132,7 @@ const Index = () => {
       
       <Footer />
     </div>
+    </>
   );
 };
 

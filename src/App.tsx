@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
+import { HelmetProvider } from 'react-helmet-async';
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { ProfileCompletion } from "@/components/ProfileCompletion";
@@ -221,20 +222,22 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <AuthProvider>
-        <MarketplaceProvider>
-          <WishlistProvider>
-            <RecentlyViewedProvider>
-              <CartProvider>
-                <BrowserRouter>
-                  <ScrollToTop />
-                  <AppContent />
-                </BrowserRouter>
-              </CartProvider>
-            </RecentlyViewedProvider>
-          </WishlistProvider>
-        </MarketplaceProvider>
-      </AuthProvider>
+      <HelmetProvider>
+        <AuthProvider>
+          <MarketplaceProvider>
+            <WishlistProvider>
+              <RecentlyViewedProvider>
+                <CartProvider>
+                  <BrowserRouter>
+                    <ScrollToTop />
+                    <AppContent />
+                  </BrowserRouter>
+                </CartProvider>
+              </RecentlyViewedProvider>
+            </WishlistProvider>
+          </MarketplaceProvider>
+        </AuthProvider>
+      </HelmetProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

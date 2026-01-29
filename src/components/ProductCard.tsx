@@ -95,7 +95,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         <div className="relative aspect-square overflow-hidden bg-muted">
           {image ? (
             <img
-              src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600, quality: 85 })}
+              src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600 })}
               alt={title}
               className="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.02]"
               loading="lazy"

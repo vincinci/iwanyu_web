@@ -5,4 +5,5 @@ export type Vendor = {
   verified?: boolean;
   ownerUserId?: string;
   status?: string;
+  revoked?: boolean;
 };
