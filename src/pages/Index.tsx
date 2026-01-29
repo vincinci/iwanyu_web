@@ -49,20 +49,26 @@ const Index = () => {
         
         {/* Recently Viewed Products */}
         {recentlyViewedProducts.length > 0 && !loading && (
-          <section className="container py-10">
+          <section className="container py-10 animate-in fade-in slide-in-from-bottom duration-700">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Recently viewed</h2>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent">Recently viewed</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Pick up where you left off.</p>
               </div>
-              <Button variant="ghost" className="h-8 px-2 text-xs" onClick={clearRecentlyViewed}>
+              <Button 
+                variant="ghost" 
+                className="h-9 px-3 text-xs font-semibold rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 hover:scale-105" 
+                onClick={clearRecentlyViewed}
+              >
                 Clear
               </Button>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
-              {recentlyViewedProducts.map((product) => (
-                <ProductCard key={product!.id} product={product!} />
+              {recentlyViewedProducts.map((product, idx) => (
+                <div key={product!.id} style={{ animationDelay: `${idx * 50}ms` }}>
+                  <ProductCard product={product!} />
+                </div>
               ))}
             </div>
           </section>
@@ -116,14 +122,18 @@ const Index = () => {
 
         {/* Promo Banner */}
         <section className="container py-10">
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-gray-200 bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8 shadow-xl transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:border-purple-300 animate-in fade-in slide-in-from-bottom duration-700">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Free shipping on your first order</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Create an account to unlock perks and faster checkout.</p>
+                <h2 className="text-2xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">Free shipping on your first order</h2>
+                <p className="mt-1 text-base text-gray-700 font-medium">Create an account to unlock perks and faster checkout.</p>
               </div>
               <Link to="/account">
-                <Button className="rounded-md">Create account</Button>
+                <Button className="group/btn rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold px-8 py-6 text-base shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2">
+                  Create account
+                  <ArrowRight size={18} className="transition-transform duration-300 group-hover/btn:translate-x-1" />
+                </Button>
               </Link>
             </div>
           </div>
@@ -164,15 +174,16 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
   if (products.length === 0) return null;
 
   return (
-    <div className="relative group/section">
+    <div className="relative group/section animate-in fade-in slide-in-from-bottom duration-500">
       {/* Section Header */}
       <div className="flex items-center justify-between gap-4 mb-5">
-        <h2 className="text-lg font-semibold text-foreground">{category}</h2>
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent">{category}</h2>
         <Link 
           to={`/category/${categoryId}`}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          className="group/link text-sm font-semibold text-gray-600 hover:text-black transition-all flex items-center gap-1 hover:gap-2"
         >
-          View all <ArrowRight size={14} />
+          View all 
+          <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
         </Link>
       </div>
 
@@ -182,17 +193,17 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
           <>
             <button
               onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-9 w-9 items-center justify-center rounded-full border bg-background shadow-sm opacity-0 group-hover/section:opacity-100 transition-opacity hover:bg-muted"
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-gray-200 shadow-xl opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:bg-gray-50 hover:scale-110 hover:border-gray-300 active:scale-95"
               aria-label="Scroll left"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
             </button>
             <button
               onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-9 w-9 items-center justify-center rounded-full border bg-background shadow-sm opacity-0 group-hover/section:opacity-100 transition-opacity hover:bg-muted"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-gray-200 shadow-xl opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:bg-gray-50 hover:scale-110 hover:border-gray-300 active:scale-95"
               aria-label="Scroll right"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5 text-gray-700" />
             </button>
           </>
         )}

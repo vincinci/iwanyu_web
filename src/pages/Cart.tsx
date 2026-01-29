@@ -42,13 +42,16 @@ export default function CartPage() {
 
   return (
     <StorefrontPage>
-      <div className="container min-h-screen py-12">
+      <div className="container min-h-screen py-12 animate-in fade-in slide-in-from-bottom duration-500">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-foreground mb-2">Cart</h1>
+          <h1 className="text-4xl font-black bg-gradient-to-r from-black via-gray-700 to-gray-500 bg-clip-text text-transparent mb-3">Shopping Cart</h1>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{itemCount} item{itemCount === 1 ? "" : "s"}</p>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Continue shopping
+            <p className="text-base text-gray-600 font-semibold">
+              {itemCount} item{itemCount === 1 ? "" : "s"}
+            </p>
+            <Link to="/" className="group text-sm font-bold text-gray-700 hover:text-black transition-all flex items-center gap-2 hover:gap-3">
+              Continue shopping 
+              <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
             </Link>
           </div>
         </div>

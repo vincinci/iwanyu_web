@@ -46,46 +46,50 @@ export default function CategoryPage() {
 
   return (
     <StorefrontPage>
-      <div className="container py-12">
+      <div className="container py-12 animate-in fade-in slide-in-from-bottom duration-500">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-iwanyu-foreground">{title}</h1>
-            <p className="mt-2 text-lg text-gray-600">Browse products in this category.</p>
+          <div className="animate-in slide-in-from-left duration-700">
+            <h1 className="text-5xl font-black bg-gradient-to-r from-black via-gray-700 to-gray-500 bg-clip-text text-transparent">{title}</h1>
+            <p className="mt-3 text-lg text-gray-600 font-medium">Browse products in this category.</p>
           </div>
-          <Link to="/" className="text-sm font-medium text-iwanyu-primary hover:underline px-4 py-2 rounded-full bg-iwanyu-primary/10 transition-colors">
-            ← Back to home
+          <Link to="/" className="group text-sm font-bold text-white bg-gradient-to-r from-black to-gray-700 hover:from-gray-800 hover:to-black px-6 py-3 rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 flex items-center gap-2 animate-in slide-in-from-right duration-700">
+            <span className="transition-transform duration-300 group-hover:-translate-x-1">←</span> Back to home
           </Link>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-iwanyu-border bg-white p-8 text-center">
-            <div className="text-gray-400 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          <div className="mt-8 rounded-3xl border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white p-12 text-center shadow-xl animate-in fade-in slide-in-from-bottom duration-500 delay-200">
+            <div className="text-gray-400 mb-4 animate-pulse">
+              <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-            <p className="text-gray-600">Try browsing other categories or check back later.</p>
+            <h3 className="text-2xl font-black text-gray-900 mb-2">No products found</h3>
+            <p className="text-gray-600 text-base font-medium">Try browsing other categories or check back later.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
-            {filtered.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 animate-in fade-in slide-in-from-bottom duration-500 delay-200">
+            {filtered.map((product, idx) => (
+              <div key={product.id} style={{ animationDelay: `${idx * 30}ms` }}>
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         )}
 
         {categoryId !== "all" ? (
-          <div className="mt-16">
-            <h2 className="text-3xl font-bold text-iwanyu-foreground mb-8">Recommended Products</h2>
+          <div className="mt-16 animate-in fade-in slide-in-from-bottom duration-700 delay-500">
+            <h2 className="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-8">Recommended Products</h2>
             {recommended.length === 0 ? (
-              <div className="rounded-2xl border border-iwanyu-border bg-white p-6 text-gray-600">
+              <div className="rounded-3xl border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white p-8 text-gray-600 font-medium shadow-lg">
                 No recommendations available right now.
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {recommended.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                {recommended.map((product, idx) => (
+                  <div key={product.id} style={{ animationDelay: `${idx * 40}ms` }} className="animate-in fade-in slide-in-from-bottom duration-500">
+                    <ProductCard product={product} />
+                  </div>
                 ))}
               </div>
             )}
