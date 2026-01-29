@@ -257,17 +257,18 @@ export default function AdminDashboardPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-12">
-          {/* Minimal Sidebar */}
+          {/* Interactive Sidebar */}
           <aside className="w-full lg:w-48 shrink-0">
             <nav className="flex flex-col gap-1">
-              {nav.map((item) => (
+              {nav.map((item, idx) => (
                 <a
                   key={item.label}
                   href={item.href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-black hover:bg-white transition-colors"
+                  className="group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:text-black hover:bg-gradient-to-r hover:from-gray-50 hover:to-white transition-all duration-300 hover:scale-105 hover:shadow-sm animate-in slide-in-from-left-4 fade-in"
+                  style={{ animationDelay: `${idx * 50}ms` }}
                 >
-                  <item.icon size={16} />
-                  {item.label}
+                  <item.icon size={18} className="group-hover:scale-110 group-hover:rotate-3 transition-transform" />
+                  <span className="group-hover:translate-x-1 transition-transform">{item.label}</span>
                 </a>
               ))}
             </nav>
@@ -277,19 +278,36 @@ export default function AdminDashboardPage() {
           <main className="flex-1 space-y-12">
             {/* Stats */}
             <div>
-              <h1 className="text-3xl font-bold mb-8">Overview</h1>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
-                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Vendors</p>
-                  <h2 className="text-4xl font-bold tracking-tight">{vendors.length}</h2>
+              <h1 className="text-3xl font-bold mb-8 animate-in fade-in slide-in-from-top-4 duration-700">Overview</h1>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="group bg-gradient-to-br from-purple-50 to-white rounded-xl p-6 border border-purple-100 hover:border-purple-300 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-left-4 duration-500">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-purple-600 text-xs font-bold uppercase tracking-wider">Total Vendors</p>
+                    <Users size={20} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">{vendors.length}</h2>
+                  <p className="text-xs text-purple-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Active on platform</p>
                 </div>
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
-                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Products</p>
-                  <h2 className="text-4xl font-bold tracking-tight">{products.length}</h2>
+                <div className="group bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 border border-blue-100 hover:border-blue-300 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-blue-600 text-xs font-bold uppercase tracking-wider">Total Products</p>
+                    <Boxes size={20} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">{products.length}</h2>
+                  <p className="text-xs text-blue-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Listed items</p>
                 </div>
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
-                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Pending Applications</p>
-                  <h2 className="text-4xl font-bold tracking-tight">{loadingApps ? "..." : applications.length}</h2>
+                <div className="group bg-gradient-to-br from-red-50 to-white rounded-xl p-6 border border-red-100 hover:border-red-300 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-right-4 duration-500 delay-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-red-600 text-xs font-bold uppercase tracking-wider">Pending Applications</p>
+                    <BadgeCheck size={20} className="text-red-400 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">{loadingApps ? "..." : applications.length}</h2>
+                  {applications.length > 0 && (
+                    <p className="text-xs text-red-600 mt-2 flex items-center gap-1 animate-pulse">
+                      <span className="h-2 w-2 bg-red-600 rounded-full"></span>
+                      Needs review
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -316,8 +334,12 @@ export default function AdminDashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {applications.map((app) => (
-                    <div key={app.id} className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors">
+                  {applications.map((app, idx) => (
+                    <div 
+                      key={app.id} 
+                      className="group bg-white rounded-xl p-6 border border-gray-100 hover:border-purple-200 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-in slide-in-from-bottom-4 fade-in"
+                      style={{ animationDelay: `${idx * 100}ms` }}
+                    >
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <h4 className="font-bold text-lg mb-1">{app.store_name}</h4>
@@ -330,7 +352,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <div className="flex gap-2">
                         <Button
-                          className="rounded-full bg-black text-white hover:bg-gray-800 flex-1"
+                          className="rounded-full bg-gradient-to-r from-green-600 to-green-500 text-white hover:from-green-700 hover:to-green-600 flex-1 hover:scale-105 hover:shadow-lg transition-all duration-300"
                           onClick={async () => {
                             try {
                               await approveApplication(app);
@@ -349,7 +371,7 @@ export default function AdminDashboardPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          className="rounded-full flex-1"
+                          className="rounded-full flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700 hover:scale-105 transition-all duration-300"
                           onClick={async () => {
                             try {
                               await rejectApplication(app);

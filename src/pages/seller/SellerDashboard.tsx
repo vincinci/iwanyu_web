@@ -244,25 +244,49 @@ export default function SellerDashboardPage() {
                     <p className="text-gray-500 text-sm">Welcome back, {user.name?.split(' ')[0]}. Here's what's happening today.</p>
                 </div>
 
-                {/* Stats Grid - Ultra Minimal */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                    <div>
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Revenue</p>
-                        <h2 className="text-4xl font-bold tracking-tight text-black">
-                            {metricsLoading ? "..." : formatMoney(metrics.salesRwf)}
+                {/* Stats Grid - Interactive with Gradients */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                    <div className="group bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 border border-green-100 hover:border-green-300 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-left-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-green-600 text-xs font-bold uppercase tracking-wider">Total Revenue</p>
+                            <Wallet size={24} className="text-green-400 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
+                        </div>
+                        <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
+                            {metricsLoading ? (
+                                <span className="animate-pulse">...</span>
+                            ) : (
+                                formatMoney(metrics.salesRwf)
+                            )}
                         </h2>
+                        <p className="text-xs text-green-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">+12% from last month</p>
                     </div>
-                    <div>
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Orders Processed</p>
-                        <h2 className="text-4xl font-bold tracking-tight text-black">
-                             {metricsLoading ? "..." : metrics.orderCount}
+                    <div className="group bg-gradient-to-br from-blue-50 to-white rounded-2xl p-6 border border-blue-100 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-bottom-4 delay-100">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-blue-600 text-xs font-bold uppercase tracking-wider">Orders Processed</p>
+                            <ShoppingBag size={24} className="text-blue-400 group-hover:scale-110 group-hover:-rotate-12 transition-transform" />
+                        </div>
+                        <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                            {metricsLoading ? (
+                                <span className="animate-pulse">...</span>
+                            ) : (
+                                metrics.orderCount
+                            )}
                         </h2>
+                        <p className="text-xs text-blue-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Last 30 days</p>
                     </div>
-                    <div>
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Active Products</p>
-                        <h2 className="text-4xl font-bold tracking-tight text-black">
-                             {metricsLoading ? "..." : metrics.productCount}
+                    <div className="group bg-gradient-to-br from-purple-50 to-white rounded-2xl p-6 border border-purple-100 hover:border-purple-300 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-right-4 delay-200">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-purple-600 text-xs font-bold uppercase tracking-wider">Active Products</p>
+                            <Package size={24} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                        </div>
+                        <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+                            {metricsLoading ? (
+                                <span className="animate-pulse">...</span>
+                            ) : (
+                                metrics.productCount
+                            )}
                         </h2>
+                        <p className="text-xs text-purple-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Currently listed</p>
                     </div>
                 </div>
 
@@ -275,17 +299,21 @@ export default function SellerDashboardPage() {
                             <Link to="#" className="text-xs text-iwanyu-primary font-bold hover:underline">View All</Link>
                         </div>
                         
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {notifications.length === 0 ? (
-                                <div className="p-8 border border-dashed border-gray-200 rounded-xl text-center">
-                                    <Bell size={24} className="mx-auto text-gray-300 mb-2" />
+                                <div className="p-8 border border-dashed border-gray-200 rounded-xl text-center hover:border-gray-300 transition-colors">
+                                    <Bell size={24} className="mx-auto text-gray-300 mb-2 animate-pulse" />
                                     <p className="text-sm text-gray-500">All caught up! No new notifications.</p>
                                 </div>
                             ) : (
-                                notifications.map((n) => (
-                                    <div key={n.id} className="pb-4 border-b border-gray-100 last:border-0">
-                                        <p className="font-semibold text-sm mb-1">{n.title}</p>
-                                        <p className="text-gray-500 text-xs line-clamp-2">{n.message}</p>
+                                notifications.map((n, idx) => (
+                                    <div 
+                                        key={n.id} 
+                                        className="group pb-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 -mx-2 px-2 py-2 rounded-lg transition-all cursor-pointer animate-in slide-in-from-left-4 fade-in"
+                                        style={{ animationDelay: `${idx * 50}ms` }}
+                                    >
+                                        <p className="font-semibold text-sm mb-1 group-hover:text-black transition-colors">{n.title}</p>
+                                        <p className="text-gray-500 text-xs line-clamp-2 group-hover:text-gray-700 transition-colors">{n.message}</p>
                                         <span className="text-[10px] text-gray-400 mt-2 block">{new Date(n.created_at).toLocaleDateString()}</span>
                                     </div>
                                 ))
@@ -300,33 +328,33 @@ export default function SellerDashboardPage() {
                         </div>
 
                         <div className="grid gap-3">
-                             <Link to="/seller/products/new" className="group flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-black transition-colors">
+                             <Link to="/seller/products/new" className="group flex items-center justify-between p-5 bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all duration-300 hover:scale-105 animate-in slide-in-from-right-4">
                                  <div>
-                                     <div className="font-bold text-sm">Add New Product</div>
+                                     <div className="font-bold text-sm group-hover:text-black transition-colors">Add New Product</div>
                                      <div className="text-gray-500 text-xs">Create a listing for the marketplace</div>
                                  </div>
-                                 <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
-                                     <ArrowRight size={14} />
+                                 <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white group-hover:rotate-45 transition-all duration-300 group-hover:scale-110">
+                                     <ArrowRight size={16} />
                                  </div>
                              </Link>
                              
-                             <Link to="/seller/orders" className="group flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-black transition-colors">
+                             <Link to="/seller/orders" className="group flex items-center justify-between p-5 bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all duration-300 hover:scale-105 animate-in slide-in-from-right-4 delay-100">
                                  <div>
-                                     <div className="font-bold text-sm">Manage Orders</div>
+                                     <div className="font-bold text-sm group-hover:text-black transition-colors">Manage Orders</div>
                                      <div className="text-gray-500 text-xs">Track shipments and returns</div>
                                  </div>
-                                 <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
-                                     <ArrowRight size={14} />
+                                 <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white group-hover:rotate-45 transition-all duration-300 group-hover:scale-110">
+                                     <ArrowRight size={16} />
                                  </div>
                              </Link>
 
-                             <Link to="/help" className="group flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-black transition-colors">
+                             <Link to="/help" className="group flex items-center justify-between p-5 bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl hover:border-black hover:shadow-lg transition-all duration-300 hover:scale-105 animate-in slide-in-from-right-4 delay-200">
                                  <div>
-                                     <div className="font-bold text-sm">Seller Support</div>
+                                     <div className="font-bold text-sm group-hover:text-black transition-colors">Seller Support</div>
                                      <div className="text-gray-500 text-xs">Get help with your store</div>
                                  </div>
-                                 <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
-                                     <ArrowRight size={14} />
+                                 <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white group-hover:rotate-45 transition-all duration-300 group-hover:scale-110">
+                                     <ArrowRight size={16} />
                                  </div>
                              </Link>
                         </div>
