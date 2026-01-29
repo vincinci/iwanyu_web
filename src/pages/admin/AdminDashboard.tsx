@@ -1,8 +1,7 @@
-import { BadgeCheck, Boxes, ClipboardList, CreditCard, ShieldAlert, Users } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -25,12 +24,9 @@ import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from
 
 const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
-  { label: "Vendors", icon: Users, href: "/admin" },
-  { label: "Products", icon: Boxes, href: "/admin" },
-  { label: "Orders", icon: ClipboardList, href: "/admin" },
-  { label: "Payouts", icon: CreditCard, href: "/admin" },
-  { label: "Trust & Safety", icon: ShieldAlert, href: "/admin" },
-  { label: "Verification", icon: BadgeCheck, href: "/admin" },
+  { label: "Vendors", icon: Users, href: "/admin#vendors" },
+  { label: "Products", icon: Boxes, href: "/admin#products" },
+  { label: "Applications", icon: BadgeCheck, href: "/admin#applications" },
 ];
 
 type VendorApplication = {
@@ -57,58 +53,7 @@ export default function AdminDashboardPage() {
   const [deleteReason, setDeleteReason] = useState("");
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
   const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="container py-10">
-          <div className="rounded-lg border border-iwanyu-border bg-white p-6">
-            <div className="text-lg font-semibold text-gray-900">Sign in required</div>
-            <div className="mt-1 text-sm text-gray-600">You must be signed in to access the admin dashboard.</div>
-            <div className="mt-4 flex gap-3">
-              <Link to="/login">
-                <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Go to login</Button>
-              </Link>
-              <Link to="/">
-                <Button variant="outline" className="rounded-full">Storefront</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (user.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-white">
-        <div className="container py-10">
-          <div className="rounded-lg border border-iwanyu-border bg-white p-6">
-            <div className="text-lg font-semibold text-gray-900">Access denied</div>
-            <div className="mt-1 text-sm text-gray-600">Admin role is required to view this page.</div>
-            <div className="mt-4 flex gap-3">
-              <Link to="/account">
-                <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Go to account</Button>
-              </Link>
-              <Link to="/">
-                <Button variant="outline" className="rounded-full">Storefront</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  async function updateProductCategory(productId: string, category: string) {
-    if (!supabase) throw new Error("Supabase is not configured");
-    const next = category.trim();
-    if (!next) throw new Error("Missing category");
-    const { error } = await supabase.from("products").update({ category: next }).eq("id", productId);
-    if (error) throw new Error(error.message);
-    await refresh();
-  }
-
+  
   const productToDelete = useMemo(
     () => (deleteProductId ? products.find((p) => p.id === deleteProductId) : undefined),
     [deleteProductId, products]
@@ -138,6 +83,75 @@ export default function AdminDashboardPage() {
       cancelled = true;
     };
   }, [supabase]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+          <h2 className="text-2xl font-bold mb-2">Sign In Required</h2>
+          <p className="text-gray-500 mb-6">Admin authentication needed</p>
+          <div className="flex gap-3 justify-center">
+            <Link to="/login">
+              <Button className="rounded-full bg-black text-white hover:bg-gray-800">Login</Button>
+            </Link>
+            <Link to="/">
+              <Button variant="outline" className="rounded-full">Home</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-between p-4">
+        <div className="max-w-md text-center">
+          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+          <p className="text-gray-500 mb-6">Admin privileges required</p>
+          <div className="flex gap-3 justify-center">
+            <Link to="/account">
+              <Button className="rounded-full bg-black text-white hover:bg-gray-800">Account</Button>
+            </Link>
+            <Link to="/">
+              <Button variant="outline" className="rounded-full">Home</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  async function updateProductCategory(productId: string, category: string) {
+    if (!supabase) throw new Error("Supabase is not configured");
+    const next = category.trim();
+    if (!next) throw new Error("Missing category");
+    const { error } = await supabase.from("products").update({ category: next }).eq("id", productId);
+    if (error) throw new Error(error.message);
+    await refresh();
+  }
+
+  async function approveVendor(vendorId: string) {
+    if (!supabase) throw new Error("Supabase is not configured");
+    const { error } = await supabase
+      .from("vendors")
+      .update({ status: "approved" })
+      .eq("id", vendorId);
+    if (error) throw new Error(error.message);
+    await refresh();
+  }
+
+  async function rejectVendor(vendorId: string) {
+    if (!supabase) throw new Error("Supabase is not configured");
+    const { error } = await supabase
+      .from("vendors")
+      .update({ status: "rejected" })
+      .eq("id", vendorId);
+    if (error) throw new Error(error.message);
+    await refresh();
+  }
 
   async function approveApplication(app: VendorApplication) {
     if (!supabase) throw new Error("Supabase is not configured");
@@ -222,161 +236,105 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200 bg-white">
-        <div className="container py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-iwanyu-foreground">Admin Dashboard</h1>
-            <p className="text-sm text-gray-600">Marketplace operations (starter).</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Bar */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg tracking-tight">Admin Control</span>
+            <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Admin</span>
           </div>
-          <Link to="/">
-            <Button variant="outline" className="rounded-full">Storefront</Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <Button variant="ghost" className="text-sm font-medium hover:bg-transparent hover:text-black">Storefront</Button>
+            </Link>
+            <div className="h-8 w-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
+              {user.name?.charAt(0) || "A"}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="container py-6 grid gap-6 lg:grid-cols-[240px_1fr]">
-        <aside className="rounded-lg border border-gray-200 bg-white p-3 h-fit">
-          <nav className="space-y-1">
-            {nav.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <item.icon size={18} className="text-gray-500" />
-                {item.label}
-              </a>
-            ))}
-          </nav>
-        </aside>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-12">
+          {/* Minimal Sidebar */}
+          <aside className="w-full lg:w-48 shrink-0">
+            <nav className="flex flex-col gap-1">
+              {nav.map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-black hover:bg-white transition-colors"
+                >
+                  <item.icon size={16} />
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+          </aside>
 
-        <section className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Active vendors</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{vendors.length}</div>
-                <div className="text-xs text-gray-600">Total vendors</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Open disputes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">0</div>
-                <div className="text-xs text-gray-600">Not implemented</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Pending payouts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{formatMoney(0)}</div>
-                <div className="text-xs text-gray-600">Not implemented</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Vendor applications</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-700">
-              {loadingApps ? (
-                <div className="text-gray-600">Loading...</div>
-              ) : applications.length === 0 ? (
-                <div className="text-gray-600">No pending applications.</div>
-              ) : (
-                <div className="space-y-3">
-                  {applications.map((a) => (
-                    <div key={a.id} className="rounded-lg border border-iwanyu-border bg-white p-4">
-                      <div className="font-semibold text-gray-900">{a.store_name}</div>
-                      <div className="mt-1 text-xs text-gray-600">Owner: {a.owner_user_id}</div>
-                      {a.location ? <div className="mt-1 text-xs text-gray-600">Location: {a.location}</div> : null}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
-                          onClick={async () => {
-                            try {
-                              await approveApplication(a);
-                              toast({ title: "Approved", description: "Vendor created and application approved." });
-                            } catch (e) {
-                              toast({
-                                title: "Approve failed",
-                                description: e instanceof Error ? e.message : "Unknown error",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="rounded-full"
-                          onClick={async () => {
-                            try {
-                              await rejectApplication(a);
-                              toast({ title: "Rejected", description: "Application rejected." });
-                            } catch (e) {
-                              toast({
-                                title: "Reject failed",
-                                description: e instanceof Error ? e.message : "Unknown error",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+          {/* Main Content */}
+          <main className="flex-1 space-y-12">
+            {/* Stats */}
+            <div>
+              <h1 className="text-3xl font-bold mb-8">Overview</h1>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Vendors</p>
+                  <h2 className="text-4xl font-bold tracking-tight">{vendors.length}</h2>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Products</p>
+                  <h2 className="text-4xl font-bold tracking-tight">{products.length}</h2>
+                </div>
+                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Pending Applications</p>
+                  <h2 className="text-4xl font-bold tracking-tight">{loadingApps ? "..." : applications.length}</h2>
+                </div>
+              </div>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Vendors</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-700">
-              {vendors.length === 0 ? (
-                <div className="text-gray-600">No vendors.</div>
+            {/* Applications Section */}
+            <div id="applications">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold">Vendor Applications</h3>
+                {applications.length > 0 && (
+                  <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">
+                    {applications.length} Pending
+                  </span>
+                )}
+              </div>
+              
+              {loadingApps ? (
+                <div className="bg-white rounded-xl p-8 border border-gray-100 text-center">
+                  <p className="text-gray-500">Loading applications...</p>
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 border border-dashed border-gray-200 text-center">
+                  <BadgeCheck size={24} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm text-gray-500">No pending applications</p>
+                </div>
               ) : (
                 <div className="space-y-3">
-                  {vendors.map((v) => (
-                    <div key={v.id} className="rounded-lg border border-iwanyu-border bg-white p-4">
-                      <div className="flex items-start justify-between">
+                  {applications.map((app) => (
+                    <div key={app.id} className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors">
+                      <div className="flex items-start justify-between mb-4">
                         <div>
-                          <div className="font-semibold text-gray-900">{v.name}</div>
-                          <div className="mt-1 text-xs text-gray-600">
-                            {v.location ?? "No location"} • {v.verified ? "Verified" : "Unverified"}
-                          </div>
-                          {v.revoked ? (
-                            <div className="mt-2 inline-block rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
-                              Revoked
-                            </div>
-                          ) : null}
+                          <h4 className="font-bold text-lg mb-1">{app.store_name}</h4>
+                          <p className="text-xs text-gray-500">{app.location || "No location"}</p>
+                          <p className="text-xs text-gray-400 mt-1">User ID: {app.owner_user_id.slice(0, 8)}...</p>
                         </div>
+                        <span className="bg-yellow-50 text-yellow-700 text-xs font-bold px-3 py-1 rounded-full">
+                          Pending Review
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
                         <Button
-                          variant={v.revoked ? "outline" : "destructive"}
-                          className="rounded-full"
+                          className="rounded-full bg-black text-white hover:bg-gray-800 flex-1"
                           onClick={async () => {
                             try {
-                              await toggleVendorRevoke(v.id, v.revoked ?? false);
-                              toast({
-                                title: v.revoked ? "Unrevoked" : "Revoked",
-                                description: v.revoked
-                                  ? "Vendor can now sell products."
-                                  : "Vendor cannot sell products.",
-                              });
+                              await approveApplication(app);
+                              toast({ title: "Approved", description: `${app.store_name} can now sell on the marketplace` });
                             } catch (e) {
                               toast({
                                 title: "Failed",
@@ -386,162 +344,288 @@ export default function AdminDashboardPage() {
                             }
                           }}
                         >
-                          {v.revoked ? "Unrevoke" : "Revoke"}
+                          <CheckCircle2 size={14} className="mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="rounded-full flex-1"
+                          onClick={async () => {
+                            try {
+                              await rejectApplication(app);
+                              toast({ title: "Rejected", description: "Application rejected" });
+                            } catch (e) {
+                              toast({
+                                title: "Failed",
+                                description: e instanceof Error ? e.message : "Unknown error",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          <X size={14} className="mr-1" />
+                          Reject
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Products</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-700">
-              {products.length === 0 ? (
-                <div className="text-gray-600">No products.</div>
+            {/* Vendors Section */}
+            <div id="vendors">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold">All Vendors</h3>
+                <span className="text-xs text-gray-500">{vendors.length} total</span>
+              </div>
+              
+              {vendors.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 border border-dashed border-gray-200 text-center">
+                  <Users size={24} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm text-gray-500">No vendors yet</p>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {products.slice(0, 50).map((p) => {
-                    const vendor = vendors.find((v) => v.id === p.vendorId);
-                    const current = normalizeCategoryName(p.category);
-                    const selected = categoryEdits[p.id] ?? (isRealCategoryName(current) ? current : "");
-                    return (
-                      <div key={p.id} className="rounded-lg border border-iwanyu-border bg-white p-4">
-                        <div className="font-semibold text-gray-900">{p.title}</div>
-                        <div className="mt-1 text-xs text-gray-600">
-                          Vendor: {vendor?.name ?? "Unknown"} • Price: {formatMoney(p.price)} • Stock: {p.inStock ? "In" : "Out"}
-                        </div>
-                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
-                          <div>
-                            <div className="text-xs font-medium text-gray-700">Category</div>
-                            {categoryOptions.length === 0 ? (
-                              <div className="mt-1 text-xs text-gray-500">No categories yet.</div>
-                            ) : (
-                              <Select
-                                value={selected}
-                                onValueChange={(v) =>
-                                  setCategoryEdits((prev) => ({
-                                    ...prev,
-                                    [p.id]: v,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categoryOptions.map((c) => (
-                                    <SelectItem key={c} value={c}>
-                                      {c}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                <div className="grid gap-3">
+                  {vendors.map((vendor) => (
+                    <div key={vendor.id} className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-bold">{vendor.name}</h4>
+                            {vendor.verified && (
+                              <BadgeCheck size={14} className="text-blue-600" />
                             )}
                           </div>
-
-                          <div className="flex gap-2 md:justify-end">
+                          <p className="text-xs text-gray-500">{vendor.location || "No location"}</p>
+                          <div className="flex gap-2 mt-2">
+                            {vendor.status === "approved" ? (
+                              <span className="bg-green-50 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                                Approved
+                              </span>
+                            ) : vendor.status === "rejected" ? (
+                              <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                                Rejected
+                              </span>
+                            ) : (
+                              <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                                Pending
+                              </span>
+                            )}
+                            {vendor.revoked && (
+                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                                Revoked
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {!vendor.status || vendor.status !== "approved" ? (
                             <Button
-                              variant="outline"
-                              className="rounded-full"
-                              disabled={categoryOptions.length === 0 || !selected || selected === current}
+                              size="sm"
+                              className="rounded-full bg-black text-white hover:bg-gray-800"
                               onClick={async () => {
                                 try {
-                                  await updateProductCategory(p.id, selected);
-                                  toast({ title: "Updated", description: "Category saved." });
+                                  await approveVendor(vendor.id);
+                                  toast({ title: "Approved", description: `${vendor.name} is now approved` });
                                 } catch (e) {
                                   toast({
-                                    title: "Update failed",
+                                    title: "Failed",
                                     description: e instanceof Error ? e.message : "Unknown error",
                                     variant: "destructive",
                                   });
                                 }
                               }}
                             >
-                              Save category
+                              Approve
                             </Button>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Link to={`/product/${p.id}`}>
-                            <Button variant="outline" className="rounded-full">View</Button>
-                          </Link>
+                          ) : null}
                           <Button
-                            variant="outline"
+                            size="sm"
+                            variant={vendor.revoked ? "outline" : "destructive"}
                             className="rounded-full"
-                            onClick={() => {
-                              setDeleteProductId(p.id);
-                              setDeleteReason("");
-                              setDeleteOpen(true);
+                            onClick={async () => {
+                              try {
+                                await toggleVendorRevoke(vendor.id, vendor.revoked ?? false);
+                                toast({
+                                  title: vendor.revoked ? "Restored" : "Revoked",
+                                  description: vendor.revoked ? "Vendor can sell again" : "Vendor cannot sell",
+                                });
+                              } catch (e) {
+                                toast({
+                                  title: "Failed",
+                                  description: e instanceof Error ? e.message : "Unknown error",
+                                  variant: "destructive",
+                                });
+                              }
                             }}
                           >
-                            Delete + notify vendor
+                            {vendor.revoked ? "Restore" : "Revoke"}
                           </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Products Section */}
+            <div id="products">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold">Product Management</h3>
+                <span className="text-xs text-gray-500">{products.length} total</span>
+              </div>
+              
+              {products.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 border border-dashed border-gray-200 text-center">
+                  <Boxes size={24} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm text-gray-500">No products yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {products.slice(0, 20).map((product) => {
+                    const vendor = vendors.find((v) => v.id === product.vendorId);
+                    const current = normalizeCategoryName(product.category);
+                    const selected = categoryEdits[product.id] ?? (isRealCategoryName(current) ? current : "");
+                    
+                    return (
+                      <div key={product.id} className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h4 className="font-bold mb-1">{product.title}</h4>
+                            <p className="text-xs text-gray-500">
+                              {vendor?.name || "Unknown vendor"} • {formatMoney(product.price)} • {product.inStock ? "In Stock" : "Out of Stock"}
+                            </p>
+                          </div>
+                          {!product.inStock && (
+                            <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                              Out of Stock
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                          <div className="flex items-center gap-2">
+                            <Tag size={14} className="text-gray-400" />
+                            {categoryOptions.length === 0 ? (
+                              <span className="text-xs text-gray-500">No categories</span>
+                            ) : (
+                              <Select
+                                value={selected}
+                                onValueChange={(v) =>
+                                  setCategoryEdits((prev) => ({
+                                    ...prev,
+                                    [product.id]: v,
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categoryOptions.map((c) => (
+                                    <SelectItem key={c} value={c} className="text-xs">
+                                      {c}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full h-8 text-xs"
+                              disabled={categoryOptions.length === 0 || !selected || selected === current}
+                              onClick={async () => {
+                                try {
+                                  await updateProductCategory(product.id, selected);
+                                  toast({ title: "Updated", description: "Category saved" });
+                                } catch (e) {
+                                  toast({
+                                    title: "Failed",
+                                    description: e instanceof Error ? e.message : "Unknown error",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              Save
+                            </Button>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Link to={`/product/${product.id}`}>
+                              <Button size="sm" variant="outline" className="rounded-full h-8">
+                                <Eye size={14} />
+                              </Button>
+                            </Link>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full h-8"
+                              onClick={() => {
+                                setDeleteProductId(product.id);
+                                setDeleteReason("");
+                                setDeleteOpen(true);
+                              }}
+                            >
+                              <Trash2 size={14} className="text-red-600" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
-                  {products.length > 50 ? (
-                    <div className="text-xs text-gray-500">Showing first 50 products.</div>
-                  ) : null}
+                  {products.length > 20 && (
+                    <p className="text-xs text-gray-500 text-center pt-4">Showing first 20 products</p>
+                  )}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Must-have admin features for a modern marketplace</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-700 space-y-2">
-              <div>• Vendor onboarding + KYC/verification</div>
-              <div>• Product moderation & category management</div>
-              <div>• Order oversight + refunds/returns</div>
-              <div>• Payouts + fees + tax reports</div>
-              <div>• Fraud/risk rules + audit logs (events)</div>
-              <div>• Dispute management & support tooling</div>
-            </CardContent>
-          </Card>
-        </section>
+            </div>
+          </main>
+        </div>
       </div>
 
+      {/* Delete Product Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete product</AlertDialogTitle>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the product and sends a policy notification to the vendor.
+              This will remove the product and notify the vendor with your reason.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-700">Reason</div>
-            <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="Explain what policy was violated..." />
+            <label className="text-sm font-medium">Reason for removal</label>
+            <Textarea 
+              value={deleteReason} 
+              onChange={(e) => setDeleteReason(e.target.value)} 
+              placeholder="Explain policy violation..." 
+              rows={3}
+            />
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="rounded-full bg-red-600 hover:bg-red-700"
               onClick={async (e) => {
                 e.preventDefault();
                 try {
                   await deleteProductWithReason();
-                  toast({ title: "Deleted", description: "Product removed and vendor notified." });
+                  toast({ title: "Deleted", description: "Product removed and vendor notified" });
                 } catch (err) {
                   toast({
-                    title: "Delete failed",
+                    title: "Failed",
                     description: err instanceof Error ? err.message : "Unknown error",
                     variant: "destructive",
                   });
                 }
               }}
             >
-              Delete
+              Delete Product
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
