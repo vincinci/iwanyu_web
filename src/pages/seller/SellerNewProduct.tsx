@@ -138,6 +138,8 @@ export default function SellerNewProductPage() {
   const [primaryMediaId, setPrimaryMediaId] = useState<string>("");
   const [inStock, setInStock] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadingCount, setUploadingCount] = useState(0);
 
   const [variantsEnabled, setVariantsEnabled] = useState(true);
   const [colors, setColors] = useState<ProductVariantColor[]>([
@@ -639,6 +641,8 @@ export default function SellerNewProductPage() {
                       if (!resolvedVendorId) throw new Error("Missing vendor");
 
                       setUploading(true);
+                      setUploadProgress({});
+                      setUploadingCount(mediaFiles.length);
 
                       const { data } = await supabase.auth.getSession();
                       const accessToken = data.session?.access_token;
@@ -646,20 +650,39 @@ export default function SellerNewProductPage() {
 
                       const productId = createId("p");
 
-                      const uploadedByIndex: Array<{ kind: "image" | "video"; url: string; publicId: string } | null> =
-                        mediaFiles.map(() => null);
-
-                      for (let idx = 0; idx < mediaFiles.length; idx++) {
-                        const file = mediaFiles[idx];
+                      // Upload all files in parallel with progress tracking
+                      const uploadPromises = mediaFiles.map(async (file, idx) => {
                         const kind = file.type.startsWith("video/") ? "video" : "image";
-                        const result = await uploadMediaToCloudinary(file, { kind, folder: "products", accessToken });
-                        uploadedByIndex[idx] = { kind, url: result.url, publicId: result.publicId };
-                      }
+                        const fileId = fileKey(file);
+                        
+                        try {
+                          const result = await uploadMediaToCloudinary(file, {
+                            kind,
+                            folder: "products",
+                            accessToken,
+                            onProgress: (progress) => {
+                              setUploadProgress((prev) => ({ ...prev, [fileId]: progress }));
+                            },
+                          });
+                          
+                          setUploadingCount((prev) => prev - 1);
+                          return { idx, kind, url: result.url, publicId: result.publicId };
+                        } catch (error) {
+                          setUploadingCount((prev) => prev - 1);
+                          throw error;
+                        }
+                      });
 
-                      const uploaded = uploadedByIndex.filter(Boolean) as Array<{ kind: "image" | "video"; url: string; publicId: string }>;
+                      const uploadResults = await Promise.all(uploadPromises);
+                      const uploaded = uploadResults.filter(Boolean) as Array<{
+                        idx: number;
+                        kind: "image" | "video";
+                        url: string;
+                        publicId: string;
+                      }>;
 
                       const primaryIdx = mediaFiles.findIndex((f) => fileKey(f) === primaryMediaId);
-                      const primaryFromSelected = primaryIdx >= 0 ? uploadedByIndex[primaryIdx] : null;
+                      const primaryFromSelected = uploaded.find((u) => u.idx === primaryIdx);
                       const primaryImage =
                         primaryFromSelected?.kind === "image"
                           ? primaryFromSelected.url
@@ -714,6 +737,46 @@ export default function SellerNewProductPage() {
                 >
                   {uploading ? "Uploading..." : "Publish product"}
                 </Button>
+
+                {uploading && mediaFiles.length > 0 && (
+                  <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">Uploading media...</span>
+                      <span className="text-muted-foreground">
+                        {mediaFiles.length - uploadingCount} / {mediaFiles.length} complete
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {mediaFiles.map((file) => {
+                        const fileId = fileKey(file);
+                        const progress = uploadProgress[fileId] || 0;
+                        const isComplete = progress === 100;
+                        
+                        return (
+                          <div key={fileId} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="truncate max-w-[200px] text-muted-foreground">
+                                {file.name}
+                              </span>
+                              <span className={`font-medium ${isComplete ? 'text-green-600' : 'text-foreground'}`}>
+                                {isComplete ? '✓' : `${progress}%`}
+                              </span>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-300 ${
+                                  isComplete ? 'bg-green-600' : 'bg-black'
+                                }`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <Link to="/seller/products" className="block">
                   <Button variant="outline" className="w-full rounded-md">

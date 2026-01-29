@@ -74,6 +74,7 @@ export async function uploadMediaToCloudinary(
     kind: CloudinaryMediaKind;
     folder?: string;
     accessToken: string;
+    onProgress?: (progress: number) => void;
   }
 ): Promise<{ url: string; publicId: string }> {
   const sig = await getCloudinaryUploadSignature({ folder: input.folder, accessToken: input.accessToken });
@@ -86,17 +87,45 @@ export async function uploadMediaToCloudinary(
   form.append("folder", sig.folder);
 
   const uploadUrl = `https://api.cloudinary.com/v1_1/${sig.cloudName}/${input.kind}/upload`;
-  const res = await fetch(uploadUrl, { method: "POST", body: form });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Cloudinary upload failed (${res.status}): ${text}`);
-  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
 
-  const data = (await res.json()) as { secure_url?: string; public_id?: string };
-  if (!data.secure_url || !data.public_id) throw new Error("Cloudinary response missing secure_url/public_id");
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && input.onProgress) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        input.onProgress(percentComplete);
+      }
+    });
 
-  return { url: data.secure_url, publicId: data.public_id };
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText) as { secure_url?: string; public_id?: string };
+          if (!data.secure_url || !data.public_id) {
+            reject(new Error("Cloudinary response missing secure_url/public_id"));
+          } else {
+            resolve({ url: data.secure_url, publicId: data.public_id });
+          }
+        } catch (e) {
+          reject(new Error("Failed to parse Cloudinary response"));
+        }
+      } else {
+        reject(new Error(`Cloudinary upload failed (${xhr.status}): ${xhr.responseText}`));
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error during upload"));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload aborted"));
+    });
+
+    xhr.open("POST", uploadUrl);
+    xhr.send(form);
+  });
 }
 
 export async function uploadImageToCloudinary(file: File, input: { folder?: string; accessToken: string }) {
