@@ -21,6 +21,9 @@ const WishlistPage = lazy(() => import("./pages/Wishlist"));
 const SellPage = lazy(() => import("./pages/Sell"));
 const SellerDashboardPage = lazy(() => import("./pages/seller/SellerDashboard"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminVendorsPage = lazy(() => import("./pages/admin/AdminVendors"));
+const AdminProductsPage = lazy(() => import("./pages/admin/AdminProducts"));
+const AdminApplicationsPage = lazy(() => import("./pages/admin/AdminApplications"));
 const StaticPage = lazy(() => import("./pages/StaticPage"));
 const SellerProductsPage = lazy(() => import("./pages/seller/SellerProducts"));
 const SellerNewProductPage = lazy(() => import("./pages/seller/SellerNewProduct"));
@@ -167,6 +170,30 @@ const AppContent = () => {
           element={
             <RequireAuth roles={["admin"]}>
               {withSuspense(<AdminDashboardPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/vendors"
+          element={
+            <RequireAuth roles={["admin"]}>
+              {withSuspense(<AdminVendorsPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <RequireAuth roles={["admin"]}>
+              {withSuspense(<AdminProductsPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/applications"
+          element={
+            <RequireAuth roles={["admin"]}>
+              {withSuspense(<AdminApplicationsPage />)}
             </RequireAuth>
           }
         />

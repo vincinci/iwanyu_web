@@ -23,10 +23,10 @@ import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 
 const nav = [
-  { label: "Overview", icon: ClipboardList, href: "/admin" },
-  { label: "Vendors", icon: Users, href: "/admin#vendors" },
-  { label: "Products", icon: Boxes, href: "/admin#products" },
-  { label: "Applications", icon: BadgeCheck, href: "/admin#applications" },
+  { label: "Overview", icon: ClipboardList, href: "/admin", active: true },
+  { label: "Vendors", icon: Users, href: "/admin/vendors" },
+  { label: "Products", icon: Boxes, href: "/admin/products" },
+  { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
 ];
 
 type VendorApplication = {
@@ -256,20 +256,21 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-12">
-          {/* Interactive Sidebar */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar */}
           <aside className="w-full lg:w-48 shrink-0">
             <nav className="flex flex-col gap-1">
-              {nav.map((item, idx) => (
-                <a
+              {nav.map((item) => (
+                <Link
                   key={item.label}
-                  href={item.href}
-                  className="group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:text-black hover:bg-gradient-to-r hover:from-gray-50 hover:to-white transition-all duration-300 hover:scale-105 hover:shadow-sm animate-in slide-in-from-left-4 fade-in"
-                  style={{ animationDelay: `${idx * 50}ms` }}
+                  to={item.href}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    item.active ? "bg-black text-white" : "text-gray-500 hover:bg-gray-100 hover:text-black"
+                  }`}
                 >
-                  <item.icon size={18} className="group-hover:scale-110 group-hover:rotate-3 transition-transform" />
-                  <span className="group-hover:translate-x-1 transition-transform">{item.label}</span>
-                </a>
+                  <item.icon size={18} />
+                  {item.label}
+                </Link>
               ))}
             </nav>
           </aside>
