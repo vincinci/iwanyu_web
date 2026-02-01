@@ -77,23 +77,23 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur">
-      {/* Top utility bar */}
-      <div className="hidden md:block bg-gray-900">
-        <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between text-xs text-gray-300">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                Free shipping on orders over $50
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
+      {/* Top utility bar - minimal */}
+      <div className="hidden md:block border-b border-gray-50">
+        <div className="container mx-auto px-4 py-1.5">
+          <div className="flex items-center justify-between text-[11px] text-gray-500">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-1 w-1 rounded-full bg-green-500"></span>
+                Free shipping over $50
               </span>
-              <span className="text-gray-500">|</span>
+              <span className="text-gray-300">·</span>
               <span>30-day returns</span>
             </div>
-            <div className="flex items-center gap-5">
-              <Link to="/help" className="hover:text-white transition-colors">Help Center</Link>
-              <Link to="/track-order" className="hover:text-white transition-colors">Track Order</Link>
-              <Link to="/sell" className="hover:text-white transition-colors font-medium text-amber-400 hover:text-amber-300">Sell on iwanyu</Link>
+            <div className="flex items-center gap-4">
+              <Link to="/help" className="hover:text-gray-900 transition-colors">Help</Link>
+              <Link to="/track-order" className="hover:text-gray-900 transition-colors">Track Order</Link>
+              <Link to="/sell" className="text-amber-600 hover:text-amber-700 font-medium transition-colors">Sell on iwanyu</Link>
             </div>
           </div>
         </div>
