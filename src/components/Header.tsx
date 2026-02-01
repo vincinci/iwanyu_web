@@ -77,72 +77,64 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur">
-      {/* Top utility bar */}
-      <div className="hidden md:block bg-gray-900">
+    <header className="sticky top-0 z-50 w-full bg-white">
+      {/* Minimal announcement bar */}
+      <div className="hidden md:block bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-100">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between text-xs text-gray-300">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                Free shipping on orders over $50
-              </span>
-              <span className="text-gray-500">|</span>
-              <span>30-day returns</span>
-            </div>
-            <div className="flex items-center gap-5">
-              <Link to="/help" className="hover:text-white transition-colors">Help Center</Link>
-              <Link to="/track-order" className="hover:text-white transition-colors">Track Order</Link>
-              <Link to="/sell" className="hover:text-white transition-colors font-medium text-amber-400 hover:text-amber-300">Sell on iwanyu</Link>
-            </div>
-          </div>
+          <p className="text-center text-xs font-medium text-amber-800">
+            ✨ Free shipping on orders over $50 · Easy 30-day returns
+          </p>
         </div>
       </div>
 
-      <div className="bg-background">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-6 lg:gap-8">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 shrink-0 group">
-              <img
-                src="/logo.png"
-                alt="iwanyu"
-                className="h-14 w-auto object-contain"
-                loading="eager"
-              />
-              <span className="sr-only">iwanyu</span>
-            </Link>
+      <div className="border-b border-gray-100">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-8">
+            {/* Left: Logo + Nav */}
+            <div className="flex items-center gap-10">
+              <Link to="/" className="shrink-0">
+                <img
+                  src="/logo.png"
+                  alt="iwanyu"
+                  className="h-8 w-auto"
+                  loading="eager"
+                />
+              </Link>
+              
+              {/* Desktop Nav */}
+              <nav className="hidden lg:flex items-center gap-8">
+                <Link to="/deals" className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors">Deals</Link>
+                {categories.slice(0, 4).map(cat => (
+                  <Link key={cat.id} to={`/category/${cat.id}`} className="text-sm text-gray-600 hover:text-black transition-colors">
+                    {cat.name}
+                  </Link>
+                ))}
+                <Link to="/category/all" className="text-sm text-gray-400 hover:text-black transition-colors">More</Link>
+              </nav>
+            </div>
             
-            {/* Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-xl mx-auto relative">
-              <form onSubmit={handleSearchSubmit} className="w-full relative flex">
-                <div className="relative flex-1">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search products, brands, categories..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    onFocus={() => searchQuery.length > 1 && setShowSearchSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSearchSuggestions(false), 200)}
-                    className="h-11 w-full rounded-l-full border-2 border-gray-200 bg-gray-50 pl-10 pr-10 text-sm placeholder:text-gray-400 focus:border-amber-400 focus:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={handleClearSearch}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <XCircle size={16} />
-                    </button>
-                  )}
-                </div>
-                <Button
-                    type="submit"
-                    className="h-11 px-6 rounded-r-full bg-amber-400 hover:bg-amber-500 text-black font-medium"
+            {/* Center: Search */}
+            <div className="hidden md:flex flex-1 max-w-md relative">
+              <form onSubmit={handleSearchSubmit} className="w-full relative">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onFocus={() => searchQuery.length > 1 && setShowSearchSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSearchSuggestions(false), 200)}
+                  className="h-10 w-full rounded-full border border-gray-200 bg-gray-50 pl-11 pr-10 text-sm placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    Search
-                  </Button>
+                    <XCircle size={16} />
+                  </button>
+                )}
               </form>
               
               {/* Search Suggestions */}
@@ -320,23 +312,6 @@ export const Header = () => {
           </div>
         </div>
 
-        {/* Categories Nav */}
-        <div className="hidden md:block border-t border-gray-100">
-          <div className="container mx-auto px-4">
-            <nav className="flex items-center justify-center gap-1 py-1">
-              <Link to="/deals" className="px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center gap-1.5">
-                <Sparkles size={14} /> Hot Deals
-              </Link>
-              <Link to="/category/new-arrivals" className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-full transition-colors">New In</Link>
-              {categories.slice(0, 5).map(cat => (
-                <Link key={cat.id} to={`/category/${cat.id}`} className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                  {cat.name}
-                </Link>
-              ))}
-              <Link to="/category/all" className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-full transition-colors">All Categories</Link>
-            </nav>
-          </div>
-        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
