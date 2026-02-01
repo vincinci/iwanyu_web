@@ -114,13 +114,13 @@ export default function ProductPage() {
         {/* Airbnb-style Photo Grid */}
         <div className="relative rounded-xl overflow-hidden mb-6">
           {galleryMedia.length >= 5 ? (
-            <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[480px]">
+            <div className="grid grid-cols-4 grid-rows-2 gap-1 h-[400px] md:h-[480px]">
               {/* Main large image */}
               <div className="col-span-2 row-span-2">
                 <img
                   src={getOptimizedCloudinaryUrl(galleryMedia[0].url, { kind: "image", width: 1000 })}
                   alt={product.title}
-                  className="w-full h-full object-cover rounded-l-xl cursor-pointer hover:brightness-90 transition"
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-95 transition-all duration-200"
                   onClick={() => setShowAllPhotos(true)}
                 />
               </div>
@@ -129,7 +129,7 @@ export default function ProductPage() {
                 <img
                   src={getOptimizedCloudinaryUrl(galleryMedia[1].url, { kind: "image", width: 600 })}
                   alt=""
-                  className="w-full h-full object-cover cursor-pointer hover:brightness-90 transition"
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-95 transition-all duration-200"
                   onClick={() => setShowAllPhotos(true)}
                 />
               </div>
@@ -137,7 +137,7 @@ export default function ProductPage() {
                 <img
                   src={getOptimizedCloudinaryUrl(galleryMedia[2].url, { kind: "image", width: 600 })}
                   alt=""
-                  className="w-full h-full object-cover rounded-tr-xl cursor-pointer hover:brightness-90 transition"
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-95 transition-all duration-200"
                   onClick={() => setShowAllPhotos(true)}
                 />
               </div>
@@ -146,7 +146,7 @@ export default function ProductPage() {
                 <img
                   src={getOptimizedCloudinaryUrl(galleryMedia[3].url, { kind: "image", width: 600 })}
                   alt=""
-                  className="w-full h-full object-cover cursor-pointer hover:brightness-90 transition"
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-95 transition-all duration-200"
                   onClick={() => setShowAllPhotos(true)}
                 />
               </div>
@@ -154,7 +154,7 @@ export default function ProductPage() {
                 <img
                   src={getOptimizedCloudinaryUrl(galleryMedia[4].url, { kind: "image", width: 600 })}
                   alt=""
-                  className="w-full h-full object-cover rounded-br-xl cursor-pointer hover:brightness-90 transition"
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-95 transition-all duration-200"
                   onClick={() => setShowAllPhotos(true)}
                 />
               </div>
@@ -164,7 +164,7 @@ export default function ProductPage() {
               <img
                 src={getOptimizedCloudinaryUrl(galleryMedia[0].url, { kind: "image", width: 1200 })}
                 alt={product.title}
-                className="w-full h-full object-cover rounded-xl cursor-pointer hover:brightness-90 transition"
+                className="w-full h-full object-cover cursor-pointer hover:brightness-95 transition-all duration-200"
                 onClick={() => setShowAllPhotos(true)}
               />
             </div>
@@ -229,42 +229,22 @@ export default function ProductPage() {
               </div>
               {vendor && (
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center text-white font-bold text-lg">
                     {vendor.name.charAt(0)}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Guest Favorite-style Badge */}
-            <div className="border rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  <span className="text-2xl">🏆</span>
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-sm">Customer</span>
-                    <span className="font-semibold text-sm">favorite</span>
-                  </div>
-                  <span className="text-2xl">🏆</span>
-                </div>
-                <span className="text-sm text-gray-600 max-w-[200px]">
-                  One of the most loved products on iwanyu
-                </span>
+            {/* Rating Summary */}
+            <div className="border rounded-xl p-4 flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Star size={20} fill="currentColor" className="text-black" />
+                <span className="text-xl font-semibold">{product.rating.toFixed(1)}</span>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <div className="text-lg font-semibold">{product.rating.toFixed(1)}</div>
-                  <div className="flex gap-0.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={12} fill={i < Math.floor(product.rating) ? "currentColor" : "none"} className="text-black" />
-                    ))}
-                  </div>
-                </div>
-                <div className="h-8 w-px bg-gray-200" />
-                <div className="text-center">
-                  <div className="text-lg font-semibold">{product.reviewCount}</div>
-                  <div className="text-xs text-gray-500 underline">Reviews</div>
-                </div>
+              <div className="h-6 w-px bg-gray-200" />
+              <div className="text-sm text-muted-foreground">
+                {product.reviewCount} reviews
               </div>
             </div>
 
@@ -360,7 +340,7 @@ export default function ProductPage() {
 
               {/* Add to Cart button */}
               <Button
-                className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-lg h-12 text-base font-medium"
+                className="w-full bg-black hover:bg-gray-800 text-white rounded-lg h-12 text-base font-medium"
                 disabled={!product.inStock}
                 onClick={() => {
                   addItem({ productId: product.id, title: product.title, price: product.price, image: product.image });
