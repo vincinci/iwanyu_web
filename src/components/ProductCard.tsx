@@ -75,13 +75,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     >
       <div className="relative overflow-hidden rounded-xl bg-white transition-all duration-300 hover:shadow-lg">
         
-        {/* Image Container - slightly taller aspect ratio */}
-        <div className="relative aspect-[5/6] overflow-hidden rounded-xl bg-gray-100">
+        {/* Image Container */}
+        <div className="relative aspect-square overflow-hidden rounded-xl bg-gray-50">
           {image ? (
             <img
               src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600 })}
               alt={title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
