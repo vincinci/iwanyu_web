@@ -238,18 +238,26 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-lg tracking-tight">Admin Control</span>
-            <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Admin</span>
-          </div>
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" className="text-sm font-medium hover:bg-transparent hover:text-black">Storefront</Button>
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/logo.png" alt="iwanyu" className="h-8 w-auto brightness-0 invert" />
             </Link>
-            <div className="h-8 w-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
-              {user.name?.charAt(0) || "A"}
+            <div className="h-5 w-px bg-gray-600" />
+            <div className="flex items-center gap-2">
+              <span className="text-white font-semibold text-sm">Admin Panel</span>
+              <span className="bg-amber-400/20 text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Pro</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="text-gray-300 hover:text-white text-sm font-medium transition-colors">← Storefront</Link>
+            <div className="h-5 w-px bg-gray-600" />
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
+                {user.name?.charAt(0) || "A"}
+              </div>
+              <span className="text-gray-300 text-sm hidden sm:block">{user.name || "Admin"}</span>
             </div>
           </div>
         </div>

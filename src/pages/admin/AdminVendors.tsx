@@ -72,16 +72,22 @@ export default function AdminVendorsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link to="/admin" className="font-bold text-lg tracking-tight hover:text-gray-600">Admin</Link>
-            <span className="text-gray-300">/</span>
-            <span className="text-gray-600">Vendors</span>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/logo.png" alt="iwanyu" className="h-8 w-auto brightness-0 invert" />
+            </Link>
+            <div className="h-5 w-px bg-gray-600" />
+            <div className="flex items-center gap-2">
+              <Link to="/admin" className="text-gray-400 hover:text-white text-sm font-medium transition-colors">Admin</Link>
+              <span className="text-gray-500">/</span>
+              <span className="text-white font-semibold text-sm">Vendors</span>
+            </div>
           </div>
-          <Link to="/">
-            <Button variant="ghost" size="sm">Storefront</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="text-gray-300 hover:text-white text-sm font-medium transition-colors">← Storefront</Link>
+          </div>
         </div>
       </div>
 
