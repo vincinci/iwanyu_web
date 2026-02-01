@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/context/cart";
 import { formatMoney } from "@/lib/money";
+import { calculateServiceFee, calculateVendorPayout, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -170,7 +171,9 @@ export default function CheckoutPage() {
                       }
 
                       const orderId = createId("ord");
-                      const totalRwf = Math.round(subtotal);
+                      const serviceFeeRwf = calculateServiceFee(subtotal);
+                      const totalRwf = Math.round(subtotal + serviceFeeRwf);
+                      const vendorPayoutRwf = calculateVendorPayout(subtotal);
 
                       const paymentMeta = {
                         provider: "flutterwave",
@@ -187,6 +190,8 @@ export default function CheckoutPage() {
                         shipping_address: trimmedAddress,
                         status: "Placed",
                         total_rwf: totalRwf,
+                        service_fee_rwf: serviceFeeRwf,
+                        vendor_payout_rwf: vendorPayoutRwf,
                         payment: paymentMeta,
                       });
 
@@ -197,16 +202,20 @@ export default function CheckoutPage() {
                         throw new Error(`Missing vendor for product ${missingVendor.productId}`);
                       }
 
-                      const rows = orderItems.map((i) => ({
-                        order_id: orderId,
-                        product_id: i.productId,
-                        vendor_id: i.vendorId!,
-                        title: i.title,
-                        price_rwf: Math.round(i.price),
-                        quantity: i.quantity,
-                        image_url: i.image,
-                        status: "Placed",
-                      }));
+                      const rows = orderItems.map((i) => {
+                        const lineTotal = Math.round(i.price * i.quantity);
+                        return {
+                          order_id: orderId,
+                          product_id: i.productId,
+                          vendor_id: i.vendorId!,
+                          title: i.title,
+                          price_rwf: Math.round(i.price),
+                          quantity: i.quantity,
+                          image_url: i.image,
+                          status: "Placed",
+                          vendor_payout_rwf: calculateVendorPayout(lineTotal),
+                        };
+                      });
 
                       const { error: itemsErr } = await supabase.from("order_items").insert(rows);
                       if (itemsErr) throw new Error(itemsErr.message);
@@ -290,9 +299,19 @@ export default function CheckoutPage() {
                     <div className="font-medium text-foreground">{formatMoney(i.price * i.quantity)}</div>
                   </div>
                 ))}
-                <div className="border-t pt-3 flex items-center justify-between">
-                  <span className="text-foreground font-medium">Total</span>
-                  <span className="text-foreground font-semibold">{formatMoney(subtotal)}</span>
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-medium text-foreground">{formatMoney(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Service fee ({GUEST_SERVICE_FEE_RATE * 100}%)</span>
+                    <span className="font-medium text-foreground">{formatMoney(calculateServiceFee(subtotal))}</span>
+                  </div>
+                  <div className="border-t pt-2 flex items-center justify-between">
+                    <span className="text-foreground font-medium">Total</span>
+                    <span className="text-foreground font-semibold">{formatMoney(subtotal + calculateServiceFee(subtotal))}</span>
+                  </div>
                 </div>
               </div>
             </div>

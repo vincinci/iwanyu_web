@@ -12,6 +12,7 @@ import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { useWishlist } from "@/context/wishlist";
 import { formatMoney } from "@/lib/money";
+import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary";
 import { ProductCard } from "@/components/ProductCard";
@@ -425,12 +426,16 @@ export default function ProductPage() {
                   <span>{formatMoney(product.price * quantity)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="underline text-gray-600">Service fee ({GUEST_SERVICE_FEE_RATE * 100}%)</span>
+                  <span>{formatMoney(calculateServiceFee(product.price * quantity))}</span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="underline text-gray-600">Shipping</span>
                   <span className={product.freeShipping ? "text-green-600" : ""}>{product.freeShipping ? "Free" : "TBD"}</span>
                 </div>
                 <div className="flex justify-between font-semibold pt-2 border-t">
                   <span>Total</span>
-                  <span>{formatMoney(product.price * quantity)}</span>
+                  <span>{formatMoney(product.price * quantity + calculateServiceFee(product.price * quantity))}</span>
                 </div>
               </div>
             </div>

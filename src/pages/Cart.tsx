@@ -5,6 +5,7 @@ import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/cart";
 import { formatMoney } from "@/lib/money";
+import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useMarketplace } from "@/context/marketplace";
 import { ProductCard } from "@/components/ProductCard";
 
@@ -144,12 +145,16 @@ export default function CartPage() {
                   <span className="font-medium text-foreground">{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Service fee ({GUEST_SERVICE_FEE_RATE * 100}%)</span>
+                  <span className="font-medium text-foreground">{formatMoney(calculateServiceFee(subtotal))}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Shipping</span>
                   <span className="font-medium text-foreground">Calculated</span>
                 </div>
                 <div className="border-t pt-3 flex items-center justify-between">
                   <span className="text-foreground font-medium">Total</span>
-                  <span className="text-foreground font-semibold">{formatMoney(subtotal)}</span>
+                  <span className="text-foreground font-semibold">{formatMoney(subtotal + calculateServiceFee(subtotal))}</span>
                 </div>
               </div>
               <Button
