@@ -1,8 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 
-// V4 API credentials
-const FLUTTERWAVE_CLIENT_ID = Deno.env.get("FLUTTERWAVE_CLIENT_ID") || "";
-const FLUTTERWAVE_CLIENT_SECRET = Deno.env.get("FLUTTERWAVE_CLIENT_SECRET") || "";
+// V3 API - uses secret key directly
+const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY") || "";
 
 interface InitPaymentRequest {
   txRef: string;
@@ -20,29 +19,6 @@ interface InitPaymentRequest {
     description?: string;
     logo?: string;
   };
-}
-
-// Get access token from Flutterwave V4 API
-async function getAccessToken(): Promise<string> {
-  const response = await fetch("https://api.flutterwave.com/v4/auth/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      client_id: FLUTTERWAVE_CLIENT_ID,
-      client_secret: FLUTTERWAVE_CLIENT_SECRET,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to get Flutterwave access token:", errorText);
-    throw new Error("Failed to authenticate with Flutterwave");
-  }
-
-  const data = await response.json();
-  return data.data.access_token;
 }
 
 Deno.serve(async (req: Request) => {
@@ -72,26 +48,30 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get Flutterwave access token
-    const accessToken = await getAccessToken();
+    if (!FLUTTERWAVE_SECRET_KEY) {
+      return new Response(
+        JSON.stringify({ error: "Flutterwave secret key not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Create payment link using V4 API
-    const paymentResponse = await fetch("https://api.flutterwave.com/v4/payments", {
+    // Create payment using Flutterwave Standard V3 API
+    const paymentResponse = await fetch("https://api.flutterwave.com/v3/payments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
       },
       body: JSON.stringify({
         tx_ref: txRef,
         amount: amount,
         currency: currency,
         redirect_url: redirectUrl,
-        payment_options: paymentOptions || "card,mobilemoney",
+        payment_options: paymentOptions || "card,mobilemoneyrwanda",
         customer: {
           email: customer.email,
           name: customer.name || customer.email,
-          phone_number: customer.phone_number || "",
+          phonenumber: customer.phone_number || "",
         },
         customizations: {
           title: customizations?.title || "iwanyu",
@@ -101,20 +81,12 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
-    if (!paymentResponse.ok) {
-      const errorText = await paymentResponse.text();
-      console.error("Flutterwave payment creation failed:", errorText);
-      return new Response(
-        JSON.stringify({ error: "Failed to create payment session" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const paymentData = await paymentResponse.json();
 
     if (paymentData.status !== "success" || !paymentData.data?.link) {
+      console.error("Flutterwave payment creation failed:", JSON.stringify(paymentData));
       return new Response(
-        JSON.stringify({ error: "Payment link not generated", details: paymentData.message }),
+        JSON.stringify({ error: paymentData.message || "Failed to create payment session" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
