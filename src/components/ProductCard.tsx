@@ -111,12 +111,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <button
             onClick={handleAddToCart}
             disabled={!inStock}
-            className={`absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shadow-md transition-all duration-200 hover:scale-110 disabled:opacity-50 ${
+            className={`absolute bottom-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-400/50 transition-all duration-200 hover:scale-110 hover:shadow-orange-400/70 disabled:opacity-50 ${
               isHovered ? 'opacity-100' : 'opacity-0'
             }`}
             title="Add to cart"
           >
-            <Plus size={18} strokeWidth={2} />
+            <Plus size={20} strokeWidth={2.5} />
           </button>
         </div>
         
