@@ -78,15 +78,22 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur">
-      {/* Minimal top links */}
-      <div className="hidden md:block border-b bg-muted/40">
+      {/* Top utility bar */}
+      <div className="hidden md:block bg-gray-900">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Free delivery on orders over $50</span>
+          <div className="flex items-center justify-between text-xs text-gray-300">
             <div className="flex items-center gap-4">
-              <Link to="/help" className="hover:text-foreground transition-colors">Help</Link>
-              <Link to="/track-order" className="hover:text-foreground transition-colors">Track order</Link>
-              <Link to="/sell" className="hover:text-foreground transition-colors">Become a seller</Link>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                Free shipping on orders over $50
+              </span>
+              <span className="text-gray-500">|</span>
+              <span>30-day returns</span>
+            </div>
+            <div className="flex items-center gap-5">
+              <Link to="/help" className="hover:text-white transition-colors">Help Center</Link>
+              <Link to="/track-order" className="hover:text-white transition-colors">Track Order</Link>
+              <Link to="/sell" className="hover:text-white transition-colors font-medium text-amber-400 hover:text-amber-300">Sell on iwanyu</Link>
             </div>
           </div>
         </div>
@@ -100,30 +107,31 @@ export const Header = () => {
               <img
                 src="/logo.png"
                 alt="iwanyu"
-                className="h-20 w-auto object-contain"
+                className="h-10 w-auto object-contain"
                 loading="eager"
               />
               <span className="sr-only">iwanyu</span>
             </Link>
             
-            {/* Search Bar - AliExpress Style (Wide, detailed) */}
-            <div className="hidden md:flex flex-1 max-w-2xl mx-auto relative">
-              <form onSubmit={handleSearchSubmit} className="w-full relative group flex gap-2">
-                <div className="relative flex-1 flex">
+            {/* Search Bar */}
+            <div className="hidden md:flex flex-1 max-w-xl mx-auto relative">
+              <form onSubmit={handleSearchSubmit} className="w-full relative flex">
+                <div className="relative flex-1">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <Input
                     type="text"
-                    placeholder="I'm shopping for..."
+                    placeholder="Search products, brands, categories..."
                     value={searchQuery}
                     onChange={handleSearchChange}
                     onFocus={() => searchQuery.length > 1 && setShowSearchSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSearchSuggestions(false), 200)}
-                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="h-11 w-full rounded-l-full border-2 border-gray-200 bg-gray-50 pl-10 pr-10 text-sm placeholder:text-gray-400 focus:border-amber-400 focus:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={handleClearSearch}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                       <XCircle size={16} />
                     </button>
@@ -131,7 +139,7 @@ export const Header = () => {
                 </div>
                 <Button
                     type="submit"
-                    className="h-10 px-4 rounded-md"
+                    className="h-11 px-6 rounded-r-full bg-amber-400 hover:bg-amber-500 text-black font-medium"
                   >
                     Search
                   </Button>
@@ -312,21 +320,21 @@ export const Header = () => {
           </div>
         </div>
 
-        {/* Categories Bar - Adidas Style (Clean Links) */}
-        <div className="hidden md:block border-t bg-background">
+        {/* Categories Nav */}
+        <div className="hidden md:block border-t border-gray-100">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-center gap-6 py-2.5 text-sm text-muted-foreground">
-              <Link to="/category/new-arrivals" className="hover:text-foreground transition-colors">New arrivals</Link>
-              <Link to="/deals" className="hover:text-foreground transition-colors flex items-center gap-1">
-                <Sparkles size={14} className="text-iwanyu-primary" /> Deals
+            <nav className="flex items-center justify-center gap-1 py-1">
+              <Link to="/deals" className="px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center gap-1.5">
+                <Sparkles size={14} /> Hot Deals
               </Link>
-              {categories.slice(0, 6).map(cat => (
-                <Link key={cat.id} to={`/category/${cat.id}`} className="hover:text-foreground transition-colors">
+              <Link to="/category/new-arrivals" className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-full transition-colors">New In</Link>
+              {categories.slice(0, 5).map(cat => (
+                <Link key={cat.id} to={`/category/${cat.id}`} className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
                   {cat.name}
                 </Link>
               ))}
-              <Link to="/category/all" className="hover:text-foreground transition-colors">See all</Link>
-            </div>
+              <Link to="/category/all" className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-full transition-colors">All Categories</Link>
+            </nav>
           </div>
         </div>
       </div>
