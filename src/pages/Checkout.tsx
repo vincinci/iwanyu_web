@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
-import { openFlutterwaveInline } from "@/lib/flutterwave";
+import { initializeFlutterwavePayment, redirectToFlutterwave } from "@/lib/flutterwave";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -23,7 +23,6 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const { products } = useMarketplace();
   const supabase = getSupabaseClient();
-  const flutterwavePublicKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY;
   const [isPlacing, setIsPlacing] = useState(false);
   const [email, setEmail] = useState(user?.email ?? "");
   const [address, setAddress] = useState("");
@@ -166,8 +165,8 @@ export default function CheckoutPage() {
                         return;
                       }
 
-                      if (!supabase || !flutterwavePublicKey) {
-                        throw new Error("Checkout is not configured. Missing Supabase/Flutterwave environment variables.");
+                      if (!supabase) {
+                        throw new Error("Checkout is not configured. Missing Supabase environment variables.");
                       }
 
                       const orderId = createId("ord");
@@ -177,7 +176,7 @@ export default function CheckoutPage() {
 
                       const paymentMeta = {
                         provider: "flutterwave",
-                        mode: "inline",
+                        mode: "redirect",
                         selected: paymentType,
                         momoNetwork: paymentType === "momo" ? momoNetwork : undefined,
                         momoPhone: paymentType === "momo" ? momoPhone.trim() : undefined,
@@ -226,51 +225,37 @@ export default function CheckoutPage() {
 
                       const customerName = user.name ?? user.email ?? trimmedEmail;
 
-                      const result = await openFlutterwaveInline({
-                        publicKey: flutterwavePublicKey,
-                        txRef: orderId,
-                        amount: totalRwf,
-                        currency: "RWF",
-                        paymentOptions: paymentType === "momo" ? "mobilemoney" : "card",
-                        customer: {
-                          email: trimmedEmail,
-                          name: customerName,
-                          phone_number: momoPhone.trim() || undefined,
+                      // Initialize payment and get redirect URL
+                      const result = await initializeFlutterwavePayment(
+                        {
+                          txRef: orderId,
+                          amount: totalRwf,
+                          currency: "RWF",
+                          redirectUrl: `${window.location.origin}/payment-callback?orderId=${orderId}&amount=${totalRwf}`,
+                          paymentOptions: paymentType === "momo" ? "mobilemoney" : "card",
+                          customer: {
+                            email: trimmedEmail,
+                            name: customerName,
+                            phone_number: momoPhone.trim() || undefined,
+                          },
+                          customizations: {
+                            title: "iwanyu",
+                            description: `Order ${orderId}`,
+                          },
                         },
-                        customizations: {
-                          title: "iwanyu",
-                          description: `Order ${orderId}`,
-                        },
-                      });
+                        accessToken
+                      );
 
-                      if (!result) {
-                        toast({ title: "Payment cancelled", description: "Your order was created but not paid." });
-                        navigate("/orders");
-                        return;
+                      if (!result?.paymentLink) {
+                        throw new Error("Failed to initialize payment. Please try again.");
                       }
 
-                      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-                      if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase env missing");
+                      // Store order ID in sessionStorage for callback
+                      sessionStorage.setItem("pendingOrderId", orderId);
+                      sessionStorage.setItem("pendingOrderAmount", String(totalRwf));
 
-                      const verifyRes = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/functions/v1/flutterwave-verify`, {
-                        method: "POST",
-                        headers: {
-                          "content-type": "application/json",
-                          apikey: supabaseAnonKey,
-                          authorization: `Bearer ${accessToken}`,
-                        },
-                        body: JSON.stringify({ orderId, transactionId: result.transactionId, expectedAmount: totalRwf }),
-                      });
-
-                      if (!verifyRes.ok) {
-                        const text = await verifyRes.text().catch(() => "");
-                        throw new Error(`Payment verification failed: ${text}`);
-                      }
-
-                      clear();
-                      toast({ title: "Payment successful", description: `Order ${orderId} is now processing.` });
-                      navigate("/orders");
+                      // Redirect to Flutterwave hosted checkout
+                      redirectToFlutterwave(result.paymentLink);
                     } catch (e) {
                       toast({
                         title: "Checkout failed",

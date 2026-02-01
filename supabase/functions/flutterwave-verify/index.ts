@@ -1,13 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY") || "";
+// V4 API credentials
+const FLUTTERWAVE_CLIENT_ID = Deno.env.get("FLUTTERWAVE_CLIENT_ID") || "";
+const FLUTTERWAVE_CLIENT_SECRET = Deno.env.get("FLUTTERWAVE_CLIENT_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 interface VerifyRequest {
   orderId: string;
-  transactionId: number;
+  transactionId: string;
   expectedAmount: number;
 }
 
@@ -28,6 +30,29 @@ interface FlutterwaveVerifyResponse {
       phone_number?: string;
     };
   };
+}
+
+// Get access token from Flutterwave V4 API
+async function getAccessToken(): Promise<string> {
+  const response = await fetch("https://api.flutterwave.com/v4/auth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      client_id: FLUTTERWAVE_CLIENT_ID,
+      client_secret: FLUTTERWAVE_CLIENT_SECRET,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Failed to get Flutterwave access token:", errorText);
+    throw new Error("Failed to authenticate with Flutterwave");
+  }
+
+  const data = await response.json();
+  return data.data.access_token;
 }
 
 Deno.serve(async (req: Request) => {
@@ -57,13 +82,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify transaction with Flutterwave
+    // Get Flutterwave access token for V4 API
+    const accessToken = await getAccessToken();
+
+    // Verify transaction with Flutterwave V4 API
     const flwResponse = await fetch(
-      `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
+      `https://api.flutterwave.com/v4/transactions/${transactionId}/verify`,
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
       }
