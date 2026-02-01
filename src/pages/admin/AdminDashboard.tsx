@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -275,118 +275,153 @@ export default function AdminDashboardPage() {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 space-y-12">
-            {/* Stats */}
+          <main className="flex-1 space-y-10">
+            {/* Stats Grid */}
             <div>
-              <h1 className="text-3xl font-bold mb-8 animate-in fade-in slide-in-from-top-4 duration-700">Overview</h1>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="group bg-gradient-to-br from-purple-50 to-white rounded-xl p-6 border border-purple-100 hover:border-purple-300 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-left-4 duration-500">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-purple-600 text-xs font-bold uppercase tracking-wider">Total Vendors</p>
-                    <Users size={20} className="text-purple-400 group-hover:scale-110 transition-transform" />
+              <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
+              
+              {/* Primary Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                      <Users size={18} className="text-purple-600" />
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium">Vendors</span>
                   </div>
-                  <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">{vendors.length}</h2>
-                  <p className="text-xs text-purple-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Active on platform</p>
+                  <p className="text-3xl font-bold">{vendors.length}</p>
+                  <p className="text-xs text-green-600 mt-1">+{vendors.filter(v => v.status === 'approved').length} approved</p>
                 </div>
-                <div className="group bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 border border-blue-100 hover:border-blue-300 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-blue-600 text-xs font-bold uppercase tracking-wider">Total Products</p>
-                    <Boxes size={20} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                
+                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <Boxes size={18} className="text-blue-600" />
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium">Products</span>
                   </div>
-                  <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">{products.length}</h2>
-                  <p className="text-xs text-blue-600 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Listed items</p>
+                  <p className="text-3xl font-bold">{products.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">{products.filter(p => p.inStock).length} in stock</p>
                 </div>
-                <div className="group bg-gradient-to-br from-red-50 to-white rounded-xl p-6 border border-red-100 hover:border-red-300 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer animate-in fade-in slide-in-from-right-4 duration-500 delay-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-red-600 text-xs font-bold uppercase tracking-wider">Pending Applications</p>
-                    <BadgeCheck size={20} className="text-red-400 group-hover:scale-110 transition-transform" />
+                
+                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                      <DollarSign size={18} className="text-green-600" />
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium">Revenue</span>
                   </div>
-                  <h2 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">{loadingApps ? "..." : applications.length}</h2>
-                  {applications.length > 0 && (
-                    <p className="text-xs text-red-600 mt-2 flex items-center gap-1 animate-pulse">
-                      <span className="h-2 w-2 bg-red-600 rounded-full"></span>
-                      Needs review
-                    </p>
-                  )}
+                  <p className="text-3xl font-bold">{formatMoney(products.reduce((sum, p) => sum + (p.price * (p.soldCount || 0)), 0))}</p>
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><TrendingUp size={10} /> Total sales</p>
+                </div>
+                
+                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <ShoppingCart size={18} className="text-amber-600" />
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium">Total Sold</span>
+                  </div>
+                  <p className="text-3xl font-bold">{products.reduce((sum, p) => sum + (p.soldCount || 0), 0).toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">Units sold</p>
+                </div>
+              </div>
+              
+              {/* Secondary Stats Row */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-4 border border-red-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-red-600 font-medium">Pending Apps</span>
+                    {applications.length > 0 && <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>}
+                  </div>
+                  <p className="text-2xl font-bold text-red-600 mt-1">{loadingApps ? "..." : applications.length}</p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <span className="text-xs text-gray-500 font-medium">Out of Stock</span>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{products.filter(p => !p.inStock).length}</p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <span className="text-xs text-gray-500 font-medium">Avg Rating</span>
+                  <p className="text-2xl font-bold text-gray-900 mt-1 flex items-center gap-1">
+                    <Star size={14} className="text-amber-400 fill-amber-400" />
+                    {(products.reduce((sum, p) => sum + (p.rating || 0), 0) / products.length || 0).toFixed(1)}
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <span className="text-xs text-gray-500 font-medium">Avg Price</span>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(products.reduce((sum, p) => sum + p.price, 0) / products.length || 0)}</p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <span className="text-xs text-gray-500 font-medium">Categories</span>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{new Set(products.map(p => normalizeCategoryName(p.category))).size}</p>
                 </div>
               </div>
             </div>
 
             {/* Applications Section */}
             <div id="applications">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Vendor Applications</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Vendor Applications</h3>
                 {applications.length > 0 && (
-                  <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">
+                  <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
                     {applications.length} Pending
                   </span>
                 )}
               </div>
               
               {loadingApps ? (
-                <div className="bg-white rounded-xl p-8 border border-gray-100 text-center">
-                  <p className="text-gray-500">Loading applications...</p>
+                <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
+                  <p className="text-gray-500 text-sm">Loading...</p>
                 </div>
               ) : applications.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 border border-dashed border-gray-200 text-center">
-                  <BadgeCheck size={24} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-500">No pending applications</p>
+                <div className="bg-white rounded-xl p-6 border border-dashed border-gray-200 text-center">
+                  <CheckCircle2 size={20} className="mx-auto text-green-400 mb-2" />
+                  <p className="text-sm text-gray-500">All caught up! No pending applications.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {applications.map((app, idx) => (
-                    <div 
-                      key={app.id} 
-                      className="group bg-white rounded-xl p-6 border border-gray-100 hover:border-purple-200 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-in slide-in-from-bottom-4 fade-in"
-                      style={{ animationDelay: `${idx * 100}ms` }}
-                    >
-                      <div className="flex items-start justify-between mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {applications.map((app) => (
+                    <div key={app.id} className="bg-white rounded-xl p-5 border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
+                      <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="font-bold text-lg mb-1">{app.store_name}</h4>
+                          <h4 className="font-bold">{app.store_name}</h4>
                           <p className="text-xs text-gray-500">{app.location || "No location"}</p>
-                          <p className="text-xs text-gray-400 mt-1">User ID: {app.owner_user_id.slice(0, 8)}...</p>
                         </div>
-                        <span className="bg-yellow-50 text-yellow-700 text-xs font-bold px-3 py-1 rounded-full">
-                          Pending Review
-                        </span>
+                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">REVIEW</span>
                       </div>
                       <div className="flex gap-2">
                         <Button
-                          className="rounded-full bg-gradient-to-r from-green-600 to-green-500 text-white hover:from-green-700 hover:to-green-600 flex-1 hover:scale-105 hover:shadow-lg transition-all duration-300"
+                          size="sm"
+                          className="rounded-full bg-green-600 hover:bg-green-700 text-white flex-1"
                           onClick={async () => {
                             try {
                               await approveApplication(app);
-                              toast({ title: "Approved", description: `${app.store_name} can now sell on the marketplace` });
+                              toast({ title: "Approved", description: `${app.store_name} can now sell` });
                             } catch (e) {
-                              toast({
-                                title: "Failed",
-                                description: e instanceof Error ? e.message : "Unknown error",
-                                variant: "destructive",
-                              });
+                              toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
                             }
                           }}
                         >
-                          <CheckCircle2 size={14} className="mr-1" />
-                          Approve
+                          <CheckCircle2 size={14} className="mr-1" /> Approve
                         </Button>
                         <Button
+                          size="sm"
                           variant="outline"
-                          className="rounded-full flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700 hover:scale-105 transition-all duration-300"
+                          className="rounded-full flex-1 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
                           onClick={async () => {
                             try {
                               await rejectApplication(app);
-                              toast({ title: "Rejected", description: "Application rejected" });
+                              toast({ title: "Rejected" });
                             } catch (e) {
-                              toast({
-                                title: "Failed",
-                                description: e instanceof Error ? e.message : "Unknown error",
-                                variant: "destructive",
-                              });
+                              toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
                             }
                           }}
                         >
-                          <X size={14} className="mr-1" />
-                          Reject
+                          <X size={14} className="mr-1" /> Reject
                         </Button>
                       </div>
                     </div>
@@ -394,11 +429,56 @@ export default function AdminDashboardPage() {
                 </div>
               )}
             </div>
+            
+            {/* Top Products */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Top Selling Products</h3>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Product</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Vendor</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">Price</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">Sold</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...products].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0)).slice(0, 10).map((product) => {
+                      const vendor = vendors.find(v => v.id === product.vendorId);
+                      return (
+                        <tr key={product.id} className="border-b border-gray-50 hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {product.image ? (
+                                <img src={product.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                  <Package size={14} className="text-gray-400" />
+                                </div>
+                              )}
+                              <span className="font-medium line-clamp-1">{product.title}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{vendor?.name || "—"}</td>
+                          <td className="px-4 py-3 text-right font-medium">{formatMoney(product.price)}</td>
+                          <td className="px-4 py-3 text-right">{product.soldCount || 0}</td>
+                          <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(product.price * (product.soldCount || 0))}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             {/* Vendors Section */}
             <div id="vendors">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">All Vendors</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Vendors</h3>
                 <span className="text-xs text-gray-500">{vendors.length} total</span>
               </div>
               
@@ -408,77 +488,79 @@ export default function AdminDashboardPage() {
                   <p className="text-sm text-gray-500">No vendors yet</p>
                 </div>
               ) : (
-                <div className="grid gap-3">
-                  {vendors.map((vendor) => (
-                    <div key={vendor.id} className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold">{vendor.name}</h4>
-                            {vendor.verified && (
-                              <BadgeCheck size={14} className="text-blue-600" />
-                            )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {vendors.map((vendor) => {
+                    const vendorProducts = products.filter(p => p.vendorId === vendor.id);
+                    const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * (p.soldCount || 0)), 0);
+                    const vendorSales = vendorProducts.reduce((sum, p) => sum + (p.soldCount || 0), 0);
+                    
+                    return (
+                      <div key={vendor.id} className="bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold">{vendor.name}</h4>
+                              {vendor.verified && <BadgeCheck size={14} className="text-blue-600" />}
+                            </div>
+                            <p className="text-xs text-gray-500">{vendor.location || "No location"}</p>
                           </div>
-                          <p className="text-xs text-gray-500">{vendor.location || "No location"}</p>
-                          <div className="flex gap-2 mt-2">
+                          <div className="flex flex-col items-end gap-1">
                             {vendor.status === "approved" ? (
-                              <span className="bg-green-50 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                                Approved
-                              </span>
+                              <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">APPROVED</span>
                             ) : vendor.status === "rejected" ? (
-                              <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                                Rejected
-                              </span>
+                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">REJECTED</span>
                             ) : (
-                              <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                                Pending
-                              </span>
+                              <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full">PENDING</span>
                             )}
                             {vendor.revoked && (
-                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                                Revoked
-                              </span>
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">REVOKED</span>
                             )}
                           </div>
                         </div>
+                        
+                        {/* Vendor Stats */}
+                        <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="text-center">
+                            <p className="text-lg font-bold">{vendorProducts.length}</p>
+                            <p className="text-[10px] text-gray-500">Products</p>
+                          </div>
+                          <div className="text-center border-x border-gray-200">
+                            <p className="text-lg font-bold">{vendorSales}</p>
+                            <p className="text-[10px] text-gray-500">Sales</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-green-600">{formatMoney(vendorRevenue)}</p>
+                            <p className="text-[10px] text-gray-500">Revenue</p>
+                          </div>
+                        </div>
+                        
                         <div className="flex gap-2">
-                          {!vendor.status || vendor.status !== "approved" ? (
+                          {(!vendor.status || vendor.status !== "approved") && (
                             <Button
                               size="sm"
-                              className="rounded-full bg-black text-white hover:bg-gray-800"
+                              className="rounded-full bg-black text-white hover:bg-gray-800 flex-1"
                               onClick={async () => {
                                 try {
                                   await approveVendor(vendor.id);
                                   toast({ title: "Approved", description: `${vendor.name} is now approved` });
                                 } catch (e) {
-                                  toast({
-                                    title: "Failed",
-                                    description: e instanceof Error ? e.message : "Unknown error",
-                                    variant: "destructive",
-                                  });
+                                  toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
                                 }
                               }}
                             >
                               Approve
                             </Button>
-                          ) : null}
+                          )}
                           <Button
                             size="sm"
                             variant={vendor.revoked ? "outline" : "destructive"}
-                            className="rounded-full"
+                            className="rounded-full flex-1"
                             onClick={async () => {
                               try {
                                 await toggleVendorRevoke(vendor.id, vendor.revoked ?? false);
-                                toast({
-                                  title: vendor.revoked ? "Restored" : "Revoked",
-                                  description: vendor.revoked ? "Vendor can sell again" : "Vendor cannot sell",
-                                });
+                                toast({ title: vendor.revoked ? "Restored" : "Revoked", description: vendor.revoked ? "Vendor can sell again" : "Vendor cannot sell" });
                               } catch (e) {
-                                toast({
-                                  title: "Failed",
-                                  description: e instanceof Error ? e.message : "Unknown error",
-                                  variant: "destructive",
-                                });
+                                toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
                               }
                             }}
                           >
@@ -486,8 +568,8 @@ export default function AdminDashboardPage() {
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
