@@ -48,8 +48,13 @@ const queryClient = new QueryClient();
 
 function PageFallback() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-10 text-sm text-muted-foreground">
-      Loading...
+    <div className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-32">
+      <div className="relative flex items-center justify-center">
+        {/* Spinning ring */}
+        <div className="absolute h-20 w-20 animate-spin rounded-full border-[3px] border-transparent border-t-amber-400 border-r-amber-400/30" />
+        {/* Logo in center */}
+        <img src="/logo.png" alt="iwanyu" className="h-12 w-12 object-contain rounded-full" />
+      </div>
     </div>
   );
 }
