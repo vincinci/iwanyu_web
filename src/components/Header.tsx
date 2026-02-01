@@ -98,16 +98,16 @@ export const Header = () => {
           </div>
         </div>
       </div>
-
+      
       <div className="bg-background">
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-4 py-2">
           <div className="flex items-center gap-6 lg:gap-8">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0 group">
               <img
                 src="/logo.png"
                 alt="iwanyu"
-                className="h-12 w-auto object-contain"
+                className="h-20 w-auto object-contain"
                 loading="eager"
               />
               <span className="sr-only">iwanyu</span>
