@@ -92,7 +92,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           
           {/* Discount badge */}
           {typeof discountPercentage === "number" && discountPercentage > 0 ? (
-            <div className="absolute left-3 top-3 rounded-md bg-white px-2 py-1 text-xs font-semibold text-black shadow-sm">
+            <div className="absolute left-3 top-3 rounded-md bg-amber-400 px-2 py-1 text-xs font-semibold text-black shadow-sm">
               -{discountPercentage}%
             </div>
           ) : null}
