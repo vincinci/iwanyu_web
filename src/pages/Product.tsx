@@ -1,19 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ShoppingCart, Star, Clock } from "lucide-react";
+import { ShoppingCart, Star, Clock, Share, Heart, ChevronRight, Package, Truck, ShieldCheck } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/context/cart";
 import { useMarketplace } from "@/context/marketplace";
@@ -37,30 +27,24 @@ export default function ProductPage() {
   const { add: addToRecentlyViewed, productIds: recentlyViewedIds } = useRecentlyViewed();
   const supabase = getSupabaseClient();
 
-  // Track recently viewed products
-  useEffect(() => {
-    if (productId) {
-      addToRecentlyViewed(productId);
-    }
-  }, [productId, addToRecentlyViewed]);
-
   const [media, setMedia] = useState<ProductMedia[]>([]);
-  const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
-
   const vendor = product?.vendorId ? getVendorById(product.vendorId) : undefined;
+
+  // Track recently viewed
+  useEffect(() => {
+    if (productId) addToRecentlyViewed(productId);
+  }, [productId, addToRecentlyViewed]);
 
   const galleryMedia = useMemo<ProductMedia[]>(() => {
     if (!product) return [];
-
     const fallback: ProductMedia[] = product.image
       ? [{ id: `primary-${product.id}`, kind: "image", url: product.image }]
       : [];
-
     const source = media.length > 0 ? media : fallback;
-
-    // De-dupe by kind+url to avoid repeated thumbnails.
     const seen = new Set<string>();
     const deduped: ProductMedia[] = [];
     for (const m of source) {
@@ -69,24 +53,8 @@ export default function ProductPage() {
       seen.add(key);
       deduped.push(m);
     }
-
     return deduped;
   }, [media, product]);
-
-  useEffect(() => {
-    if (galleryMedia.length === 0) {
-      setSelectedMediaId(null);
-      return;
-    }
-    if (selectedMediaId && galleryMedia.some((m) => m.id === selectedMediaId)) return;
-    setSelectedMediaId(galleryMedia[0].id);
-  }, [galleryMedia, selectedMediaId]);
-
-  const selectedMedia = useMemo(() => {
-    if (!galleryMedia.length) return null;
-    if (!selectedMediaId) return galleryMedia[0];
-    return galleryMedia.find((m) => m.id === selectedMediaId) ?? galleryMedia[0];
-  }, [galleryMedia, selectedMediaId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,7 +65,6 @@ export default function ProductPage() {
         .select("id, kind, url")
         .eq("product_id", productId)
         .order("position", { ascending: true });
-
       if (cancelled) return;
       if (error) {
         setMedia([]);
@@ -105,11 +72,8 @@ export default function ProductPage() {
       }
       setMedia((data ?? []) as ProductMedia[]);
     }
-
     void load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [supabase, productId]);
 
   if (!product) {
@@ -125,220 +89,317 @@ export default function ProductPage() {
     );
   }
 
+  const descriptionText = product.description?.trim() || "No description provided for this product.";
+  const isLongDescription = descriptionText.length > 300;
+  const displayDescription = showFullDescription ? descriptionText : descriptionText.slice(0, 300);
+
   return (
     <StorefrontPage>
-      <div className="container min-h-screen py-10 lg:py-12">
-        <Breadcrumb className="mb-8">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/">Home</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to={`/category/${product.category.toLowerCase().replace(/\s+/g, "-")}`}>{product.category}</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{product.title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-7">
-            <Card className="overflow-hidden border-border">
-              <CardContent className="p-0">
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-center justify-center rounded-xl border border-border bg-background p-4">
-                    {selectedMedia?.kind === "video" ? (
-                      <video
-                        className="h-[340px] w-full max-w-[560px] rounded-lg object-contain"
-                        controls
-                        preload="metadata"
-                        src={getOptimizedCloudinaryUrl(selectedMedia.url, { kind: "video", width: 1000 })}
-                      />
-                    ) : selectedMedia?.url ? (
-                      <img
-                        src={getOptimizedCloudinaryUrl(selectedMedia.url, { kind: "image", width: 1000 })}
-                        alt={product.title}
-                        className="h-[340px] w-full max-w-[560px] object-contain"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-[320px] w-full items-center justify-center text-sm text-muted-foreground">
-                        No media
-                      </div>
-                    )}
-                  </div>
-
-                  {galleryMedia.length > 1 ? (
-                    <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
-                      {galleryMedia.slice(0, 12).map((m) => {
-                        const isSelected = m.id === selectedMediaId;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => setSelectedMediaId(m.id)}
-                            className={
-                              "overflow-hidden rounded-lg border bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
-                              (isSelected ? "border-primary" : "border-border hover:border-primary/60")
-                            }
-                            aria-label={m.kind === "image" ? "View image" : "View video"}
-                          >
-                            {m.kind === "image" ? (
-                              <img
-                                src={getOptimizedCloudinaryUrl(m.url, { kind: "image", width: 240 })}
-                                alt=""
-                                className="h-14 w-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="flex h-14 items-center justify-center text-xs text-muted-foreground">
-                                Video
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-5">
-            <Card className="border-border lg:sticky lg:top-24">
-              <CardHeader className="pb-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {product.inStock ? <Badge variant="secondary">In stock</Badge> : <Badge variant="destructive">Out of stock</Badge>}
-                  {typeof product.discountPercentage === "number" && product.discountPercentage > 0 ? (
-                    <Badge variant="outline">Save {product.discountPercentage}%</Badge>
-                  ) : null}
-                </div>
-
-                <CardTitle className="mt-3 text-[22px] leading-snug text-foreground sm:text-2xl">
-                  {product.title}
-                </CardTitle>
-
-                {vendor?.name ? (
-                  <div className="mt-2 text-sm text-muted-foreground">by {vendor.name}</div>
-                ) : null}
-
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => {
-                      const filled = i < Math.floor(product.rating);
-                      return (
-                        <Star
-                          key={i}
-                          size={16}
-                          className={filled ? "text-primary" : "text-muted-foreground"}
-                          fill={filled ? "currentColor" : "none"}
-                        />
-                      );
-                    })}
-                    <span className="ml-1 text-muted-foreground">({product.reviewCount})</span>
-                  </div>
-
-                  <span className="text-muted-foreground">·</span>
-
-                  <div className="text-muted-foreground">{product.category}</div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-5">
-                <div className="flex items-end justify-between">
-                  <div className="text-3xl font-semibold text-foreground">{formatMoney(product.price)}</div>
-                  {product.freeShipping ? <Badge variant="secondary">Free shipping</Badge> : null}
-                </div>
-
-                {typeof product.discountPercentage === "number" && product.discountPercentage > 0 ? (
-                  <div className="text-sm text-muted-foreground">
-                    Was {formatMoney(product.price * (1 + product.discountPercentage / 100))}
-                  </div>
-                ) : null}
-
-                <Separator />
-
-                <div className="grid gap-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="text-muted-foreground">Vendor</div>
-                    <div className="font-medium text-foreground">{vendor?.name ?? "—"}</div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-muted-foreground">Shipping</div>
-                    <div className="font-medium text-foreground">
-                      {product.freeShipping ? "Free" : "Calculated at checkout"}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <Button
-                    className="w-full"
-                    disabled={!product.inStock}
-                    onClick={() => {
-                      addItem({ productId: product.id, title: product.title, price: product.price, image: product.image });
-                      toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` });
-                    }}
-                  >
-                    <ShoppingCart size={18} className="mr-2" />
-                    {product.inStock ? "Add to cart" : "Out of stock"}
-                  </Button>
-                  <Link to="/cart">
-                    <Button variant="outline" className="w-full">
-                      View cart
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+      <div className="container min-h-screen py-6 lg:py-8">
+        {/* Header: Title + Share/Save */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{product.title}</h1>
+          <div className="flex items-center gap-4">
+            <button className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2">
+              <Share size={16} />
+              Share
+            </button>
+            <button className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2">
+              <Heart size={16} />
+              Save
+            </button>
           </div>
         </div>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="text-xl">Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {product.description?.trim() ? product.description : "No description provided."}
+        {/* Airbnb-style Photo Grid */}
+        <div className="relative rounded-xl overflow-hidden mb-6">
+          {galleryMedia.length >= 5 ? (
+            <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] md:h-[480px]">
+              {/* Main large image */}
+              <div className="col-span-2 row-span-2">
+                <img
+                  src={getOptimizedCloudinaryUrl(galleryMedia[0].url, { kind: "image", width: 1000 })}
+                  alt={product.title}
+                  className="w-full h-full object-cover rounded-l-xl cursor-pointer hover:brightness-90 transition"
+                  onClick={() => setShowAllPhotos(true)}
+                />
+              </div>
+              {/* Top right 2 images */}
+              <div className="col-span-1 row-span-1">
+                <img
+                  src={getOptimizedCloudinaryUrl(galleryMedia[1].url, { kind: "image", width: 600 })}
+                  alt=""
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-90 transition"
+                  onClick={() => setShowAllPhotos(true)}
+                />
+              </div>
+              <div className="col-span-1 row-span-1">
+                <img
+                  src={getOptimizedCloudinaryUrl(galleryMedia[2].url, { kind: "image", width: 600 })}
+                  alt=""
+                  className="w-full h-full object-cover rounded-tr-xl cursor-pointer hover:brightness-90 transition"
+                  onClick={() => setShowAllPhotos(true)}
+                />
+              </div>
+              {/* Bottom right 2 images */}
+              <div className="col-span-1 row-span-1">
+                <img
+                  src={getOptimizedCloudinaryUrl(galleryMedia[3].url, { kind: "image", width: 600 })}
+                  alt=""
+                  className="w-full h-full object-cover cursor-pointer hover:brightness-90 transition"
+                  onClick={() => setShowAllPhotos(true)}
+                />
+              </div>
+              <div className="col-span-1 row-span-1 relative">
+                <img
+                  src={getOptimizedCloudinaryUrl(galleryMedia[4].url, { kind: "image", width: 600 })}
+                  alt=""
+                  className="w-full h-full object-cover rounded-br-xl cursor-pointer hover:brightness-90 transition"
+                  onClick={() => setShowAllPhotos(true)}
+                />
+              </div>
+            </div>
+          ) : galleryMedia.length > 0 ? (
+            <div className="h-[400px] md:h-[480px]">
+              <img
+                src={getOptimizedCloudinaryUrl(galleryMedia[0].url, { kind: "image", width: 1200 })}
+                alt={product.title}
+                className="w-full h-full object-cover rounded-xl cursor-pointer hover:brightness-90 transition"
+                onClick={() => setShowAllPhotos(true)}
+              />
+            </div>
+          ) : (
+            <div className="h-[300px] bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
+              No images available
+            </div>
+          )}
+
+          {/* Show all photos button */}
+          {galleryMedia.length > 1 && (
+            <button
+              onClick={() => setShowAllPhotos(true)}
+              className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg text-sm font-medium border border-gray-900 hover:bg-gray-50 flex items-center gap-2 shadow-sm"
+            >
+              <div className="grid grid-cols-2 gap-0.5">
+                <div className="w-1.5 h-1.5 bg-gray-900 rounded-sm" />
+                <div className="w-1.5 h-1.5 bg-gray-900 rounded-sm" />
+                <div className="w-1.5 h-1.5 bg-gray-900 rounded-sm" />
+                <div className="w-1.5 h-1.5 bg-gray-900 rounded-sm" />
+              </div>
+              Show all photos
+            </button>
+          )}
+        </div>
+
+        {/* Photo Modal */}
+        {showAllPhotos && (
+          <div className="fixed inset-0 z-50 bg-white overflow-auto">
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+              <button onClick={() => setShowAllPhotos(false)} className="text-sm font-medium hover:underline">
+                ← Close
+              </button>
+              <span className="text-sm text-gray-500">{galleryMedia.length} photos</span>
+            </div>
+            <div className="max-w-4xl mx-auto py-8 px-4 space-y-4">
+              {galleryMedia.map((m, i) => (
+                <img
+                  key={m.id}
+                  src={getOptimizedCloudinaryUrl(m.url, { kind: "image", width: 1200 })}
+                  alt={`Photo ${i + 1}`}
+                  className="w-full rounded-lg"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-8 lg:gap-12">
+          {/* Left Column - Details */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Category & Vendor */}
+            <div className="flex items-center justify-between pb-6 border-b">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {product.category}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {product.inStock ? "In stock" : "Out of stock"} · {product.reviewCount} reviews
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+              {vendor && (
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
+                    {vendor.name.charAt(0)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Guest Favorite-style Badge */}
+            <div className="border rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  <span className="text-2xl">🏆</span>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-sm">Customer</span>
+                    <span className="font-semibold text-sm">favorite</span>
+                  </div>
+                  <span className="text-2xl">🏆</span>
+                </div>
+                <span className="text-sm text-gray-600 max-w-[200px]">
+                  One of the most loved products on iwanyu
+                </span>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="text-lg font-semibold">{product.rating.toFixed(1)}</div>
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={12} fill={i < Math.floor(product.rating) ? "currentColor" : "none"} className="text-black" />
+                    ))}
+                  </div>
+                </div>
+                <div className="h-8 w-px bg-gray-200" />
+                <div className="text-center">
+                  <div className="text-lg font-semibold">{product.reviewCount}</div>
+                  <div className="text-xs text-gray-500 underline">Reviews</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Vendor Info */}
+            {vendor && (
+              <div className="flex items-center gap-4 py-6 border-b">
+                <div className="h-10 w-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium text-sm">
+                  {vendor.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-medium">Sold by {vendor.name}</div>
+                  <div className="text-sm text-muted-foreground">Verified seller</div>
+                </div>
+              </div>
+            )}
+
+            {/* Features */}
+            <div className="space-y-4 py-2">
+              <div className="flex items-start gap-4">
+                <Package size={24} className="text-gray-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">Quality guaranteed</div>
+                  <div className="text-sm text-muted-foreground">All products are verified for quality before shipping.</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <Truck size={24} className="text-gray-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">{product.freeShipping ? "Free shipping" : "Fast delivery"}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {product.freeShipping ? "This product ships for free across Rwanda." : "Delivery available to your location."}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <ShieldCheck size={24} className="text-gray-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">Secure checkout</div>
+                  <div className="text-sm text-muted-foreground">Your payment information is always protected.</div>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Description */}
+            <div className="py-4">
+              <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-line">
+                {displayDescription}
+                {isLongDescription && !showFullDescription && "..."}
+              </p>
+              {isLongDescription && (
+                <button
+                  onClick={() => setShowFullDescription(!showFullDescription)}
+                  className="mt-4 font-medium text-sm underline underline-offset-2 flex items-center gap-1 hover:text-gray-600"
+                >
+                  {showFullDescription ? "Show less" : "Show more"}
+                  <ChevronRight size={16} className={showFullDescription ? "rotate-90" : ""} />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="lg:col-span-5">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="text-xl">Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <div className="text-muted-foreground">Availability</div>
-                  <div className="font-medium text-foreground">{product.inStock ? "In stock" : "Out of stock"}</div>
+          {/* Right Column - Sticky Purchase Card */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 border rounded-xl p-6 shadow-lg bg-white space-y-4">
+              {/* Price */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold">{formatMoney(product.price)}</span>
+                {typeof product.discountPercentage === "number" && product.discountPercentage > 0 && (
+                  <span className="text-sm text-muted-foreground line-through">
+                    {formatMoney(product.price * (1 + product.discountPercentage / 100))}
+                  </span>
+                )}
+              </div>
+
+              {/* Rating summary */}
+              <div className="flex items-center gap-1 text-sm">
+                <Star size={14} fill="currentColor" className="text-black" />
+                <span className="font-medium">{product.rating.toFixed(2)}</span>
+                <span className="text-muted-foreground">· {product.reviewCount} reviews</span>
+              </div>
+
+              <Separator />
+
+              {/* Quantity selector placeholder */}
+              <div className="border rounded-lg divide-y">
+                <div className="p-3">
+                  <div className="text-[10px] font-semibold text-gray-500 uppercase">QUANTITY</div>
+                  <div className="text-sm">1 item</div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-muted-foreground">Category</div>
-                  <div className="font-medium text-foreground">{product.category}</div>
+              </div>
+
+              {/* Add to Cart button */}
+              <Button
+                className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-lg h-12 text-base font-medium"
+                disabled={!product.inStock}
+                onClick={() => {
+                  addItem({ productId: product.id, title: product.title, price: product.price, image: product.image });
+                  toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` });
+                }}
+              >
+                <ShoppingCart size={18} className="mr-2" />
+                {product.inStock ? "Add to cart" : "Out of stock"}
+              </Button>
+
+              <p className="text-center text-xs text-muted-foreground">You won't be charged yet</p>
+
+              {/* Summary */}
+              <div className="space-y-2 pt-2">
+                <div className="flex justify-between text-sm">
+                  <span className="underline">{formatMoney(product.price)} × 1</span>
+                  <span>{formatMoney(product.price)}</span>
                 </div>
-              </CardContent>
-            </Card>
+                {product.freeShipping && (
+                  <div className="flex justify-between text-sm">
+                    <span className="underline">Shipping</span>
+                    <span className="text-green-600">Free</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span>{formatMoney(product.price)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-14">
-          <h2 className="mb-6 text-xl font-semibold text-foreground">Recommended Products</h2>
+        {/* Recommended Products */}
+        <div className="mt-16">
+          <h2 className="mb-6 text-xl font-semibold text-foreground">You might also like</h2>
           {products.filter((p) => p.category === product.category && p.id !== product.id).length === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-gray-50 p-6 text-sm text-muted-foreground">
               No recommendations available right now.
             </div>
           ) : (
@@ -353,9 +414,9 @@ export default function ProductPage() {
           )}
         </div>
 
-        {/* Recently Viewed Products */}
+        {/* Recently Viewed */}
         {recentlyViewedIds.filter((id) => id !== product.id).length > 0 && (
-          <div className="mt-14">
+          <div className="mt-16">
             <div className="flex items-center gap-3 mb-6">
               <Clock className="h-5 w-5 text-muted-foreground" />
               <h2 className="text-xl font-semibold text-foreground">Recently Viewed</h2>
