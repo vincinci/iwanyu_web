@@ -27,11 +27,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     price,
     rating,
     reviewCount,
-    category,
     image,
     discountPercentage,
-    inStock,
-    freeShipping
+    inStock
   } = product;
 
   const vendorName = vendorId ? getVendorById(vendorId)?.name : undefined;
@@ -144,12 +142,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           </div>
            
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {freeShipping ? (
-              <span className="rounded-full bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 px-2.5 py-1 text-[10px] font-bold text-green-700 uppercase tracking-wide group-hover:scale-105 transition-transform">✓ Free Ship</span>
-            ) : null}
-            {vendorName ? (
-              <span className="truncate text-[11px] text-muted-foreground max-w-[140px]">{vendorName}</span>
-            ) : null}
+            <span className="truncate text-[11px] font-medium text-muted-foreground">
+              by <span className="text-foreground">iwanyu</span>
+            </span>
           </div>
         </div>
       </div>
