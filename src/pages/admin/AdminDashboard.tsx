@@ -496,7 +496,7 @@ export default function AdminDashboardPage() {
             <div id="products">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold">Product Management</h3>
-                <span className="text-xs text-gray-500">{products.length} total</span>
+                <span className="text-sm text-gray-500">{products.length} total</span>
               </div>
               
               {products.length === 0 ? (
@@ -505,103 +505,104 @@ export default function AdminDashboardPage() {
                   <p className="text-sm text-gray-500">No products yet</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {products.slice(0, 20).map((product) => {
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {products.map((product) => {
                     const vendor = vendors.find((v) => v.id === product.vendorId);
                     const current = normalizeCategoryName(product.category);
                     const selected = categoryEdits[product.id] ?? (isRealCategoryName(current) ? current : "");
                     
                     return (
-                      <div key={product.id} className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h4 className="font-bold mb-1">{product.title}</h4>
-                            <p className="text-xs text-gray-500">
-                              {vendor?.name || "Unknown vendor"} • {formatMoney(product.price)} • {product.inStock ? "In Stock" : "Out of Stock"}
-                            </p>
-                          </div>
+                      <div key={product.id} className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all overflow-hidden group">
+                        {/* Product Image */}
+                        <div className="relative aspect-square bg-gray-50">
+                          {product.image ? (
+                            <img 
+                              src={product.image} 
+                              alt={product.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Boxes size={24} className="text-gray-300" />
+                            </div>
+                          )}
+                          {/* Stock Badge */}
                           {!product.inStock && (
-                            <span className="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                              Out of Stock
+                            <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              OUT OF STOCK
                             </span>
                           )}
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-                          <div className="flex items-center gap-2">
-                            <Tag size={14} className="text-gray-400" />
-                            {categoryOptions.length === 0 ? (
-                              <span className="text-xs text-gray-500">No categories</span>
-                            ) : (
-                              <Select
-                                value={selected}
-                                onValueChange={(v) =>
-                                  setCategoryEdits((prev) => ({
-                                    ...prev,
-                                    [product.id]: v,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categoryOptions.map((c) => (
-                                    <SelectItem key={c} value={c} className="text-xs">
-                                      {c}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="rounded-full h-8 text-xs"
-                              disabled={categoryOptions.length === 0 || !selected || selected === current}
-                              onClick={async () => {
-                                try {
-                                  await updateProductCategory(product.id, selected);
-                                  toast({ title: "Updated", description: "Category saved" });
-                                } catch (e) {
-                                  toast({
-                                    title: "Failed",
-                                    description: e instanceof Error ? e.message : "Unknown error",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                            >
-                              Save
-                            </Button>
-                          </div>
-
-                          <div className="flex gap-2">
+                          {/* Quick Actions */}
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Link to={`/product/${product.id}`}>
-                              <Button size="sm" variant="outline" className="rounded-full h-8">
-                                <Eye size={14} />
-                              </Button>
+                              <button className="w-7 h-7 bg-white rounded-full shadow flex items-center justify-center hover:bg-gray-50">
+                                <Eye size={12} />
+                              </button>
                             </Link>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="rounded-full h-8"
+                            <button 
+                              className="w-7 h-7 bg-white rounded-full shadow flex items-center justify-center hover:bg-red-50"
                               onClick={() => {
                                 setDeleteProductId(product.id);
                                 setDeleteReason("");
                                 setDeleteOpen(true);
                               }}
                             >
-                              <Trash2 size={14} className="text-red-600" />
-                            </Button>
+                              <Trash2 size={12} className="text-red-500" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Product Info */}
+                        <div className="p-3">
+                          <h4 className="font-medium text-sm line-clamp-1 mb-1">{product.title}</h4>
+                          <p className="text-xs text-gray-500 mb-2">{vendor?.name || "Unknown"}</p>
+                          
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-sm">{formatMoney(product.price)}</span>
+                            <span className="text-[10px] text-gray-400">{product.soldCount || 0} sold</span>
+                          </div>
+                          
+                          {/* Category Select */}
+                          <Select
+                            value={selected}
+                            onValueChange={async (v) => {
+                              setCategoryEdits((prev) => ({ ...prev, [product.id]: v }));
+                              try {
+                                await updateProductCategory(product.id, v);
+                                toast({ title: "Updated", description: "Category saved" });
+                              } catch (e) {
+                                toast({
+                                  title: "Failed",
+                                  description: e instanceof Error ? e.message : "Unknown error",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-[11px]">
+                              <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categoryOptions.map((c) => (
+                                <SelectItem key={c} value={c} className="text-xs">
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          
+                          {/* Rating */}
+                          <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400">
+                            <span>★ {product.rating?.toFixed(1) || "N/A"}</span>
+                            <span>•</span>
+                            <span className={product.inStock ? "text-green-600" : "text-red-500"}>
+                              {product.inStock ? "In Stock" : "Out of Stock"}
+                            </span>
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  {products.length > 20 && (
-                    <p className="text-xs text-gray-500 text-center pt-4">Showing first 20 products</p>
-                  )}
                 </div>
               )}
             </div>
