@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ShoppingCart, Star, Clock, Share, Heart, ChevronRight, Package, Truck, ShieldCheck } from "lucide-react";
+import { ShoppingCart, Star, Clock, Share, Heart, ChevronRight, ChevronLeft, Package, Truck, ShieldCheck } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/context/cart";
 import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
+import { useWishlist } from "@/context/wishlist";
 import { formatMoney } from "@/lib/money";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary";
@@ -25,11 +26,13 @@ export default function ProductPage() {
   const { addItem } = useCart();
   const { products, getVendorById } = useMarketplace();
   const { add: addToRecentlyViewed, productIds: recentlyViewedIds } = useRecentlyViewed();
+  const { addItem: addToWishlist, hasItem: isInWishlist } = useWishlist();
   const supabase = getSupabaseClient();
 
   const [media, setMedia] = useState<ProductMedia[]>([]);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const vendor = product?.vendorId ? getVendorById(product.vendorId) : undefined;
@@ -100,13 +103,36 @@ export default function ProductPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{product.title}</h1>
           <div className="flex items-center gap-4">
-            <button className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2">
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: product.title,
+                    text: product.description || `Check out ${product.title} on iwanyu`,
+                    url: window.location.href,
+                  });
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast({ title: "Link copied", description: "Product link copied to clipboard" });
+                }
+              }}
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2"
+            >
               <Share size={16} />
               Share
             </button>
-            <button className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2">
-              <Heart size={16} />
-              Save
+            <button
+              onClick={() => {
+                addToWishlist(product.id);
+                toast({
+                  title: isInWishlist(product.id) ? "Already in wishlist" : "Saved to wishlist",
+                  description: isInWishlist(product.id) ? `${product.title} is already saved` : `${product.title} has been saved`,
+                });
+              }}
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2"
+            >
+              <Heart size={16} fill={isInWishlist(product.id) ? "currentColor" : "none"} className={isInWishlist(product.id) ? "text-red-500" : ""} />
+              {isInWishlist(product.id) ? "Saved" : "Save"}
             </button>
           </div>
         </div>
@@ -191,25 +217,64 @@ export default function ProductPage() {
           )}
         </div>
 
-        {/* Photo Modal */}
+        {/* Photo Modal with Navigation */}
         {showAllPhotos && (
-          <div className="fixed inset-0 z-50 bg-white overflow-auto">
-            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-              <button onClick={() => setShowAllPhotos(false)} className="text-sm font-medium hover:underline">
+          <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+            <div className="bg-black/80 backdrop-blur px-4 py-3 flex items-center justify-between">
+              <button onClick={() => setShowAllPhotos(false)} className="text-white text-sm font-medium hover:text-gray-300 transition">
                 ← Close
               </button>
-              <span className="text-sm text-gray-500">{galleryMedia.length} photos</span>
+              <span className="text-white/70 text-sm">{currentImageIndex + 1} / {galleryMedia.length}</span>
             </div>
-            <div className="max-w-4xl mx-auto py-8 px-4 space-y-4">
-              {galleryMedia.map((m, i) => (
-                <img
-                  key={m.id}
-                  src={getOptimizedCloudinaryUrl(m.url, { kind: "image", width: 1200 })}
-                  alt={`Photo ${i + 1}`}
-                  className="w-full rounded-lg"
-                />
-              ))}
+            <div className="flex-1 flex items-center justify-center relative px-4">
+              {/* Left Arrow */}
+              {galleryMedia.length > 1 && (
+                <button
+                  onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? galleryMedia.length - 1 : prev - 1))}
+                  className="absolute left-4 md:left-8 h-12 w-12 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition z-10"
+                >
+                  <ChevronLeft size={24} className="text-gray-900" />
+                </button>
+              )}
+              
+              {/* Current Image */}
+              <img
+                src={getOptimizedCloudinaryUrl(galleryMedia[currentImageIndex]?.url || "", { kind: "image", width: 1400 })}
+                alt={`Photo ${currentImageIndex + 1}`}
+                className="max-h-[80vh] max-w-full object-contain rounded-lg"
+              />
+              
+              {/* Right Arrow */}
+              {galleryMedia.length > 1 && (
+                <button
+                  onClick={() => setCurrentImageIndex((prev) => (prev === galleryMedia.length - 1 ? 0 : prev + 1))}
+                  className="absolute right-4 md:right-8 h-12 w-12 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition z-10"
+                >
+                  <ChevronRight size={24} className="text-gray-900" />
+                </button>
+              )}
             </div>
+            
+            {/* Thumbnail strip */}
+            {galleryMedia.length > 1 && (
+              <div className="bg-black/80 px-4 py-4 flex justify-center gap-2 overflow-x-auto">
+                {galleryMedia.map((m, i) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setCurrentImageIndex(i)}
+                    className={`shrink-0 h-16 w-16 rounded-lg overflow-hidden border-2 transition ${
+                      i === currentImageIndex ? "border-white" : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <img
+                      src={getOptimizedCloudinaryUrl(m.url, { kind: "image", width: 120 })}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -224,12 +289,12 @@ export default function ProductPage() {
                   {product.category}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {product.inStock ? "In stock" : "Out of stock"} · {product.reviewCount} reviews
+                  {product.inStock ? "In stock" : "Out of stock"} · {product.reviewCount > 0 ? `${product.reviewCount} reviews` : "No reviews yet"}
                 </p>
               </div>
               {vendor && (
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="h-12 w-12 rounded-full bg-amber-400 flex items-center justify-center text-white font-bold text-lg">
                     {vendor.name.charAt(0)}
                   </div>
                 </div>
@@ -237,21 +302,23 @@ export default function ProductPage() {
             </div>
 
             {/* Rating Summary */}
-            <div className="border rounded-xl p-4 flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Star size={20} fill="currentColor" className="text-black" />
-                <span className="text-xl font-semibold">{product.rating.toFixed(1)}</span>
+            {product.reviewCount > 0 ? (
+              <div className="border rounded-xl p-4 flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Star size={20} fill="currentColor" className="text-amber-400" />
+                  <span className="text-xl font-semibold">{product.rating.toFixed(1)}</span>
+                </div>
+                <div className="h-6 w-px bg-gray-200" />
+                <div className="text-sm text-muted-foreground">
+                  {product.reviewCount} reviews
+                </div>
               </div>
-              <div className="h-6 w-px bg-gray-200" />
-              <div className="text-sm text-muted-foreground">
-                {product.reviewCount} reviews
-              </div>
-            </div>
+            ) : null}
 
             {/* Vendor Info */}
             {vendor && (
               <div className="flex items-center gap-4 py-6 border-b">
-                <div className="h-10 w-10 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium text-sm">
+                <div className="h-10 w-10 rounded-full bg-amber-400 flex items-center justify-center text-white font-medium text-sm">
                   {vendor.name.charAt(0)}
                 </div>
                 <div>
@@ -322,11 +389,15 @@ export default function ProductPage() {
               </div>
 
               {/* Rating summary */}
-              <div className="flex items-center gap-1 text-sm">
-                <Star size={14} fill="currentColor" className="text-black" />
-                <span className="font-medium">{product.rating.toFixed(2)}</span>
-                <span className="text-muted-foreground">· {product.reviewCount} reviews</span>
-              </div>
+              {product.reviewCount > 0 ? (
+                <div className="flex items-center gap-1 text-sm">
+                  <Star size={14} fill="currentColor" className="text-amber-400" />
+                  <span className="font-medium">{product.rating.toFixed(2)}</span>
+                  <span className="text-muted-foreground">· {product.reviewCount} reviews</span>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">No reviews yet</div>
+              )}
 
               <Separator />
 
@@ -340,7 +411,7 @@ export default function ProductPage() {
 
               {/* Add to Cart button */}
               <Button
-                className="w-full bg-black hover:bg-gray-800 text-white rounded-lg h-12 text-base font-medium"
+                className="w-full bg-amber-400 hover:bg-amber-500 text-black rounded-lg h-12 text-base font-medium"
                 disabled={!product.inStock}
                 onClick={() => {
                   addItem({ productId: product.id, title: product.title, price: product.price, image: product.image });
