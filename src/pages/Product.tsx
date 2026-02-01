@@ -26,7 +26,7 @@ export default function ProductPage() {
   const { addItem } = useCart();
   const { products, getVendorById } = useMarketplace();
   const { add: addToRecentlyViewed, productIds: recentlyViewedIds } = useRecentlyViewed();
-  const { addItem: addToWishlist, hasItem: isInWishlist } = useWishlist();
+  const { toggle: toggleWishlist, contains: isInWishlist } = useWishlist();
   const supabase = getSupabaseClient();
 
   const [media, setMedia] = useState<ProductMedia[]>([]);
@@ -122,11 +122,12 @@ export default function ProductPage() {
               Share
             </button>
             <button
-              onClick={() => {
-                addToWishlist(product.id);
+              onClick={async () => {
+                const inWishlist = isInWishlist(product.id);
+                await toggleWishlist(product.id);
                 toast({
-                  title: isInWishlist(product.id) ? "Already in wishlist" : "Saved to wishlist",
-                  description: isInWishlist(product.id) ? `${product.title} is already saved` : `${product.title} has been saved`,
+                  title: inWishlist ? "Removed from wishlist" : "Saved to wishlist",
+                  description: inWishlist ? `${product.title} has been removed` : `${product.title} has been saved`,
                 });
               }}
               className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-black underline underline-offset-2"
