@@ -14,7 +14,6 @@ import { calculateServiceFee, calculateVendorPayout, GUEST_SERVICE_FEE_RATE } fr
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { createId } from "@/lib/ids";
 import { initializeFlutterwavePayment, redirectToFlutterwave } from "@/lib/flutterwave";
 
 export default function CheckoutPage() {
@@ -64,7 +63,6 @@ export default function CheckoutPage() {
         throw new Error("Checkout is not configured.");
       }
 
-      const orderId = createId("ord");
       const serviceFeeRwf = calculateServiceFee(subtotal);
       const totalRwf = Math.round(subtotal + serviceFeeRwf);
       const vendorPayoutRwf = calculateVendorPayout(subtotal);
@@ -76,8 +74,8 @@ export default function CheckoutPage() {
         phone: trimmedPhone,
       };
 
-      const { error: ordErr } = await supabase.from("orders").insert({
-        id: orderId,
+      // Insert order and get the generated UUID
+      const { data: orderData, error: ordErr } = await supabase.from("orders").insert({
         buyer_user_id: user.id,
         buyer_email: trimmedEmail,
         shipping_address: trimmedAddress,
@@ -86,9 +84,11 @@ export default function CheckoutPage() {
         service_fee_rwf: serviceFeeRwf,
         vendor_payout_rwf: vendorPayoutRwf,
         payment: paymentMeta,
-      });
+      }).select("id").single();
 
       if (ordErr) throw new Error(ordErr.message);
+      
+      const orderId = orderData.id;
 
       const missingVendor = orderItems.find((i) => !i.vendorId);
       if (missingVendor) {
