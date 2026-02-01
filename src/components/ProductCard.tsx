@@ -69,82 +69,78 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   return (
     <Link
       to={`/product/${id}`}
-      className="group block animate-in fade-in slide-in-from-bottom-4 duration-500"
+      className="group block"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] hover:border-gray-300 hover:-translate-y-1">
+      <div className="relative overflow-hidden rounded-xl bg-white transition-all duration-300 hover:shadow-lg">
         
-        {typeof discountPercentage === "number" && discountPercentage > 0 ? (
-          <div className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-red-600 to-pink-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg animate-pulse">
-            -{discountPercentage}%
-          </div>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={handleToggleFavorite}
-          className="absolute right-2 top-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 backdrop-blur-sm text-gray-600 shadow-lg transition-all duration-300 hover:text-red-600 hover:scale-110 hover:rotate-12 active:scale-95"
-          aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
-        >
-          <Heart size={17} className={isFavorite ? "fill-current text-red-600 animate-pulse" : ""} />
-        </button>
-
-        <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+        {/* Image Container - Airbnb style */}
+        <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100">
           {image ? (
-            <>
-              <img
-                src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600 })}
-                alt={title}
-                className="absolute inset-0 h-full w-full object-contain p-4 transition-all duration-500 group-hover:scale-110 group-hover:rotate-1"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/0 to-transparent group-hover:via-white/20 transition-all duration-700 opacity-0 group-hover:opacity-100" />
-            </>
+            <img
+              src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600 })}
+              alt={title}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gray-100">
-               <span className="text-xs text-gray-400">No Image</span>
+              <span className="text-xs text-gray-400">No Image</span>
             </div>
           )}
           
+          {/* Discount badge */}
+          {typeof discountPercentage === "number" && discountPercentage > 0 ? (
+            <div className="absolute left-3 top-3 rounded-md bg-white px-2 py-1 text-xs font-semibold text-black shadow-sm">
+              -{discountPercentage}%
+            </div>
+          ) : null}
+
+          {/* Favorite button */}
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm transition-all duration-200 hover:scale-110 hover:bg-white"
+            aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart size={16} className={isFavorite ? "fill-current text-red-500" : ""} />
+          </button>
+          
+          {/* Add to cart button - appears on hover */}
           <button
             onClick={handleAddToCart}
             disabled={!inStock}
-            className={`absolute bottom-3 right-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-black to-gray-800 text-white shadow-xl transition-all duration-300 hover:scale-110 hover:rotate-90 hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
-              isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            className={`absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shadow-md transition-all duration-200 hover:scale-110 disabled:opacity-50 ${
+              isHovered ? 'opacity-100' : 'opacity-0'
             }`}
             title="Add to cart"
           >
-            <Plus size={20} strokeWidth={2.5} />
+            <Plus size={18} strokeWidth={2} />
           </button>
         </div>
         
-        <div className="p-3">
-          
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-lg font-bold bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">{formatMoney(price)}</span>
-            {!inStock ? (
-              <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Out of stock</span>
-            ) : null}
-          </div>
-
-          <h3 className="mt-2 line-clamp-2 min-h-[2.5em] text-sm font-medium text-foreground leading-snug group-hover:text-black transition-colors">
-            {title}
-          </h3>
-
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1 text-yellow-500 group-hover:scale-110 transition-transform">
-              <Star size={13} className="fill-current drop-shadow-sm" />
-              <span className="font-bold text-foreground">{rating.toFixed(1)}</span>
+        {/* Product Info */}
+        <div className="pt-3 pb-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-1 text-[15px] font-medium text-gray-900">
+              {title}
+            </h3>
+            <div className="flex items-center gap-1 text-sm shrink-0">
+              <Star size={12} className="fill-current text-black" />
+              <span className="font-medium">{rating.toFixed(1)}</span>
             </div>
-            <span className="text-muted-foreground">·</span>
-            <span>{soldCount} sold</span>
           </div>
-           
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="truncate text-[11px] font-medium text-muted-foreground">
-              by <span className="text-foreground">iwanyu</span>
-            </span>
+
+          <p className="mt-0.5 text-sm text-gray-500">
+            {soldCount} sold · by iwanyu
+          </p>
+          
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="text-[15px] font-semibold text-gray-900">{formatMoney(price)}</span>
+            {!inStock && (
+              <span className="text-xs text-red-500">Out of stock</span>
+            )}
           </div>
         </div>
       </div>
