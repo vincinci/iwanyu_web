@@ -21,8 +21,11 @@ CLOUDINARY_CLOUD_NAME="dtd29j5rx"
 CLOUDINARY_API_KEY="566557823619379"
 CLOUDINARY_API_SECRET="[GENERATE NEW SECRET - OLD ONE WAS EXPOSED]"
 
-# Flutterwave Payment Gateway (if using payments)
+# Flutterwave Payment Gateway
 VITE_FLUTTERWAVE_PUBLIC_KEY="[YOUR_PUBLIC_KEY]"
+
+# Flutterwave Secret Key (for Supabase Edge Function - set in Supabase Dashboard)
+# FLUTTERWAVE_SECRET_KEY="[YOUR_SECRET_KEY]"
 
 # Google OAuth (if using Google Sign-In)
 VITE_GOOGLE_CLIENT_ID="[YOUR_GOOGLE_CLIENT_ID]"
@@ -58,6 +61,52 @@ VITE_GOOGLE_CLIENT_ID="[YOUR_GOOGLE_CLIENT_ID]"
   - Flutterwave sandbox mode working
   - Switch to production keys before going live
   - Test real transactions in staging first
+  - Deploy the `flutterwave-verify` Edge Function to Supabase
+
+---
+
+## 💳 Flutterwave Payment Setup
+
+### 1. Create Flutterwave Account
+- Sign up at: https://dashboard.flutterwave.com
+- Complete business verification for production access
+
+### 2. Get API Keys
+- Dashboard → Settings → API → API Keys
+- Copy **Public Key** (starts with `FLWPUBK_`)
+- Copy **Secret Key** (starts with `FLWSECK_`)
+
+### 3. Configure Environment Variables
+
+**In Vercel (for frontend):**
+```bash
+VITE_FLUTTERWAVE_PUBLIC_KEY="FLWPUBK_TEST-xxxxxxxxxxxx"
+```
+
+**In Supabase (for Edge Function):**
+```bash
+# Go to: Supabase Dashboard → Settings → Edge Functions → Secrets
+FLUTTERWAVE_SECRET_KEY="FLWSECK_TEST-xxxxxxxxxxxx"
+```
+
+### 4. Deploy Edge Function
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login to Supabase
+supabase login
+
+# Deploy the verify function
+supabase functions deploy flutterwave-verify --project-ref ygpnvjfxxuabnrpvnfdq
+```
+
+### 5. Test Payment Flow
+1. Add item to cart → Checkout
+2. Enter shipping details
+3. Select MTN Mobile Money or Card
+4. Complete payment in Flutterwave popup
+5. Verify order status updates to "Processing"
 
 ---
 
