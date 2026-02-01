@@ -107,13 +107,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             <Heart size={16} className={isFavorite ? "fill-current text-red-500" : ""} />
           </button>
           
-          {/* Add to cart button - appears on hover */}
+          {/* Add to cart button - always visible */}
           <button
             onClick={handleAddToCart}
             disabled={!inStock}
-            className={`absolute bottom-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-400/50 transition-all duration-200 hover:scale-110 hover:shadow-orange-400/70 disabled:opacity-50 ${
-              isHovered ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="absolute bottom-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-300/90 text-amber-900 shadow-lg shadow-amber-300/60 backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-amber-400 hover:shadow-amber-400/70 disabled:opacity-50"
             title="Add to cart"
           >
             <Plus size={20} strokeWidth={2.5} />
