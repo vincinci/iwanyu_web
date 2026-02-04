@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 import type { Vendor } from "@/types/vendor";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useMemo, useState } from "react";
@@ -17,6 +18,8 @@ export default function SellPage() {
   const [storeName, setStoreName] = useState("");
   const [location, setLocation] = useState("Kigali, Rwanda");
   const [submittingApplication, setSubmittingApplication] = useState(false);
+
+  const supabase = getSupabaseClient();
 
   const [ownedVendors, setOwnedVendors] = useState<Vendor[]>([]);
 
