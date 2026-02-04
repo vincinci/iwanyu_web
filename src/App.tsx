@@ -20,6 +20,7 @@ const AccountPage = lazy(() => import("./pages/Account"));
 const OrdersPage = lazy(() => import("./pages/Orders"));
 const WishlistPage = lazy(() => import("./pages/Wishlist"));
 const SellPage = lazy(() => import("./pages/Sell"));
+const SellerOnboardingPage = lazy(() => import("./pages/SellerOnboarding"));
 const SellerDashboardPage = lazy(() => import("./pages/seller/SellerDashboard"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminVendorsPage = lazy(() => import("./pages/admin/AdminVendors"));
@@ -117,7 +118,8 @@ const AppContent = () => {
         <Route path="/account" element={withSuspense(<AccountPage />)} />
         <Route path="/orders" element={withSuspense(<OrdersPage />)} />
         <Route path="/wishlist" element={withSuspense(<WishlistPage />)} />
-        <Route path="/sell" element={withSuspense(<SellPage />)} />
+        <Route path="/sell" element={withSuspense(<SellerOnboardingPage />)} />
+        <Route path="/sell-info" element={withSuspense(<SellPage />)} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/vendor-application" element={withSuspense(<VendorApplicationPage />)} />

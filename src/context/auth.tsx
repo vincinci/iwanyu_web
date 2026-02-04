@@ -15,6 +15,7 @@ export type AuthUser = {
   email?: string;
   picture?: string;
   role: AuthRole;
+  emailConfirmed?: boolean;
 };
 
 type AuthContextValue = {
@@ -83,6 +84,7 @@ function buildBaseUser(authUser: User): AuthUser {
       authUser.user_metadata?.picture ||
       authUser.user_metadata?.avatar_url,
     role: cachedRole ?? "buyer",
+    emailConfirmed: Boolean(authUser.email_confirmed_at),
   };
 }
 
