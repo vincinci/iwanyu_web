@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,19 +7,37 @@ import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
-import { useLanguage } from '@/context/language';
+import { useLanguage, Language } from '@/context/language';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
   const { itemCount } = useCart();
   const { user, signOut } = useAuth();
   const { products } = useMarketplace();
   const { count: wishlistCount } = useWishlist();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
+
+  // Close language dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(e.target as Node)) {
+        setShowLanguageDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const languageOptions: { code: Language; label: string; flag: string }[] = [
+    { code: "rw", label: "Kinyarwanda", flag: "🇷🇼" },
+    { code: "en", label: "English", flag: "🇬🇧" },
+  ];
 
   const categories = useMemo(() => {
     return getNavCategoriesWithCounts(products).map(({ id, name }) => ({ id, name }));
@@ -95,14 +113,46 @@ export const Header = () => {
               <span>{t("header.returns")}</span>
             </div>
             <div className="flex items-center gap-4">
-              {/* Language Switcher */}
-              <button 
-                onClick={() => setLanguage(language === "en" ? "rw" : "en")}
-                className="flex items-center gap-1 hover:text-gray-900 transition-colors font-medium"
-              >
-                <Globe size={12} />
-                <span>{language === "rw" ? "🇷🇼 RW" : "🇬🇧 EN"}</span>
-              </button>
+              {/* Language Dropdown */}
+              <div className="relative" ref={languageDropdownRef}>
+                <button 
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex items-center gap-1.5 hover:text-gray-900 transition-colors font-medium"
+                >
+                  <Globe size={12} />
+                  <span>{language === "rw" ? "🇷🇼 RW" : "🇬🇧 EN"}</span>
+                  <ChevronDown size={10} className={`transition-transform ${showLanguageDropdown ? "rotate-180" : ""}`} />
+                </button>
+                
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px] z-50">
+                    <div className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">
+                      Ururimi / Language
+                    </div>
+                    {languageOptions.map((option) => (
+                      <button
+                        key={option.code}
+                        onClick={() => {
+                          setLanguage(option.code);
+                          setShowLanguageDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
+                          language === option.code ? "bg-amber-50 text-amber-700 font-medium" : "text-gray-700"
+                        }`}
+                      >
+                        <span>{option.flag}</span>
+                        <span>{option.label}</span>
+                        {language === option.code && <span className="ml-auto text-amber-500">✓</span>}
+                      </button>
+                    ))}
+                    <div className="border-t border-gray-100 mt-1 pt-1">
+                      <div className="px-3 py-2 text-[10px] text-gray-400">
+                        💵 RWF (Rwandan Franc)
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <Link to="/help" className="hover:text-gray-900 transition-colors">{t("header.help")}</Link>
               <Link to="/track-order" className="hover:text-gray-900 transition-colors">{t("header.trackOrder")}</Link>
               <Link to={sellLink} className="text-amber-600 hover:text-amber-700 font-medium transition-colors">{t("header.sellOn")}</Link>
@@ -406,6 +456,31 @@ export const Header = () => {
                            Sign Out
                          </button>
                     )}
+                </div>
+
+                {/* Language Switcher - Mobile */}
+                <div className="border-t border-border pt-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Ururimi / Language</div>
+                  <div className="space-y-1">
+                    {languageOptions.map((option) => (
+                      <button
+                        key={option.code}
+                        onClick={() => {
+                          setLanguage(option.code);
+                        }}
+                        className={`w-full text-left py-2 text-sm flex items-center gap-2 ${
+                          language === option.code ? "text-amber-600 font-medium" : "text-foreground"
+                        }`}
+                      >
+                        <span>{option.flag}</span>
+                        <span>{option.label}</span>
+                        {language === option.code && <span className="ml-auto text-amber-500">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    💵 RWF (Rwandan Franc)
+                  </div>
                 </div>
             </div>
           </div>
