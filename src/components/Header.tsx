@@ -76,6 +76,8 @@ export const Header = () => {
     navigate(`/search?q=${encodeURIComponent(suggestion)}`);
   };
 
+  const sellLink = user ? "/sell" : "/signup?next=/sell";
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
       {/* Top utility bar - minimal */}
@@ -93,7 +95,7 @@ export const Header = () => {
             <div className="flex items-center gap-4">
               <Link to="/help" className="hover:text-gray-900 transition-colors">Help</Link>
               <Link to="/track-order" className="hover:text-gray-900 transition-colors">Track Order</Link>
-              <Link to="/sell" className="text-amber-600 hover:text-amber-700 font-medium transition-colors">Sell on iwanyu</Link>
+              <Link to={sellLink} className="text-amber-600 hover:text-amber-700 font-medium transition-colors">Sell on iwanyu</Link>
             </div>
           </div>
         </div>

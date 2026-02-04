@@ -22,7 +22,9 @@ export default function LoginPage() {
   const supabase = getSupabaseClient();
 
   const state = location.state as { from?: { pathname?: string } } | null;
-  const nextPath = state?.from?.pathname || "/account";
+  const searchParams = new URLSearchParams(location.search);
+  const nextParam = searchParams.get("next");
+  const nextPath = nextParam || state?.from?.pathname || "/account";
 
   useEffect(() => {
     if (user) navigate(nextPath, { replace: true });
@@ -62,9 +64,10 @@ export default function LoginPage() {
 
     setError(null);
 
+    const redirectNext = nextParam ? `?next=${encodeURIComponent(nextParam)}` : "";
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: { redirectTo: `${window.location.origin}/login${redirectNext}` },
     });
 
     if (e) setError(e.message);

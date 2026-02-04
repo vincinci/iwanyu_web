@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,10 @@ export default function SignupPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const supabase = getSupabaseClient();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const nextParam = searchParams.get("next");
+  const nextPath = nextParam || "/account";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,8 +26,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/account", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(nextPath, { replace: true });
+  }, [user, navigate, nextPath]);
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +52,7 @@ export default function SignupPage() {
 
       if (signUpError) throw signUpError;
 
-      navigate("/account");
+      navigate(nextPath);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign up failed");
     } finally {
@@ -64,9 +68,10 @@ export default function SignupPage() {
 
     setError(null);
 
+    const redirectNext = nextParam ? `?next=${encodeURIComponent(nextParam)}` : "";
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/account` },
+      options: { redirectTo: `${window.location.origin}/signup${redirectNext}` },
     });
 
     if (e) setError(e.message);
