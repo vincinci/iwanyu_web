@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { useMarketplace } from "@/context/marketplace";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Upload, Camera, CreditCard, Store, ArrowRight, ArrowLeft, Loader2, Mail, User } from "lucide-react";
+import { Check, Upload, Camera, CreditCard, Store, ArrowRight, ArrowLeft, Loader2, Mail, User, X, RefreshCw } from "lucide-react";
 
 type Step = "account" | "verify-email" | "identity" | "store" | "done";
 
@@ -38,6 +38,12 @@ export default function SellerOnboardingPage() {
   const [idFrontPreview, setIdFrontPreview] = useState<string | null>(null);
   const [idBackFile, setIdBackFile] = useState<File | null>(null);
   const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
+
+  // Camera state for selfie
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -83,7 +89,72 @@ export default function SellerOnboardingPage() {
   const currentStep = getCurrentStep();
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
 
-  // File handlers
+  // Camera functions for selfie
+  const startCamera = useCallback(async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraActive(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      setCameraError("Hatwashoboye gufungura camera. Reba niba wemeye camera muri settings.");
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const captureSelfie = useCallback(() => {
+    if (!videoRef.current) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Flip horizontally for mirror effect
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(videoRef.current, 0, 0);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+        setSelfieFile(file);
+        setSelfiePreview(canvas.toDataURL("image/jpeg"));
+        stopCamera();
+      }
+    }, "image/jpeg", 0.9);
+  }, [stopCamera]);
+
+  const retakeSelfie = () => {
+    setSelfieFile(null);
+    setSelfiePreview(null);
+    startCamera();
+  };
+
+  // Clean up camera on unmount or step change
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  // File handlers for ID (still uses file select)
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
     setFile: (f: File | null) => void,
@@ -268,8 +339,9 @@ export default function SellerOnboardingPage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Become a Seller</h1>
-            <p className="text-gray-600">Simple steps to open your store</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Gura no Kugurisha mu Rwanda 🇷🇼</h1>
+            <p className="text-gray-600">Join Rwanda's trusted marketplace - Iwanyu</p>
+            <p className="text-sm text-amber-600 mt-1">Simple steps to open your store in Kigali and beyond</p>
           </div>
 
           {/* Progress Steps */}
@@ -323,13 +395,17 @@ export default function SellerOnboardingPage() {
                 <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <User size={28} className="text-amber-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Create your account</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Fungura Konti yawe</h2>
                 <p className="text-gray-600 mb-6">
-                  First, you need an account. This takes less than 1 minute.
+                  First, create your account. This takes less than 1 minute.
                 </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-green-800">
+                    🇷🇼 <strong>Rwanda's trusted marketplace</strong> - Sell to customers across Kigali, Musanze, Rubavu, and all of Rwanda!
+                  </p>
+                </div>
                 <p className="text-sm text-gray-500 mb-6">
-                  <strong>What happens next:</strong> After signing up, you will verify your email,
-                  then upload your ID to prove who you are.
+                  <strong>Next step:</strong> After signing up, verify your email, then take a selfie and upload your Rwandan ID.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link to="/signup?next=/sell">
@@ -339,7 +415,7 @@ export default function SellerOnboardingPage() {
                   </Link>
                   <Link to="/login?next=/sell">
                     <Button variant="outline" className="w-full sm:w-auto rounded-full">
-                      I have an account
+                      Mfite konti (I have an account)
                     </Button>
                   </Link>
                 </div>
@@ -352,15 +428,15 @@ export default function SellerOnboardingPage() {
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Mail size={28} className="text-blue-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Reba email yawe</h2>
                 <p className="text-gray-600 mb-4">
-                  We sent a link to <strong>{user?.email}</strong>
+                  We sent a verification link to <strong>{user?.email}</strong>
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
                   Click the link in the email to confirm your account. Then come back here.
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  <strong>What happens next:</strong> After confirming, you will upload your photo and ID.
+                  <strong>Next step:</strong> After confirming, you will take a selfie and upload your Rwandan ID.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
@@ -368,13 +444,13 @@ export default function SellerOnboardingPage() {
                     className="rounded-full"
                     onClick={resendVerificationEmail}
                   >
-                    Send email again
+                    Ohereza email ukundi
                   </Button>
                   <Button
                     className="rounded-full bg-amber-400 text-black hover:bg-amber-500"
                     onClick={() => window.location.reload()}
                   >
-                    I confirmed my email
+                    Nasuzumye email yanjye
                   </Button>
                 </div>
               </div>
@@ -387,67 +463,104 @@ export default function SellerOnboardingPage() {
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CreditCard size={28} className="text-purple-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Verify your identity</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Emeza ko uri wowe</h2>
                   <p className="text-gray-600">
-                    Upload a photo of yourself and your ID card. This keeps our marketplace safe.
+                    Take a selfie and upload your Rwandan National ID. This keeps our marketplace safe for all Rwandans.
                   </p>
                 </div>
 
                 <div className="space-y-6">
-                  {/* Selfie Upload */}
+                  {/* Selfie Camera Capture */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Your photo (selfie) *
+                      Ifoto yawe (selfie) *
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      Take a clear photo of your face. Look at the camera.
+                      Take a clear photo of your face. Look directly at the camera.
                     </p>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="user"
-                        onChange={(e) => handleFileSelect(e, setSelfieFile, setSelfiePreview)}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <div
-                        className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
-                          selfiePreview
-                            ? "border-green-300 bg-green-50"
-                            : "border-gray-300 hover:border-amber-400"
-                        }`}
-                      >
-                        {selfiePreview ? (
-                          <div className="flex items-center gap-4">
-                            <img
-                              src={selfiePreview}
-                              alt="Your photo"
-                              className="w-20 h-20 rounded-full object-cover"
-                            />
-                            <div className="text-left">
-                              <p className="font-medium text-green-700">Photo uploaded</p>
-                              <p className="text-sm text-gray-500">Click to change</p>
-                            </div>
+                    
+                    {/* Camera View */}
+                    {!selfiePreview && !cameraActive && (
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                        {cameraError ? (
+                          <div className="text-red-600">
+                            <X size={32} className="mx-auto mb-2" />
+                            <p className="text-sm mb-3">{cameraError}</p>
+                            <Button onClick={startCamera} variant="outline" size="sm">
+                              <RefreshCw size={16} className="mr-2" /> Try again
+                            </Button>
                           </div>
                         ) : (
                           <>
-                            <Camera size={32} className="mx-auto text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-600">
-                              Click to take a photo or select from gallery
+                            <Camera size={40} className="mx-auto text-amber-500 mb-3" />
+                            <p className="text-sm text-gray-600 mb-4">
+                              Click to open camera and take your selfie
                             </p>
+                            <Button onClick={startCamera} className="bg-amber-400 text-black hover:bg-amber-500">
+                              <Camera size={16} className="mr-2" /> Open Camera
+                            </Button>
                           </>
                         )}
                       </div>
-                    </div>
+                    )}
+
+                    {/* Live Camera */}
+                    {cameraActive && !selfiePreview && (
+                      <div className="border-2 border-amber-400 rounded-xl overflow-hidden bg-black">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full aspect-video object-cover"
+                          style={{ transform: "scaleX(-1)" }}
+                        />
+                        <div className="p-4 bg-gray-900 flex justify-center gap-4">
+                          <Button
+                            onClick={stopCamera}
+                            variant="outline"
+                            className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                          >
+                            <X size={16} className="mr-2" /> Cancel
+                          </Button>
+                          <Button
+                            onClick={captureSelfie}
+                            className="bg-amber-400 text-black hover:bg-amber-500"
+                          >
+                            <Camera size={16} className="mr-2" /> Take Photo
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preview */}
+                    {selfiePreview && (
+                      <div className="border-2 border-green-300 bg-green-50 rounded-xl p-4">
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={selfiePreview}
+                            alt="Your selfie"
+                            className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-green-700">✓ Selfie captured</p>
+                            <p className="text-sm text-gray-600 mb-2">Looking good!</p>
+                            <Button onClick={retakeSelfie} variant="outline" size="sm">
+                              <RefreshCw size={14} className="mr-2" /> Retake
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* ID Front Upload */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      ID card (front) *
+                      Indangamuntu (imbere) *
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      Take a photo of the front of your national ID or passport.
+                      Take a photo of the front of your Rwandan National ID.
                     </p>
                     <div className="relative">
                       <input
@@ -472,7 +585,7 @@ export default function SellerOnboardingPage() {
                               className="w-24 h-16 rounded-lg object-cover"
                             />
                             <div className="text-left">
-                              <p className="font-medium text-green-700">ID front uploaded</p>
+                              <p className="font-medium text-green-700">✓ ID front uploaded</p>
                               <p className="text-sm text-gray-500">Click to change</p>
                             </div>
                           </div>
@@ -480,7 +593,7 @@ export default function SellerOnboardingPage() {
                           <>
                             <Upload size={32} className="mx-auto text-gray-400 mb-2" />
                             <p className="text-sm text-gray-600">
-                              Click to upload ID front
+                              Click to take photo or upload ID front
                             </p>
                           </>
                         )}
@@ -491,10 +604,10 @@ export default function SellerOnboardingPage() {
                   {/* ID Back Upload (Optional) */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      ID card (back) - optional
+                      Indangamuntu (inyuma) - optional
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      If your ID has info on the back, upload it here.
+                      If your Rwandan ID has info on the back, upload it here.
                     </p>
                     <div className="relative">
                       <input
@@ -519,7 +632,7 @@ export default function SellerOnboardingPage() {
                               className="w-20 h-14 rounded-lg object-cover"
                             />
                             <div className="text-left">
-                              <p className="font-medium text-green-700">ID back uploaded</p>
+                              <p className="font-medium text-green-700">✓ ID back uploaded</p>
                               <p className="text-sm text-gray-500">Click to change</p>
                             </div>
                           </div>
@@ -531,7 +644,7 @@ export default function SellerOnboardingPage() {
                   </div>
 
                   <p className="text-sm text-gray-500 text-center">
-                    <strong>What happens next:</strong> After uploading, you will enter your store name.
+                    <strong>Next step:</strong> After taking photos, you will name your store.
                   </p>
                 </div>
               </div>
@@ -544,16 +657,16 @@ export default function SellerOnboardingPage() {
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Store size={28} className="text-green-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Create your store</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Shyiraho Iduka ryawe 🇷🇼</h2>
                   <p className="text-gray-600">
-                    Almost done! Give your store a name.
+                    Almost done! Name your store and start selling to Rwandans.
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="storeName" className="text-sm font-medium text-gray-700">
-                      Store name *
+                      Izina ry'iduka *
                     </Label>
                     <Input
                       id="storeName"
@@ -563,26 +676,29 @@ export default function SellerOnboardingPage() {
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      This is the name customers will see.
+                      This is the name customers across Rwanda will see.
                     </p>
                   </div>
 
                   <div>
                     <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                      Location
+                      Aho uherereye
                     </Label>
                     <Input
                       id="location"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      placeholder="City, Country"
+                      placeholder="Kigali, Musanze, Rubavu..."
                       className="mt-1"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Your city or district in Rwanda
+                    </p>
                   </div>
 
                   <div>
                     <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                      Phone number (optional)
+                      Telefoni (optional)
                     </Label>
                     <Input
                       id="phone"
@@ -593,7 +709,7 @@ export default function SellerOnboardingPage() {
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      We may contact you about your store.
+                      Your Rwandan phone number for store inquiries.
                     </p>
                   </div>
 
@@ -653,22 +769,24 @@ export default function SellerOnboardingPage() {
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Check size={36} className="text-green-600" />
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your store is ready!</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Iduka ryawe rirakora! 🎉</h2>
                 <p className="text-gray-600 mb-2">
                   Store name: <strong>{existingVendor.name}</strong>
                 </p>
-                <p className="text-sm text-gray-500 mb-8">
-                  You can now add products and start selling.
-                </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-green-800">
+                    🇷🇼 Welcome to Rwanda's marketplace! You can now add products and start selling to customers across Kigali, Musanze, Rubavu, and all of Rwanda.
+                  </p>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link to="/seller">
                     <Button className="w-full sm:w-auto rounded-full bg-amber-400 text-black hover:bg-amber-500">
-                      Open my dashboard
+                      Fungura Dashboard
                     </Button>
                   </Link>
                   <Link to="/seller/products/new">
                     <Button variant="outline" className="w-full sm:w-auto rounded-full">
-                      Add my first product
+                      Shyiraho ibicuruzwa
                     </Button>
                   </Link>
                 </div>
@@ -679,7 +797,7 @@ export default function SellerOnboardingPage() {
           {/* Help Text */}
           <div className="text-center mt-8">
             <p className="text-sm text-gray-500">
-              Need help? Contact us at{" "}
+              Ukeneye ubufasha? Twandikire kuri{" "}
               <a href="mailto:support@iwanyu.store" className="text-amber-600 hover:underline">
                 support@iwanyu.store
               </a>
