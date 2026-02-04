@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
+import { useLanguage } from '@/context/language';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
 
 export const Header = () => {
@@ -17,6 +18,7 @@ export const Header = () => {
   const { user, signOut } = useAuth();
   const { products } = useMarketplace();
   const { count: wishlistCount } = useWishlist();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
 
   const categories = useMemo(() => {
@@ -87,15 +89,23 @@ export const Header = () => {
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <span className="inline-block h-1 w-1 rounded-full bg-green-500"></span>
-                Free shipping over $50
+                {t("header.freeShipping")}
               </span>
               <span className="text-gray-300">·</span>
-              <span>30-day returns</span>
+              <span>{t("header.returns")}</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link to="/help" className="hover:text-gray-900 transition-colors">Help</Link>
-              <Link to="/track-order" className="hover:text-gray-900 transition-colors">Track Order</Link>
-              <Link to={sellLink} className="text-amber-600 hover:text-amber-700 font-medium transition-colors">Sell on iwanyu</Link>
+              {/* Language Switcher */}
+              <button 
+                onClick={() => setLanguage(language === "en" ? "rw" : "en")}
+                className="flex items-center gap-1 hover:text-gray-900 transition-colors font-medium"
+              >
+                <Globe size={12} />
+                <span>{language === "rw" ? "🇷🇼 RW" : "🇬🇧 EN"}</span>
+              </button>
+              <Link to="/help" className="hover:text-gray-900 transition-colors">{t("header.help")}</Link>
+              <Link to="/track-order" className="hover:text-gray-900 transition-colors">{t("header.trackOrder")}</Link>
+              <Link to={sellLink} className="text-amber-600 hover:text-amber-700 font-medium transition-colors">{t("header.sellOn")}</Link>
             </div>
           </div>
         </div>

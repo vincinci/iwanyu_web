@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
+import { useLanguage } from "@/context/language";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,7 @@ export default function SellerOnboardingPage() {
   const navigate = useNavigate();
   const { user, setRole } = useAuth();
   const { createVendor, refresh } = useMarketplace();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
 
@@ -339,9 +341,9 @@ export default function SellerOnboardingPage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Gura no Kugurisha mu Rwanda 🇷🇼</h1>
-            <p className="text-gray-600">Join Rwanda's trusted marketplace - Iwanyu</p>
-            <p className="text-sm text-amber-600 mt-1">Simple steps to open your store in Kigali and beyond</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("sell.title")}</h1>
+            <p className="text-gray-600">{t("sell.subtitle")}</p>
+            <p className="text-sm text-amber-600 mt-1">{t("sell.subtext")}</p>
           </div>
 
           {/* Progress Steps */}
@@ -395,27 +397,27 @@ export default function SellerOnboardingPage() {
                 <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <User size={28} className="text-amber-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Fungura Konti yawe</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">{t("sell.createAccount")}</h2>
                 <p className="text-gray-600 mb-6">
-                  First, create your account. This takes less than 1 minute.
+                  {t("sell.createAccountDesc")}
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                   <p className="text-sm text-green-800">
-                    🇷🇼 <strong>Rwanda's trusted marketplace</strong> - Sell to customers across Kigali, Musanze, Rubavu, and all of Rwanda!
+                    🇷🇼 <strong>{t("sell.rwandaTrust")}</strong>
                   </p>
                 </div>
                 <p className="text-sm text-gray-500 mb-6">
-                  <strong>Next step:</strong> After signing up, verify your email, then take a selfie and upload your Rwandan ID.
+                  <strong>{t("sell.nextStep")}:</strong> {t("sell.afterSignup")}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link to="/signup?next=/sell">
                     <Button className="w-full sm:w-auto rounded-full bg-amber-400 text-black hover:bg-amber-500">
-                      Create account <ArrowRight size={16} className="ml-2" />
+                      {t("sell.createAccountBtn")} <ArrowRight size={16} className="ml-2" />
                     </Button>
                   </Link>
                   <Link to="/login?next=/sell">
                     <Button variant="outline" className="w-full sm:w-auto rounded-full">
-                      Mfite konti (I have an account)
+                      {t("sell.haveAccount")}
                     </Button>
                   </Link>
                 </div>
@@ -428,15 +430,15 @@ export default function SellerOnboardingPage() {
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Mail size={28} className="text-blue-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Reba email yawe</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">{t("sell.checkEmail")}</h2>
                 <p className="text-gray-600 mb-4">
-                  We sent a verification link to <strong>{user?.email}</strong>
+                  {t("sell.sentLink")} <strong>{user?.email}</strong>
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  Click the link in the email to confirm your account. Then come back here.
+                  {t("sell.clickLink")}
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  <strong>Next step:</strong> After confirming, you will take a selfie and upload your Rwandan ID.
+                  <strong>{t("sell.nextStep")}:</strong> {t("sell.afterConfirm")}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
@@ -444,13 +446,13 @@ export default function SellerOnboardingPage() {
                     className="rounded-full"
                     onClick={resendVerificationEmail}
                   >
-                    Ohereza email ukundi
+                    {t("sell.resendEmail")}
                   </Button>
                   <Button
                     className="rounded-full bg-amber-400 text-black hover:bg-amber-500"
                     onClick={() => window.location.reload()}
                   >
-                    Nasuzumye email yanjye
+                    {t("sell.confirmedEmail")}
                   </Button>
                 </div>
               </div>
@@ -463,9 +465,9 @@ export default function SellerOnboardingPage() {
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CreditCard size={28} className="text-purple-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Emeza ko uri wowe</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">{t("sell.verifyIdentity")}</h2>
                   <p className="text-gray-600">
-                    Take a selfie and upload your Rwandan National ID. This keeps our marketplace safe for all Rwandans.
+                    {t("sell.verifyDesc")}
                   </p>
                 </div>
 
@@ -473,10 +475,10 @@ export default function SellerOnboardingPage() {
                   {/* Selfie Camera Capture */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Ifoto yawe (selfie) *
+                      {t("sell.selfie")} *
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      Take a clear photo of your face. Look directly at the camera.
+                      {t("sell.selfieDesc")}
                     </p>
                     
                     {/* Camera View */}
@@ -485,19 +487,19 @@ export default function SellerOnboardingPage() {
                         {cameraError ? (
                           <div className="text-red-600">
                             <X size={32} className="mx-auto mb-2" />
-                            <p className="text-sm mb-3">{cameraError}</p>
+                            <p className="text-sm mb-3">{t("sell.cameraError")}</p>
                             <Button onClick={startCamera} variant="outline" size="sm">
-                              <RefreshCw size={16} className="mr-2" /> Try again
+                              <RefreshCw size={16} className="mr-2" /> {t("sell.tryAgain")}
                             </Button>
                           </div>
                         ) : (
                           <>
                             <Camera size={40} className="mx-auto text-amber-500 mb-3" />
                             <p className="text-sm text-gray-600 mb-4">
-                              Click to open camera and take your selfie
+                              {t("sell.selfieDesc")}
                             </p>
                             <Button onClick={startCamera} className="bg-amber-400 text-black hover:bg-amber-500">
-                              <Camera size={16} className="mr-2" /> Open Camera
+                              <Camera size={16} className="mr-2" /> {t("sell.openCamera")}
                             </Button>
                           </>
                         )}
@@ -507,27 +509,40 @@ export default function SellerOnboardingPage() {
                     {/* Live Camera */}
                     {cameraActive && !selfiePreview && (
                       <div className="border-2 border-amber-400 rounded-xl overflow-hidden bg-black">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full aspect-video object-cover"
-                          style={{ transform: "scaleX(-1)" }}
-                        />
+                        <div className="relative w-full aspect-[4/3] bg-gray-900">
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            onLoadedMetadata={() => {
+                              // Ensure video plays when metadata is loaded
+                              videoRef.current?.play().catch(console.error);
+                            }}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            style={{ transform: "scaleX(-1)" }}
+                          />
+                          {/* Loading indicator while camera initializes */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="text-white/50 text-sm">
+                              <Loader2 className="animate-spin mx-auto mb-2" size={24} />
+                              Loading camera...
+                            </div>
+                          </div>
+                        </div>
                         <div className="p-4 bg-gray-900 flex justify-center gap-4">
                           <Button
                             onClick={stopCamera}
                             variant="outline"
                             className="bg-white/10 border-white/30 text-white hover:bg-white/20"
                           >
-                            <X size={16} className="mr-2" /> Cancel
+                            <X size={16} className="mr-2" /> {t("sell.cancel")}
                           </Button>
                           <Button
                             onClick={captureSelfie}
                             className="bg-amber-400 text-black hover:bg-amber-500"
                           >
-                            <Camera size={16} className="mr-2" /> Take Photo
+                            <Camera size={16} className="mr-2" /> {t("sell.takePhoto")}
                           </Button>
                         </div>
                       </div>
@@ -543,10 +558,10 @@ export default function SellerOnboardingPage() {
                             className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
                           />
                           <div className="flex-1">
-                            <p className="font-medium text-green-700">✓ Selfie captured</p>
-                            <p className="text-sm text-gray-600 mb-2">Looking good!</p>
+                            <p className="font-medium text-green-700">✓ {t("sell.selfieCaptured")}</p>
+                            <p className="text-sm text-gray-600 mb-2">{t("sell.lookingGood")}</p>
                             <Button onClick={retakeSelfie} variant="outline" size="sm">
-                              <RefreshCw size={14} className="mr-2" /> Retake
+                              <RefreshCw size={14} className="mr-2" /> {t("sell.retake")}
                             </Button>
                           </div>
                         </div>
@@ -557,10 +572,10 @@ export default function SellerOnboardingPage() {
                   {/* ID Front Upload */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Indangamuntu (imbere) *
+                      {t("sell.idFront")} *
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      Take a photo of the front of your Rwandan National ID.
+                      {t("sell.idFrontDesc")}
                     </p>
                     <div className="relative">
                       <input
@@ -585,15 +600,15 @@ export default function SellerOnboardingPage() {
                               className="w-24 h-16 rounded-lg object-cover"
                             />
                             <div className="text-left">
-                              <p className="font-medium text-green-700">✓ ID front uploaded</p>
-                              <p className="text-sm text-gray-500">Click to change</p>
+                              <p className="font-medium text-green-700">✓ {t("sell.idFrontUploaded")}</p>
+                              <p className="text-sm text-gray-500">{t("sell.clickToChange")}</p>
                             </div>
                           </div>
                         ) : (
                           <>
                             <Upload size={32} className="mx-auto text-gray-400 mb-2" />
                             <p className="text-sm text-gray-600">
-                              Click to take photo or upload ID front
+                              {t("sell.uploadIdFront")}
                             </p>
                           </>
                         )}
@@ -604,10 +619,10 @@ export default function SellerOnboardingPage() {
                   {/* ID Back Upload (Optional) */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Indangamuntu (inyuma) - optional
+                      {t("sell.idBack")}
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      If your Rwandan ID has info on the back, upload it here.
+                      {t("sell.idBackDesc")}
                     </p>
                     <div className="relative">
                       <input
@@ -632,20 +647,35 @@ export default function SellerOnboardingPage() {
                               className="w-20 h-14 rounded-lg object-cover"
                             />
                             <div className="text-left">
-                              <p className="font-medium text-green-700">✓ ID back uploaded</p>
-                              <p className="text-sm text-gray-500">Click to change</p>
+                              <p className="font-medium text-green-700">✓ {t("sell.idBackUploaded")}</p>
+                              <p className="text-sm text-gray-500">{t("sell.clickToChange")}</p>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-400">Click to upload ID back (optional)</p>
+                          <p className="text-sm text-gray-400">{t("sell.uploadIdBack")}</p>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-500 text-center">
-                    <strong>Next step:</strong> After taking photos, you will name your store.
-                  </p>
+                  {/* Continue Button - shows when both selfie and ID front are captured */}
+                  {selfiePreview && idFrontPreview ? (
+                    <div className="pt-4 border-t border-gray-200">
+                      <Button
+                        onClick={() => {
+                          // Force move to store step by setting a flag
+                          // The getCurrentStep will return "store" when both are set
+                        }}
+                        className="w-full h-12 rounded-full bg-amber-400 text-black hover:bg-amber-500 text-base font-medium"
+                      >
+                        {t("sell.continueToStore")} <ArrowRight size={18} className="ml-2" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center">
+                      <strong>{t("sell.nextStep")}:</strong> {t("sell.afterPhotos")}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -657,16 +687,16 @@ export default function SellerOnboardingPage() {
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Store size={28} className="text-green-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Shyiraho Iduka ryawe 🇷🇼</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">{t("sell.createStore")} 🇷🇼</h2>
                   <p className="text-gray-600">
-                    Almost done! Name your store and start selling to Rwandans.
+                    {t("sell.almostDone")}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="storeName" className="text-sm font-medium text-gray-700">
-                      Izina ry'iduka *
+                      {t("sell.storeName")} *
                     </Label>
                     <Input
                       id="storeName"
@@ -676,29 +706,29 @@ export default function SellerOnboardingPage() {
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      This is the name customers across Rwanda will see.
+                      {t("sell.storeNameDesc")}
                     </p>
                   </div>
 
                   <div>
                     <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                      Aho uherereye
+                      {t("sell.location")}
                     </Label>
                     <Input
                       id="location"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Kigali, Musanze, Rubavu..."
+                      placeholder={t("sell.locationPlaceholder")}
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Your city or district in Rwanda
+                      {t("sell.locationDesc")}
                     </p>
                   </div>
 
                   <div>
                     <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                      Telefoni (optional)
+                      {t("sell.phone")}
                     </Label>
                     <Input
                       id="phone"
@@ -709,7 +739,7 @@ export default function SellerOnboardingPage() {
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Your Rwandan phone number for store inquiries.
+                      {t("sell.phoneDesc")}
                     </p>
                   </div>
 
@@ -718,7 +748,7 @@ export default function SellerOnboardingPage() {
                       <div className="flex items-center gap-3">
                         <Loader2 className="animate-spin text-amber-600" size={20} />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800">Uploading images...</p>
+                          <p className="text-sm font-medium text-amber-800">{t("sell.uploading")}</p>
                           <div className="w-full bg-amber-200 rounded-full h-2 mt-2">
                             <div
                               className="bg-amber-500 h-2 rounded-full transition-all"
@@ -738,11 +768,11 @@ export default function SellerOnboardingPage() {
                     {submitting ? (
                       <>
                         <Loader2 className="animate-spin mr-2" size={18} />
-                        Creating store...
+                        {t("sell.creatingStore")}
                       </>
                     ) : (
                       <>
-                        Create my store <ArrowRight size={18} className="ml-2" />
+                        {t("sell.createMyStore")} <ArrowRight size={18} className="ml-2" />
                       </>
                     )}
                   </Button>
@@ -757,7 +787,7 @@ export default function SellerOnboardingPage() {
                     }}
                     className="w-full text-gray-500"
                   >
-                    <ArrowLeft size={16} className="mr-2" /> Go back to ID upload
+                    <ArrowLeft size={16} className="mr-2" /> {t("sell.goBack")}
                   </Button>
                 </div>
               </div>
@@ -769,24 +799,24 @@ export default function SellerOnboardingPage() {
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Check size={36} className="text-green-600" />
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Iduka ryawe rirakora! 🎉</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t("sell.storeReady")}</h2>
                 <p className="text-gray-600 mb-2">
-                  Store name: <strong>{existingVendor.name}</strong>
+                  {t("sell.storeName")}: <strong>{existingVendor.name}</strong>
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                   <p className="text-sm text-green-800">
-                    🇷🇼 Welcome to Rwanda's marketplace! You can now add products and start selling to customers across Kigali, Musanze, Rubavu, and all of Rwanda.
+                    🇷🇼 {t("sell.welcomeRwanda")}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link to="/seller">
                     <Button className="w-full sm:w-auto rounded-full bg-amber-400 text-black hover:bg-amber-500">
-                      Fungura Dashboard
+                      {t("sell.openDashboard")}
                     </Button>
                   </Link>
                   <Link to="/seller/products/new">
                     <Button variant="outline" className="w-full sm:w-auto rounded-full">
-                      Shyiraho ibicuruzwa
+                      {t("sell.addProducts")}
                     </Button>
                   </Link>
                 </div>
@@ -797,7 +827,7 @@ export default function SellerOnboardingPage() {
           {/* Help Text */}
           <div className="text-center mt-8">
             <p className="text-sm text-gray-500">
-              Ukeneye ubufasha? Twandikire kuri{" "}
+              {t("sell.needHelp")}{" "}
               <a href="mailto:support@iwanyu.store" className="text-amber-600 hover:underline">
                 support@iwanyu.store
               </a>
