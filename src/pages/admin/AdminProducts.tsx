@@ -1,4 +1,4 @@
-import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Search, Trash2, Eye, Tag, Package, Filter } from "lucide-react";
+import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Search, Trash2, Eye, Tag, Package, Percent, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
   { label: "Vendors", icon: Users, href: "/admin/vendors" },
   { label: "Products", icon: Boxes, href: "/admin/products", active: true },
+  { label: "Discounts", icon: Percent, href: "/admin/discounts" },
   { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
 ];
 
@@ -83,7 +84,10 @@ export default function AdminProductsPage() {
     });
     if (notifyErr) throw new Error(notifyErr.message);
 
-    const { error: deleteErr } = await supabase.from("products").delete().eq("id", productToDelete.id);
+    const { error: deleteErr } = await supabase
+      .from("products")
+      .update({ deleted_at: new Date().toISOString(), in_stock: false })
+      .eq("id", productToDelete.id);
     if (deleteErr) throw new Error(deleteErr.message);
 
     setDeleteOpen(false);

@@ -1,8 +1,19 @@
-import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, TrendingUp, Search } from "lucide-react";
+import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Search, Trash2, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
@@ -13,6 +24,7 @@ const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
   { label: "Vendors", icon: Users, href: "/admin/vendors", active: true },
   { label: "Products", icon: Boxes, href: "/admin/products" },
+  { label: "Discounts", icon: Percent, href: "/admin/discounts" },
   { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
 ];
 
@@ -22,6 +34,14 @@ export default function AdminVendorsPage() {
   const supabase = getSupabaseClient();
   const { products, vendors, refresh } = useMarketplace();
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteVendorId, setDeleteVendorId] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+
+  const vendorToDelete = useMemo(
+    () => (deleteVendorId ? vendors.find((v) => v.id === deleteVendorId) : undefined),
+    [deleteVendorId, vendors]
+  );
 
   if (!user) {
     return (
@@ -60,6 +80,50 @@ export default function AdminVendorsPage() {
     if (!supabase) throw new Error("Supabase is not configured");
     const { error } = await supabase.from("vendors").update({ revoked: !currentRevoked }).eq("id", vendorId);
     if (error) throw new Error(error.message);
+    await refresh();
+  }
+
+  async function deleteVendorWithReason() {
+    if (!supabase) throw new Error("Supabase is not configured");
+    if (!user) throw new Error("Not signed in");
+    if (!vendorToDelete) throw new Error("Missing vendor");
+
+    const reason = deleteReason.trim();
+    if (reason.length < 5) throw new Error("Please provide a short reason (min 5 chars)");
+
+    const now = new Date().toISOString();
+
+    // Notify vendor
+    await supabase.from("vendor_notifications").insert({
+      vendor_id: vendorToDelete.id,
+      type: "vendor_removed",
+      title: `Vendor account removed: ${vendorToDelete.name}`,
+      message: `Your vendor account was removed by admin. Reason: ${reason}`,
+      created_by: user.id,
+    });
+
+    // Soft-delete vendor and revoke access
+    const { error: vendorErr } = await supabase
+      .from("vendors")
+      .update({ deleted_at: now, revoked: true, verified: false, status: "deleted" })
+      .eq("id", vendorToDelete.id);
+    if (vendorErr) throw new Error(vendorErr.message);
+
+    // Soft-delete all vendor products (keeps order history intact)
+    const { error: productsErr } = await supabase
+      .from("products")
+      .update({ deleted_at: now, in_stock: false })
+      .eq("vendor_id", vendorToDelete.id);
+    if (productsErr) throw new Error(productsErr.message);
+
+    // Optionally downgrade the owner's role so they no longer get seller UI.
+    if (vendorToDelete.ownerUserId) {
+      await supabase.from("profiles").update({ role: "buyer" }).eq("id", vendorToDelete.ownerUserId);
+    }
+
+    setDeleteOpen(false);
+    setDeleteVendorId(null);
+    setDeleteReason("");
     await refresh();
   }
 
@@ -228,6 +292,19 @@ export default function AdminVendorsPage() {
                       >
                         {vendor.revoked ? "Restore" : "Revoke"}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="rounded-full"
+                        onClick={() => {
+                          setDeleteVendorId(vendor.id);
+                          setDeleteReason("");
+                          setDeleteOpen(true);
+                        }}
+                        title="Remove vendor"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -243,6 +320,48 @@ export default function AdminVendorsPage() {
           </main>
         </div>
       </div>
+
+      {/* Delete Vendor Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Vendor</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the vendor and unlist all their products. Existing orders remain intact.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Reason for removal</label>
+            <Textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Explain policy violation..."
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full bg-red-600 hover:bg-red-700"
+              onClick={async (e) => {
+                e.preventDefault();
+                try {
+                  await deleteVendorWithReason();
+                  toast({ title: "Deleted", description: "Vendor removed" });
+                } catch (err) {
+                  toast({
+                    title: "Failed",
+                    description: err instanceof Error ? err.message : "Unknown error",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Delete Vendor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

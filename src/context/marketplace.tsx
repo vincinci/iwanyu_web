@@ -32,6 +32,8 @@ type DbVendorRow = {
   verified: boolean;
   owner_user_id: string | null;
   status: string;
+  revoked?: boolean | null;
+  deleted_at?: string | null;
 };
 
 type DbProductRow = {
@@ -48,6 +50,7 @@ type DbProductRow = {
   review_count: number;
   discount_percentage?: number | null;
   variants?: unknown | null;
+  deleted_at?: string | null;
 };
 
 const CACHE_KEY = "iwanyu:marketplace:v1";
@@ -95,16 +98,17 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       const vendorRows: DbVendorRow[] = parsed.vendors;
       const productRows: DbProductRow[] = parsed.products;
 
-      const nextVendors = vendorRows.map((v) => ({
+      const nextVendors = vendorRows.filter((v) => !v.deleted_at).map((v) => ({
         id: v.id,
         name: v.name,
         location: v.location ?? undefined,
         verified: v.verified,
         ownerUserId: v.owner_user_id ?? undefined,
         status: v.status as "pending" | "approved" | "rejected",
+        revoked: Boolean(v.revoked ?? false),
       }));
 
-      const nextProducts = productRows.map((p) => ({
+      const nextProducts = productRows.filter((p) => !p.deleted_at).map((p) => ({
         id: p.id,
         vendorId: p.vendor_id,
         title: p.title,
@@ -147,14 +151,25 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       } catch {
         if (!publicSupabase) throw new Error("Supabase is not configured");
 
-        const vendorsRes = await withTimeout(
+        let vendorsRes = await withTimeout(
           publicSupabase
             .from("vendors")
-            .select("id, name, location, verified, owner_user_id, status")
+            .select("id, name, location, verified, owner_user_id, status, revoked")
+            .is("deleted_at", null)
             .limit(500),
           4000,
           "vendors fetch"
         );
+        if (vendorsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(vendorsRes.error.message)) {
+          vendorsRes = await withTimeout(
+            publicSupabase
+              .from("vendors")
+              .select("id, name, location, verified, owner_user_id, status, revoked")
+              .limit(500),
+            4000,
+            "vendors fetch"
+          );
+        }
         if (vendorsRes.error) throw new Error(vendorsRes.error.message);
         vendorRows = (vendorsRes.data ?? []) as DbVendorRow[];
 
@@ -164,10 +179,24 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
             .select(
               "id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage, variants"
             )
+            .is("deleted_at", null)
             .limit(2000),
           5000,
           "products fetch"
         );
+
+        if (productsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
+          productsRes = await withTimeout(
+            publicSupabase
+              .from("products")
+              .select(
+                "id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage, variants"
+              )
+              .limit(2000),
+            5000,
+            "products fetch"
+          );
+        }
 
         if (productsRes.error && /column\s+"variants"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
           productsRes = await withTimeout(
@@ -176,10 +205,24 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
               .select(
                 "id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage"
               )
+              .is("deleted_at", null)
               .limit(2000),
             5000,
             "products fetch"
           );
+
+          if (productsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
+            productsRes = await withTimeout(
+              publicSupabase
+                .from("products")
+                .select(
+                  "id, vendor_id, title, description, category, price_rwf, image_url, in_stock, free_shipping, rating, review_count, discount_percentage"
+                )
+                .limit(2000),
+              5000,
+              "products fetch"
+            );
+          }
         }
 
         if (productsRes.error) throw new Error(productsRes.error.message);
@@ -187,16 +230,17 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       }
 
 
-      const nextVendors = vendorRows.map((v) => ({
+      const nextVendors = vendorRows.filter((v) => !v.deleted_at).map((v) => ({
         id: v.id,
         name: v.name,
         location: v.location ?? undefined,
         verified: v.verified,
         ownerUserId: v.owner_user_id ?? undefined,
         status: v.status as "pending" | "approved" | "rejected",
+        revoked: Boolean(v.revoked ?? false),
       }));
 
-      const nextProducts = productRows.map((p) => ({
+      const nextProducts = productRows.filter((p) => !p.deleted_at).map((p) => ({
         id: p.id,
         vendorId: p.vendor_id,
         title: p.title,
@@ -308,7 +352,10 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
       },
       deleteProduct: async (productId) => {
         if (!supabase) throw new Error("Supabase is not configured");
-        const { error } = await supabase.from("products").delete().eq("id", productId);
+        const { error } = await supabase
+          .from("products")
+          .update({ deleted_at: new Date().toISOString(), in_stock: false })
+          .eq("id", productId);
         if (error) throw new Error(error.message);
         setProducts((prev) => prev.filter((p) => p.id !== productId));
       },

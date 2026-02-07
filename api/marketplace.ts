@@ -18,40 +18,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         if (type === 'products') {
-            const { data, error } = await supabase
+            let { data, error } = await supabase
                 .from('products')
                 .select('*')
+                .is('deleted_at', null)
                 .order('created_at', { ascending: false })
                 .limit(1000);
+
+            if (error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(error.message)) {
+                ({ data, error } = await supabase
+                    .from('products')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(1000));
+            }
             
             if (error) throw error;
             return res.status(200).json(data || []);
         }
 
         if (type === 'vendors') {
-            const { data, error } = await supabase
+            let { data, error } = await supabase
                 .from('vendors')
                 .select('*')
+                .is('deleted_at', null)
                 .order('created_at', { ascending: false })
                 .limit(1000);
+
+            if (error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(error.message)) {
+                ({ data, error } = await supabase
+                    .from('vendors')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(1000));
+            }
             
             if (error) throw error;
             return res.status(200).json(data || []);
         }
 
         // Default: Fetch all
-        const [productsRes, vendorsRes] = await Promise.all([
-            supabase
+        let productsRes = await supabase
+            .from('products')
+            .select('*')
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1000);
+        let vendorsRes = await supabase
+            .from('vendors')
+            .select('*')
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1000);
+
+        if (productsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
+            productsRes = await supabase
                 .from('products')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(1000),
-            supabase
+                .limit(1000);
+        }
+
+        if (vendorsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(vendorsRes.error.message)) {
+            vendorsRes = await supabase
                 .from('vendors')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(1000)
-        ]);
+                .limit(1000);
+        }
 
         if (productsRes.error) throw productsRes.error;
         if (vendorsRes.error) throw vendorsRes.error;

@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin", active: true },
   { label: "Vendors", icon: Users, href: "/admin/vendors" },
   { label: "Products", icon: Boxes, href: "/admin/products" },
+  { label: "Discounts", icon: Percent, href: "/admin/discounts" },
   { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
 ];
 
@@ -226,7 +227,10 @@ export default function AdminDashboardPage() {
     });
     if (notifyErr) throw new Error(notifyErr.message);
 
-    const { error: deleteErr } = await supabase.from("products").delete().eq("id", productToDelete.id);
+    const { error: deleteErr } = await supabase
+      .from("products")
+      .update({ deleted_at: new Date().toISOString(), in_stock: false })
+      .eq("id", productToDelete.id);
     if (deleteErr) throw new Error(deleteErr.message);
 
     setDeleteOpen(false);

@@ -25,6 +25,7 @@ const SellerDashboardPage = lazy(() => import("./pages/seller/SellerDashboard"))
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminVendorsPage = lazy(() => import("./pages/admin/AdminVendors"));
 const AdminProductsPage = lazy(() => import("./pages/admin/AdminProducts"));
+const AdminDiscountsPage = lazy(() => import("./pages/admin/AdminDiscounts"));
 const AdminApplicationsPage = lazy(() => import("./pages/admin/AdminApplications"));
 const StaticPage = lazy(() => import("./pages/StaticPage"));
 const SellerProductsPage = lazy(() => import("./pages/seller/SellerProducts"));
@@ -195,6 +196,14 @@ const AppContent = () => {
           element={
             <RequireAuth roles={["admin"]}>
               {withSuspense(<AdminProductsPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/discounts"
+          element={
+            <RequireAuth roles={["admin"]}>
+              {withSuspense(<AdminDiscountsPage />)}
             </RequireAuth>
           }
         />

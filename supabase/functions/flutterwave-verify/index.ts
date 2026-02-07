@@ -129,6 +129,24 @@ Deno.serve(async (req: Request) => {
       })
       .eq("order_id", orderId);
 
+    // If a discount code was applied, record a successful redemption.
+    try {
+      const { data: orderRow, error: orderReadErr } = await supabase
+        .from("orders")
+        .select("discount_code")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (!orderReadErr) {
+        const discountCode = (orderRow as { discount_code?: string | null } | null)?.discount_code;
+        if (discountCode) {
+          await supabase.rpc("increment_discount_redemption", { p_code: discountCode });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to increment discount redemption", e);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

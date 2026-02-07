@@ -1,4 +1,4 @@
-import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, CheckCircle2, X, Clock, Search } from "lucide-react";
+import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, CheckCircle2, X, Clock, Search, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
   { label: "Vendors", icon: Users, href: "/admin/vendors" },
   { label: "Products", icon: Boxes, href: "/admin/products" },
+  { label: "Discounts", icon: Percent, href: "/admin/discounts" },
   { label: "Applications", icon: BadgeCheck, href: "/admin/applications", active: true },
 ];
 

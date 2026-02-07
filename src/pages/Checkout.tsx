@@ -32,13 +32,64 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
 
-  const serviceFee = calculateServiceFee(subtotal);
-  const total = subtotal + serviceFee;
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<null | {
+    code: string;
+    discountRwf: number;
+  }>(null);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+
+  const discountRwf = appliedDiscount?.discountRwf ?? 0;
+  const discountedSubtotal = Math.max(0, Math.round(subtotal - discountRwf));
+
+  const serviceFee = calculateServiceFee(discountedSubtotal);
+  const total = discountedSubtotal + serviceFee;
 
   const canPlaceOrder = useMemo(
     () => items.length > 0 && email.trim().length > 3 && address.trim().length > 5 && phone.trim().length >= 10,
     [items.length, email, address, phone]
   );
+
+  const applyDiscountCode = async () => {
+    if (isApplyingDiscount) return;
+    setIsApplyingDiscount(true);
+    try {
+      if (!supabase) throw new Error("Discounts are not configured");
+
+      const normalized = discountCodeInput.trim().toUpperCase();
+      if (!normalized) {
+        setAppliedDiscount(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("discount_codes")
+        .select("code, discount_type, amount_rwf, percentage, min_subtotal_rwf")
+        .eq("code", normalized)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("Invalid or expired discount code");
+
+      const minSubtotal = Math.max(0, Number(data.min_subtotal_rwf ?? 0));
+      if (subtotal < minSubtotal) {
+        throw new Error(`Minimum subtotal for this code is ${formatMoney(minSubtotal)}`);
+      }
+
+      let nextDiscount = 0;
+      if (data.discount_type === "fixed") {
+        nextDiscount = Math.max(0, Math.round(Number(data.amount_rwf ?? 0)));
+      } else {
+        const pct = Math.max(0, Math.min(100, Math.round(Number(data.percentage ?? 0))));
+        nextDiscount = Math.round((Math.max(0, subtotal) * pct) / 100);
+      }
+      nextDiscount = Math.min(Math.max(0, Math.round(subtotal)), Math.max(0, nextDiscount));
+
+      setAppliedDiscount({ code: data.code, discountRwf: nextDiscount });
+      toast({ title: "Discount applied", description: `${data.code} applied` });
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  };
 
   const handleCheckout = async () => {
     if (isPlacing) return;
@@ -63,15 +114,21 @@ export default function CheckoutPage() {
         throw new Error("Checkout is not configured.");
       }
 
-      const serviceFeeRwf = calculateServiceFee(subtotal);
-      const totalRwf = Math.round(subtotal + serviceFeeRwf);
-      const vendorPayoutRwf = calculateVendorPayout(subtotal);
+      const appliedCode = appliedDiscount?.code ?? null;
+      const appliedDiscountRwf = Math.max(0, Math.round(appliedDiscount?.discountRwf ?? 0));
+      const effectiveSubtotalRwf = Math.max(0, Math.round(subtotal - appliedDiscountRwf));
+
+      const serviceFeeRwf = calculateServiceFee(effectiveSubtotalRwf);
+      const totalRwf = Math.round(effectiveSubtotalRwf + serviceFeeRwf);
+      const vendorPayoutRwf = calculateVendorPayout(effectiveSubtotalRwf);
 
       const paymentMeta = {
         provider: "flutterwave",
         mode: "redirect",
         selected: paymentMethod,
         phone: trimmedPhone,
+        discount_code: appliedCode,
+        discount_rwf: appliedDiscountRwf,
       };
 
       // Insert order and get the generated UUID
@@ -83,6 +140,8 @@ export default function CheckoutPage() {
         total_rwf: totalRwf,
         service_fee_rwf: serviceFeeRwf,
         vendor_payout_rwf: vendorPayoutRwf,
+        discount_code: appliedCode,
+        discount_rwf: appliedDiscountRwf,
         payment: paymentMeta,
       }).select("id").single();
 
@@ -95,8 +154,22 @@ export default function CheckoutPage() {
         throw new Error(`Missing vendor for product ${missingVendor.productId}`);
       }
 
-      const rows = orderItems.map((i) => {
-        const lineTotal = Math.round(i.price * i.quantity);
+      const subtotalRwf = Math.max(0, Math.round(subtotal));
+      const lineTotals = orderItems.map((i) => Math.round(i.price * i.quantity));
+      let remainingDiscount = Math.min(appliedDiscountRwf, subtotalRwf);
+      const lineDiscounts = lineTotals.map((lineTotal, idx) => {
+        if (remainingDiscount <= 0 || subtotalRwf <= 0) return 0;
+        if (idx === lineTotals.length - 1) return remainingDiscount;
+        const proportional = Math.floor((lineTotal / subtotalRwf) * appliedDiscountRwf);
+        const alloc = Math.max(0, Math.min(remainingDiscount, proportional));
+        remainingDiscount -= alloc;
+        return alloc;
+      });
+
+      const rows = orderItems.map((i, idx) => {
+        const lineTotal = lineTotals[idx] ?? 0;
+        const lineDiscount = lineDiscounts[idx] ?? 0;
+        const discountedLineTotal = Math.max(0, lineTotal - lineDiscount);
         return {
           order_id: orderId,
           product_id: i.productId,
@@ -106,7 +179,7 @@ export default function CheckoutPage() {
           quantity: i.quantity,
           image_url: i.image,
           status: "Placed",
-          vendor_payout_rwf: calculateVendorPayout(lineTotal),
+          vendor_payout_rwf: calculateVendorPayout(discountedLineTotal),
         };
       });
 
@@ -377,12 +450,63 @@ export default function CheckoutPage() {
                     ))}
                   </div>
 
+                  {/* Discount Code */}
+                  <div className="mt-4">
+                    <div className="text-xs font-medium text-gray-700 mb-1.5">Discount code</div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={discountCodeInput}
+                        onChange={(e) => setDiscountCodeInput(e.target.value)}
+                        placeholder="SAVE10"
+                        className="h-10 rounded-xl"
+                        autoCapitalize="characters"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl"
+                        disabled={isApplyingDiscount}
+                        onClick={async () => {
+                          try {
+                            await applyDiscountCode();
+                          } catch (e) {
+                            toast({
+                              title: "Discount failed",
+                              description: e instanceof Error ? e.message : "Unknown error",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {appliedDiscount && (
+                      <div className="mt-2 text-xs text-green-700">
+                        Applied: <span className="font-semibold">{appliedDiscount.code}</span> (-{formatMoney(appliedDiscount.discountRwf)})
+                        <button
+                          type="button"
+                          className="ml-2 text-gray-500 hover:text-gray-900 underline"
+                          onClick={() => setAppliedDiscount(null)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Pricing */}
                   <div className="border-t mt-4 pt-4 space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Subtotal</span>
                       <span className="font-medium text-gray-900">{formatMoney(subtotal)}</span>
                     </div>
+                    {discountRwf > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Discount</span>
+                        <span className="font-medium text-green-700">-{formatMoney(discountRwf)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Service fee ({GUEST_SERVICE_FEE_RATE * 100}%)</span>
                       <span className="font-medium text-gray-900">{formatMoney(serviceFee)}</span>
