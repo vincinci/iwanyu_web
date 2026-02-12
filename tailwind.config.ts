@@ -145,7 +145,7 @@ export default {
 			},
 			fontFamily: {
 				sans: [
-					'ui-sans-serif',
+					'"Source Sans 3"',
 					'system-ui',
 					'-apple-system',
 					'BlinkMacSystemFont',
@@ -153,7 +153,7 @@ export default {
 					'sans-serif',
 				],
 				heading: [
-					'ui-sans-serif',
+					'"Space Grotesk"',
 					'system-ui',
 					'-apple-system',
 					'BlinkMacSystemFont',

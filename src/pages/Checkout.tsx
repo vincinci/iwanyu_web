@@ -273,29 +273,11 @@ export default function CheckoutPage() {
 
         <div className="container py-8 lg:py-12">
           <div className="max-w-5xl mx-auto">
-            {/* Progress Steps */}
-            <div className="flex items-center justify-center gap-4 mb-10">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-amber-500 text-black flex items-center justify-center font-semibold text-sm">1</div>
-                <span className="text-sm font-medium text-gray-900 hidden sm:inline">Details</span>
-              </div>
-              <ChevronRight className="text-gray-300" size={20} />
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold text-sm">2</div>
-                <span className="text-sm font-medium text-gray-400 hidden sm:inline">Payment</span>
-              </div>
-              <ChevronRight className="text-gray-300" size={20} />
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold text-sm">3</div>
-                <span className="text-sm font-medium text-gray-400 hidden sm:inline">Complete</span>
-              </div>
-            </div>
-
             <div className="grid gap-8 lg:grid-cols-5">
               {/* Left Column - Form */}
               <div className="lg:col-span-3 space-y-6">
                 {/* Contact Information */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="bg-white rounded-2xl p-6 border border-gray-100">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
                   <div className="space-y-4">
                     <div>
@@ -323,7 +305,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Shipping Address */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="bg-white rounded-2xl p-6 border border-gray-100">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
                       <Truck className="h-5 w-5 text-amber-600" />
@@ -353,7 +335,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Payment Method Selection */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="bg-white rounded-2xl p-6 border border-gray-100">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
                       <Shield className="h-5 w-5 text-green-600" />
@@ -423,7 +405,7 @@ export default function CheckoutPage() {
 
               {/* Right Column - Order Summary */}
               <div className="lg:col-span-2">
-                <div className="bg-white rounded-2xl p-6 shadow-sm sticky top-24">
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 sticky top-24">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
                   
                   {/* Items */}
@@ -528,7 +510,7 @@ export default function CheckoutPage() {
                   <Button
                     onClick={handleCheckout}
                     disabled={!canPlaceOrder || isPlacing}
-                    className="w-full mt-6 h-14 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-black font-semibold text-base rounded-xl shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:shadow-none"
+                    className="w-full mt-6 h-12 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-base rounded-xl disabled:opacity-50"
                   >
                     {isPlacing ? (
                       <>

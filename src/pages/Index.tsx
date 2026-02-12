@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Header } from "@/components/Header";
 import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
@@ -9,7 +8,7 @@ import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Product } from "@/types/product";
 
@@ -39,7 +38,7 @@ const Index = () => {
   return (
     <>
       <HomeSEO />
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50/40 via-white to-white">
         <Header />
         
         <main className="flex-1">
@@ -49,15 +48,15 @@ const Index = () => {
         
         {/* Recently Viewed Products */}
         {recentlyViewedProducts.length > 0 && !loading && (
-          <section className="container py-10 animate-in fade-in slide-in-from-bottom duration-700">
+          <section className="container py-10">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent">Recently viewed</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Recently viewed</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Pick up where you left off.</p>
               </div>
               <Button 
                 variant="ghost" 
-                className="h-9 px-3 text-xs font-semibold rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 hover:scale-105" 
+                className="h-9 px-3 text-xs font-semibold rounded-full" 
                 onClick={clearRecentlyViewed}
               >
                 Clear
@@ -74,7 +73,7 @@ const Index = () => {
           </section>
         )}
 
-        {/* Category Sections with Horizontal Scrolling */}
+        {/* Featured categories */}
         <div className="container py-12">
           {loading ? (
             <div className="space-y-12">
@@ -108,7 +107,7 @@ const Index = () => {
             </div>
           ) : (
             <div className="space-y-12">
-              {productsByCategory.map((category) => (
+              {productsByCategory.slice(0, 5).map((category) => (
                 <CategorySection
                   key={category.id}
                   category={category.name}
@@ -122,17 +121,17 @@ const Index = () => {
 
         {/* Promo Banner */}
         <section className="container py-10">
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-gray-200 bg-gradient-to-br from-purple-50 via-white to-pink-50 p-8 shadow-xl transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:border-purple-300 animate-in fade-in slide-in-from-bottom duration-700">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700" />
+          <div className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-100 via-white to-orange-100 p-8 shadow-lg">
+            <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber-200/40 blur-2xl" />
             <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-2xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">Free shipping on your first order</h2>
-                <p className="mt-1 text-base text-gray-700 font-medium">Create an account to unlock perks and faster checkout.</p>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Free shipping on your first order</h2>
+                <p className="mt-1 text-base text-gray-700">Create an account to unlock perks and faster checkout.</p>
               </div>
               <Link to="/account">
-                <Button className="group/btn rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold px-8 py-6 text-base shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2">
+                <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 font-semibold px-7 py-6 text-base shadow-md flex items-center gap-2">
                   Create account
-                  <ArrowRight size={18} className="transition-transform duration-300 group-hover/btn:translate-x-1" />
+                  <ArrowRight size={18} />
                 </Button>
               </Link>
             </div>
@@ -154,78 +153,26 @@ interface CategorySectionProps {
 }
 
 const CategorySection = ({ category, products, categoryId }: CategorySectionProps) => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 400;
-      const currentScroll = scrollContainerRef.current.scrollLeft;
-      const newScroll = direction === 'left' 
-        ? currentScroll - scrollAmount 
-        : currentScroll + scrollAmount;
-      
-      scrollContainerRef.current.scrollTo({
-        left: newScroll,
-        behavior: 'smooth'
-      });
-    }
-  };
-
   if (products.length === 0) return null;
 
   return (
-    <div className="relative group/section animate-in fade-in slide-in-from-bottom duration-500">
+    <div className="relative">
       {/* Section Header */}
       <div className="flex items-center justify-between gap-4 mb-5">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent">{category}</h2>
+        <h2 className="text-2xl font-semibold text-gray-900">{category}</h2>
         <Link 
           to={`/category/${categoryId}`}
-          className="group/link text-sm font-semibold text-gray-600 hover:text-black transition-all flex items-center gap-1 hover:gap-2"
+          className="group/link text-sm font-semibold text-gray-600 hover:text-black transition-colors flex items-center gap-1"
         >
           View all 
           <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
         </Link>
       </div>
 
-      {/* Scroll Controls */}
-      <div className="relative">
-        {products.length > 5 && (
-          <>
-            <button
-              onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-gray-200 shadow-xl opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:bg-gray-50 hover:scale-110 hover:border-gray-300 active:scale-95"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <button
-              onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden lg:flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-gray-200 shadow-xl opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:bg-gray-50 hover:scale-110 hover:border-gray-300 active:scale-95"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
-            </button>
-          </>
-        )}
-
-        {/* Horizontal Scrolling Product Grid */}
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-        >
-          {products.slice(0, 15).map((product) => (
-            <div
-              key={product.id}
-              className="flex-none w-[180px] sm:w-[200px] md:w-[220px] lg:w-[240px] snap-start"
-            >
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {products.slice(0, 10).map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
       </div>
     </div>
   );

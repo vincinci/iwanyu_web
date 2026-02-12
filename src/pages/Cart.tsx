@@ -43,14 +43,14 @@ export default function CartPage() {
 
   return (
     <StorefrontPage>
-      <div className="container min-h-screen py-12 animate-in fade-in slide-in-from-bottom duration-500">
+      <div className="container min-h-screen py-12">
         <div className="mb-8">
-          <h1 className="text-4xl font-black bg-gradient-to-r from-black via-gray-700 to-gray-500 bg-clip-text text-transparent mb-3">Shopping Cart</h1>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-3">Shopping Cart</h1>
           <div className="flex items-center justify-between">
-            <p className="text-base text-gray-600 font-semibold">
+            <p className="text-base text-gray-600">
               {itemCount} item{itemCount === 1 ? "" : "s"}
             </p>
-            <Link to="/" className="group text-sm font-bold text-gray-700 hover:text-black transition-all flex items-center gap-2 hover:gap-3">
+            <Link to="/" className="group text-sm font-semibold text-gray-700 hover:text-black transition-colors flex items-center gap-2">
               Continue shopping 
               <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
             </Link>
@@ -169,14 +169,14 @@ export default function CartPage() {
 
         {items.length > 0 ? (
           <div className="mt-16">
-            <h2 className="text-xl font-semibold text-foreground mb-6">Recommended Products</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-6">Recommended products</h2>
             {recommended.length === 0 ? (
               <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
                 No recommendations available right now.
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {recommended.map((product) => (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {recommended.slice(0, 8).map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>

@@ -30,10 +30,10 @@ export const CategoryNav = () => {
   }, [products]);
 
   return (
-    <section className="py-12">
+    <section className="py-10">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">Shop by Category</h2>
           <Link 
             to="/category/all" 
@@ -44,23 +44,18 @@ export const CategoryNav = () => {
           </Link>
         </div>
         
-        {/* Category Grid */}
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6 sm:gap-4">
+        {/* Category Row */}
+        <div className="flex gap-3 overflow-x-auto scroll-hide pb-2">
           {categories.map((category) => (
-            <Link 
+            <Link
               key={category.id}
               to={`/category/${category.id}`}
-              className="group flex flex-col items-center gap-3 rounded-2xl bg-gray-50 p-5 transition-all duration-200 hover:bg-gray-100"
+              className="group inline-flex flex-none items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
             >
-              {/* Icon */}
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm transition-all duration-200 group-hover:scale-110 group-hover:shadow-md">
-                {categoryIcons[category.id] || <ShoppingBag size={24} strokeWidth={1.5} />}
-              </div>
-              
-              {/* Label */}
-              <span className="text-center text-sm font-medium text-gray-900">
-                {category.name}
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-gray-700">
+                {categoryIcons[category.id] || <ShoppingBag size={18} strokeWidth={1.5} />}
               </span>
+              {category.name}
             </Link>
           ))}
         </div>

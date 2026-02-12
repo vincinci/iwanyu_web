@@ -1,43 +1,23 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield, Globe } from 'lucide-react';
+import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
 import { useAuth } from '@/context/auth';
 import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
-import { useLanguage, Language } from '@/context/language';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
   const { itemCount } = useCart();
   const { user, signOut } = useAuth();
   const { products } = useMarketplace();
   const { count: wishlistCount } = useWishlist();
-  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
-
-  // Close language dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(e.target as Node)) {
-        setShowLanguageDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const languageOptions: { code: Language; label: string; flag: string }[] = [
-    { code: "rw", label: "Kinyarwanda", flag: "🇷🇼" },
-    { code: "en", label: "English", flag: "🇬🇧" },
-  ];
 
   const categories = useMemo(() => {
     return getNavCategoriesWithCounts(products).map(({ id, name }) => ({ id, name }));
@@ -100,67 +80,6 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
-      {/* Top utility bar - minimal */}
-      <div className="hidden md:block border-b border-gray-50">
-        <div className="container mx-auto px-4 py-1.5">
-          <div className="flex items-center justify-between text-[11px] text-gray-500">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-1 w-1 rounded-full bg-green-500"></span>
-                {t("header.freeShipping")}
-              </span>
-              <span className="text-gray-300">·</span>
-              <span>{t("header.returns")}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Language Dropdown */}
-              <div className="relative" ref={languageDropdownRef}>
-                <button 
-                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center gap-1.5 hover:text-gray-900 transition-colors font-medium"
-                >
-                  <Globe size={12} />
-                  <span>{language === "rw" ? "🇷🇼 RW" : "🇬🇧 EN"}</span>
-                  <ChevronDown size={10} className={`transition-transform ${showLanguageDropdown ? "rotate-180" : ""}`} />
-                </button>
-                
-                {showLanguageDropdown && (
-                  <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px] z-50">
-                    <div className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">
-                      Ururimi / Language
-                    </div>
-                    {languageOptions.map((option) => (
-                      <button
-                        key={option.code}
-                        onClick={() => {
-                          setLanguage(option.code);
-                          setShowLanguageDropdown(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                          language === option.code ? "bg-amber-50 text-amber-700 font-medium" : "text-gray-700"
-                        }`}
-                      >
-                        <span>{option.flag}</span>
-                        <span>{option.label}</span>
-                        {language === option.code && <span className="ml-auto text-amber-500">✓</span>}
-                      </button>
-                    ))}
-                    <div className="border-t border-gray-100 mt-1 pt-1">
-                      <div className="px-3 py-2 text-[10px] text-gray-400">
-                        💵 RWF (Rwandan Franc)
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <Link to="/help" className="hover:text-gray-900 transition-colors">{t("header.help")}</Link>
-              <Link to="/track-order" className="hover:text-gray-900 transition-colors">{t("header.trackOrder")}</Link>
-              <Link to={sellLink} className="text-amber-600 hover:text-amber-700 font-medium transition-colors">{t("header.sellOn")}</Link>
-            </div>
-          </div>
-        </div>
-      </div>
-      
       <div className="bg-background">
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center gap-6 lg:gap-8">
@@ -227,7 +146,13 @@ export const Header = () => {
             </div>
 
             {/* Desktop Nav Items */}
-            <div className="hidden md:flex items-center gap-6 ml-auto">
+            <div className="hidden md:flex items-center gap-4 ml-auto">
+              <Link
+                to={sellLink}
+                className="inline-flex items-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-black shadow-sm hover:bg-amber-600 transition-colors"
+              >
+                Sell on iwanyu
+              </Link>
               
               <Link
                 to="/orders"
@@ -347,6 +272,12 @@ export const Header = () => {
 
             {/* Mobile Menu Toggle */}
             <div className="flex items-center gap-4 md:hidden ml-auto">
+              <Link
+                to={sellLink}
+                className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-black"
+              >
+                Sell
+              </Link>
               <Link to="/cart" className="relative text-black">
                 <ShoppingBag size={24} strokeWidth={1.5} />
                 {itemCount > 0 && (
@@ -382,23 +313,6 @@ export const Header = () => {
           </div>
         </div>
 
-        {/* Categories Nav */}
-        <div className="hidden md:block border-t border-gray-100">
-          <div className="container mx-auto px-4">
-            <nav className="flex items-center justify-center gap-1 py-1">
-              <Link to="/deals" className="px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center gap-1.5">
-                <Sparkles size={14} /> Hot Deals
-              </Link>
-              <Link to="/category/new-arrivals" className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-full transition-colors">New In</Link>
-              {categories.slice(0, 5).map(cat => (
-                <Link key={cat.id} to={`/category/${cat.id}`} className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                  {cat.name}
-                </Link>
-              ))}
-              <Link to="/category/all" className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-full transition-colors">All Categories</Link>
-            </nav>
-          </div>
-        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -431,12 +345,9 @@ export const Header = () => {
 
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-muted-foreground mb-2">Shop</div>
+                  <Link to={sellLink} onClick={toggleMobileMenu} className="block py-2 text-sm font-semibold text-amber-700">Sell on iwanyu</Link>
+                  <Link to="/category/all" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">All categories</Link>
                   <Link to="/deals" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">Deals</Link>
-                    {categories.map(cat => (
-                    <Link key={cat.id} to={`/category/${cat.id}`} onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">
-                            {cat.name}
-                        </Link>
-                    ))}
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-1">
@@ -458,29 +369,8 @@ export const Header = () => {
                     )}
                 </div>
 
-                {/* Language Switcher - Mobile */}
-                <div className="border-t border-border pt-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Ururimi / Language</div>
-                  <div className="space-y-1">
-                    {languageOptions.map((option) => (
-                      <button
-                        key={option.code}
-                        onClick={() => {
-                          setLanguage(option.code);
-                        }}
-                        className={`w-full text-left py-2 text-sm flex items-center gap-2 ${
-                          language === option.code ? "text-amber-600 font-medium" : "text-foreground"
-                        }`}
-                      >
-                        <span>{option.flag}</span>
-                        <span>{option.label}</span>
-                        {language === option.code && <span className="ml-auto text-amber-500">✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    💵 RWF (Rwandan Franc)
-                  </div>
+                <div className="border-t border-border pt-4 text-xs text-muted-foreground">
+                  Payments in RWF
                 </div>
             </div>
           </div>

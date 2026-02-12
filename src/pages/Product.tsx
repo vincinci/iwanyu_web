@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { 
   ShoppingCart, Star, Clock, Share, Heart, ChevronRight, ChevronLeft, 
-  Package, Truck, ShieldCheck, X, MapPin, Award, CheckCircle2
+  Package, Truck, ShieldCheck, X, MapPin, CheckCircle2
 } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -206,7 +206,7 @@ export default function ProductPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Title Row */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-6">
-          <h1 className="text-2xl md:text-[26px] font-semibold leading-tight">{product.title}</h1>
+          <h1 className="text-2xl md:text-[26px] font-semibold leading-tight text-gray-900">{product.title}</h1>
           <div className="flex items-center gap-4 shrink-0">
             <button onClick={handleShare} className="flex items-center gap-1.5 text-sm font-medium underline underline-offset-2 hover:text-gray-600">
               <Share size={16} /> Share
@@ -219,7 +219,7 @@ export default function ProductPage() {
         </div>
 
         {/* Photo Grid */}
-        <div className="relative rounded-2xl overflow-hidden mb-8">
+        <div className="relative rounded-2xl overflow-hidden mb-8 border border-gray-100">
           {galleryMedia.length >= 5 ? (
             <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[320px] sm:h-[400px] md:h-[500px]">
               <div className="col-span-2 row-span-2 cursor-pointer" onClick={() => { setCurrentImageIndex(0); setShowAllPhotos(true); }}>
@@ -242,7 +242,7 @@ export default function ProductPage() {
           {galleryMedia.length > 1 && (
             <button
               onClick={() => setShowAllPhotos(true)}
-              className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg text-sm font-medium border border-black hover:bg-gray-50 flex items-center gap-2 shadow-sm"
+              className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 hover:bg-gray-50 flex items-center gap-2 shadow-sm"
             >
               <div className="grid grid-cols-2 gap-0.5">
                 {[0,1,2,3].map(i => <div key={i} className="w-1.5 h-1.5 bg-black rounded-[1px]" />)}
@@ -259,7 +259,7 @@ export default function ProductPage() {
             {/* Category & Stock */}
             <div className="flex items-start justify-between pb-6 border-b">
               <div>
-                <h2 className="text-[22px] font-medium">{product.category}</h2>
+                <h2 className="text-[20px] font-medium text-gray-900">{product.category}</h2>
                 <p className="text-gray-500 mt-1">{product.inStock ? "In stock · Ready to ship" : "Out of stock"}</p>
               </div>
               {vendor && (
@@ -270,38 +270,6 @@ export default function ProductPage() {
                 </Link>
               )}
             </div>
-
-            {/* Rating Badge */}
-            {product.reviewCount > 0 && (
-              <div className="border rounded-xl p-5 my-6 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    <Award size={28} className="text-amber-500" />
-                    <div className="ml-1">
-                      <span className="text-sm font-semibold block leading-tight">Top</span>
-                      <span className="text-sm font-semibold block leading-tight">rated</span>
-                    </div>
-                    <Award size={28} className="text-amber-500" />
-                  </div>
-                  <p className="text-sm text-gray-600 max-w-[180px]">Highly rated by our customers</p>
-                </div>
-                <div className="flex items-center gap-8">
-                  <div className="text-center">
-                    <div className="text-xl font-semibold">{product.rating.toFixed(1)}</div>
-                    <div className="flex gap-0.5 mt-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={12} fill={i < Math.round(product.rating) ? "currentColor" : "none"} className="text-black" />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="h-10 w-px bg-gray-200" />
-                  <div className="text-center">
-                    <div className="text-xl font-semibold">{product.reviewCount}</div>
-                    <div className="text-xs text-gray-500 underline cursor-pointer">Reviews</div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Vendor Info */}
             {vendor && (
@@ -372,7 +340,7 @@ export default function ProductPage() {
 
           {/* Right Column - Sticky Card */}
           <div className="lg:col-span-1">
-            <div className="sticky top-24 border rounded-xl p-6 shadow-xl bg-white">
+            <div className="sticky top-24 border border-gray-100 rounded-xl p-6 bg-white">
               {/* Price */}
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-[22px] font-semibold">{formatMoney(product.price)}</span>
@@ -409,7 +377,7 @@ export default function ProductPage() {
 
               {/* Add to Cart */}
               <Button
-                className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-black rounded-lg h-12 text-base font-semibold shadow-md"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-12 text-base font-semibold"
                 disabled={!product.inStock}
                 onClick={handleAddToCart}
               >
