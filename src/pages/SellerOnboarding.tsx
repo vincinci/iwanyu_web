@@ -44,6 +44,7 @@ export default function SellerOnboardingPage() {
   // Camera state for selfie
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -94,6 +95,7 @@ export default function SellerOnboardingPage() {
   // Camera functions for selfie
   const startCamera = useCallback(async () => {
     setCameraError(null);
+    setCameraReady(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
@@ -117,6 +119,7 @@ export default function SellerOnboardingPage() {
       streamRef.current = null;
     }
     setCameraActive(false);
+    setCameraReady(false);
   }, []);
 
   const captureSelfie = useCallback(() => {
@@ -518,17 +521,21 @@ export default function SellerOnboardingPage() {
                             onLoadedMetadata={() => {
                               // Ensure video plays when metadata is loaded
                               videoRef.current?.play().catch(console.error);
+                              setCameraReady(true);
                             }}
+                            onPlay={() => setCameraReady(true)}
                             className="absolute inset-0 w-full h-full object-cover"
                             style={{ transform: "scaleX(-1)" }}
                           />
                           {/* Loading indicator while camera initializes */}
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="text-white/50 text-sm">
-                              <Loader2 className="animate-spin mx-auto mb-2" size={24} />
-                              Loading camera...
+                          {!cameraReady && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="text-white/60 text-sm">
+                                <Loader2 className="animate-spin mx-auto mb-2" size={24} />
+                                Loading camera...
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                         <div className="p-4 bg-gray-900 flex justify-center gap-4">
                           <Button
