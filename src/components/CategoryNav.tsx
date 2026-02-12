@@ -50,10 +50,10 @@ export const CategoryNav = () => {
             <Link
               key={category.id}
               to={`/category/${category.id}`}
-              className="group inline-flex flex-none items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
+              className="group inline-flex flex-none items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition-all hover:shadow-md"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-gray-700">
-                {categoryIcons[category.id] || <ShoppingBag size={18} strokeWidth={1.5} />}
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+                {categoryIcons[category.id] || <ShoppingBag size={16} strokeWidth={1.5} />}
               </span>
               {category.name}
             </Link>

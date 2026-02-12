@@ -90,8 +90,8 @@ export default function OrdersPage() {
     <StorefrontPage>
       <div className="container min-h-screen py-12">
         <div className="flex items-center gap-3 mb-2">
-          <Package className="h-8 w-8 text-iwanyu-primary" />
-          <h1 className="text-3xl font-bold text-iwanyu-foreground">Your Orders</h1>
+          <Package className="h-8 w-8 text-gray-900" />
+          <h1 className="text-3xl font-semibold text-gray-900">Your Orders</h1>
         </div>
         <p className="text-gray-600 mb-8">Track and manage your orders</p>
 
@@ -107,7 +107,7 @@ export default function OrdersPage() {
               Your order history, tracking information, and purchase details are available after signing in.
             </p>
             <Link to="/login">
-              <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90 px-8">
+              <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-8">
                 <LogIn className="mr-2 h-4 w-4" />
                 Sign In
               </Button>
@@ -149,7 +149,7 @@ export default function OrdersPage() {
                   When you make a purchase, your orders will appear here. Start shopping to see your order history!
                 </p>
                 <Link to="/">
-                  <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90 px-8">
+                  <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-8">
                     <ShoppingBag className="mr-2 h-4 w-4" />
                     Start Shopping
                   </Button>
@@ -159,7 +159,7 @@ export default function OrdersPage() {
               viewOrders.map((order) => {
                 const statusInfo = getStatusInfo(order.status);
                 return (
-                  <Card key={order.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={order.id} className="border border-gray-200 shadow-sm">
                     <CardHeader className="pb-3">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <CardTitle className="text-base font-mono text-gray-700">

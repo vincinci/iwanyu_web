@@ -341,7 +341,7 @@ export default function SellerOnboardingPage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("sell.title")}</h1>
+            <h1 className="text-3xl font-semibold text-gray-900 mb-2">{t("sell.title")}</h1>
             <p className="text-gray-600">{t("sell.subtitle")}</p>
             <p className="text-sm text-amber-600 mt-1">{t("sell.subtext")}</p>
           </div>
@@ -390,7 +390,7 @@ export default function SellerOnboardingPage() {
           </div>
 
           {/* Step Content */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 shadow-sm">
             {/* Step 1: Account */}
             {currentStep === "account" && (
               <div className="text-center">

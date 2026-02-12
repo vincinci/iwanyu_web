@@ -79,11 +79,11 @@ export default function SignupPage() {
 
   return (
     <StorefrontPage>
-      <div className="container py-10">
+      <div className="container py-12">
         <div className="mx-auto max-w-md">
-          <Card>
+          <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle>Create account</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">Create account</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">Sign up to shop and sell on iwanyu marketplace.</p>
@@ -138,7 +138,7 @@ export default function SignupPage() {
 
                     <Button
                       type="submit"
-                      className="w-full rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                      className="w-full rounded-full bg-gray-900 text-white hover:bg-gray-800"
                       disabled={loading}
                     >
                       {loading ? "Creating account..." : "Sign up"}
@@ -195,7 +195,7 @@ export default function SignupPage() {
 
               <div className="text-center text-sm text-gray-600">
                 Already have an account?{" "}
-                <Link to="/login" className="font-semibold text-iwanyu-primary hover:underline">
+                <Link to="/login" className="font-semibold text-gray-900 hover:underline">
                   Sign in
                 </Link>
               </div>

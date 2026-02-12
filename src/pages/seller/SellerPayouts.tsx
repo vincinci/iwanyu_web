@@ -14,7 +14,7 @@ export default function SellerPayoutsPage() {
       <div className="container py-8">
         <div className="flex items-center justify-between mb-8">
             <div>
-                <h1 className="text-3xl font-bold">Payouts & Wallet</h1>
+                <h1 className="text-3xl font-semibold text-gray-900">Payouts & Wallet</h1>
                 <p className="text-gray-500">Manage your earnings and withdrawal methods.</p>
             </div>
             <Link to="/seller">
@@ -24,17 +24,17 @@ export default function SellerPayoutsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Balance Card */}
-            <Card className="lg:col-span-2 bg-black text-white border-0">
+            <Card className="lg:col-span-2 border border-gray-200">
                 <CardHeader>
-                    <CardTitle className="text-gray-400 font-normal text-sm uppercase tracking-wider">Available Balance</CardTitle>
+                    <CardTitle className="text-gray-500 font-normal text-sm uppercase tracking-wider">Available Balance</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-5xl font-bold mb-6">{formatMoney(1250000)}</div>
+                    <div className="text-4xl font-semibold text-gray-900 mb-6">{formatMoney(1250000)}</div>
                     <div className="flex gap-4">
-                        <Button className="bg-iwanyu-primary text-black hover:bg-iwanyu-primary/90 font-bold rounded-full">
+                        <Button className="bg-gray-900 text-white hover:bg-gray-800 font-semibold rounded-full">
                             Withdraw Funds <ArrowUpRight size={16} className="ml-2" />
                         </Button>
-                        <Button variant="outline" className="bg-transparent text-white border-gray-700 hover:bg-gray-800 rounded-full">
+                        <Button variant="outline" className="rounded-full">
                             Payout Settings
                         </Button>
                     </div>
@@ -63,7 +63,7 @@ export default function SellerPayoutsPage() {
         </div>
 
         <div className="mt-12">
-            <h2 className="text-xl font-bold mb-6">Transaction History</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Transaction History</h2>
             <div className="rounded-xl border border-gray-200 overflow-hidden">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 text-gray-500 font-medium">

@@ -38,7 +38,7 @@ const Index = () => {
   return (
     <>
       <HomeSEO />
-      <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50/40 via-white to-white">
+      <div className="flex min-h-screen flex-col bg-gray-50">
         <Header />
         
         <main className="flex-1">
@@ -121,15 +121,14 @@ const Index = () => {
 
         {/* Promo Banner */}
         <section className="container py-10">
-          <div className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-100 via-white to-orange-100 p-8 shadow-lg">
-            <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber-200/40 blur-2xl" />
+          <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-2">Free shipping on your first order</h2>
                 <p className="mt-1 text-base text-gray-700">Create an account to unlock perks and faster checkout.</p>
               </div>
               <Link to="/account">
-                <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 font-semibold px-7 py-6 text-base shadow-md flex items-center gap-2">
+                <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 font-semibold px-7 py-6 text-base shadow-sm flex items-center gap-2">
                   Create account
                   <ArrowRight size={18} />
                 </Button>

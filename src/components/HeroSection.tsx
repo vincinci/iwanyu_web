@@ -4,7 +4,7 @@ import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 
 export const HeroSection = () => {
     return (
-        <section className="w-full border-b border-gray-100 bg-gradient-to-br from-amber-50 via-white to-orange-50">
+        <section className="w-full border-b border-gray-200/70 bg-white">
             <div className="container mx-auto px-4 py-12 md:py-16">
                 <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12">
                     <div className="lg:col-span-6">
@@ -41,8 +41,7 @@ export const HeroSection = () => {
                         </div>
                     </div>
                     <div className="lg:col-span-6">
-                        <div className="relative overflow-hidden rounded-3xl bg-white shadow-xl">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-amber-100/60 via-white to-orange-100/60" />
+                        <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg border border-gray-100">
                             <img
                                 src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1600&auto=format&fit=crop"
                                 alt="Featured collection"

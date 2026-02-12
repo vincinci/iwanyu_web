@@ -55,11 +55,11 @@ export default function SellerProductsPage() {
   const visibleProducts = isAdmin ? products : products.filter((p) => ownedVendorIds.has(p.vendorId));
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gray-50">
+      <div className="border-b border-gray-200/70 bg-white">
         <div className="container py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-iwanyu-foreground">Seller Products</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Seller Products</h1>
             <p className="text-sm text-gray-600">Create and manage vendor listings.</p>
           </div>
           <div className="flex gap-2">
@@ -67,7 +67,7 @@ export default function SellerProductsPage() {
               <Button variant="outline" className="rounded-full">Dashboard</Button>
             </Link>
             <Link to="/seller/products/new">
-              <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">
+              <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">
                 <Plus size={16} className="mr-2" />
                 New product
               </Button>

@@ -246,16 +246,16 @@ export default function SellerNewProductPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-background">
+    <div className="min-h-screen bg-gray-50">
+      <div className="border-b bg-white">
         <div className="container py-5 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Create product</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Create product</h1>
             <p className="text-sm text-muted-foreground">Fast setup with media preview and simple variants.</p>
           </div>
           <div className="shrink-0">
             <Link to="/seller/products">
-              <Button variant="outline" className="rounded-md">Back</Button>
+              <Button variant="outline">Back</Button>
             </Link>
           </div>
         </div>

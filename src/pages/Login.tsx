@@ -75,11 +75,11 @@ export default function LoginPage() {
 
   return (
     <StorefrontPage>
-      <div className="container py-10">
+      <div className="container py-12">
         <div className="mx-auto max-w-md">
-          <Card>
+          <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle>Sign in</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">Sign in</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">Sign in to manage your account and sell products.</p>
@@ -119,7 +119,7 @@ export default function LoginPage() {
 
                     <Button
                       type="submit"
-                      className="w-full rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                      className="w-full rounded-full bg-gray-900 text-white hover:bg-gray-800"
                       disabled={loading}
                     >
                       {loading ? "Signing in..." : "Sign in"}
@@ -176,7 +176,7 @@ export default function LoginPage() {
 
               <div className="text-center text-sm text-gray-600">
                 Don't have an account?{" "}
-                <Link to="/signup" className="font-semibold text-iwanyu-primary hover:underline">
+                <Link to="/signup" className="font-semibold text-gray-900 hover:underline">
                   Sign up
                 </Link>
               </div>

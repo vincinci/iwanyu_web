@@ -125,11 +125,11 @@ export default function AdminApplicationsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-100 shadow-sm">
+      <div className="bg-white border-b border-gray-200/70">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="iwanyu" className="h-20 w-auto" />
+              <img src="/logo.png" alt="iwanyu" className="h-14 w-auto" />
             </Link>
             <div className="h-6 w-px bg-gray-200" />
             <div className="flex items-center gap-2">
@@ -147,14 +147,14 @@ export default function AdminApplicationsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
-          <aside className="w-full lg:w-48 shrink-0">
-            <nav className="flex flex-col gap-1">
+          <aside className="w-full lg:w-56 shrink-0">
+            <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
               {nav.map((item) => (
                 <Link
                   key={item.label}
                   to={item.href}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    item.active ? "bg-black text-white" : "text-gray-500 hover:bg-gray-100 hover:text-black"
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                    item.active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
                   <item.icon size={18} />

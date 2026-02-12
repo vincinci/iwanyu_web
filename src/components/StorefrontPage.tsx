@@ -10,7 +10,7 @@ export default function StorefrontPage({
   className?: string;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <Header />
       <main className={cn("flex-1", className)}>{children}</main>
       <Footer />

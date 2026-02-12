@@ -96,23 +96,23 @@ export default function SellPage() {
     <StorefrontPage>
       <div className="container min-h-screen py-12">
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-iwanyu-foreground mb-4">Sell on Iwanyu</h1>
-          <p className="text-lg text-gray-600">Open your store in a few minutes. Simple and fast.</p>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Sell on Iwanyu</h1>
+          <p className="text-base text-gray-600">Open your store in a few minutes. Simple and fast.</p>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <Card>
+          <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle>1. Create account</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-600">Make an account to start selling.</CardContent>
           </Card>
-          <Card>
+          <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle>2. Create store</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-600">Add your store name and location.</CardContent>
           </Card>
-          <Card>
+          <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle>3. Add products</CardTitle>
             </CardHeader>
@@ -120,14 +120,14 @@ export default function SellPage() {
           </Card>
         </div>
 
-        <div className="mt-8 rounded-lg border border-iwanyu-border bg-white p-6">
+        <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           {!user ? (
             <div className="text-sm text-gray-700">
               <div className="font-semibold text-gray-900">Create an account to sell</div>
               <div className="mt-1 text-gray-600">We will take you to seller setup after sign up.</div>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link to="/signup?next=/sell">
-                  <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Create account</Button>
+                  <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">Create account</Button>
                 </Link>
                 <Link to="/login?next=/sell">
                   <Button variant="outline" className="rounded-full">I already have an account</Button>
@@ -149,7 +149,7 @@ export default function SellPage() {
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <Link to="/seller">
-                      <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">
+                      <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">
                         Open Seller Dashboard
                       </Button>
                     </Link>
@@ -233,7 +233,7 @@ export default function SellPage() {
                     <Button
                       type="submit"
                       disabled={submittingApplication}
-                      className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                      className="rounded-full bg-gray-900 text-white hover:bg-gray-800"
                     >
                       {submittingApplication ? "Creating..." : "Create store"}
                     </Button>

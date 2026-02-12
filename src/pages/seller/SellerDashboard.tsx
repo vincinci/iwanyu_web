@@ -192,16 +192,16 @@ export default function SellerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <div className="border-b border-gray-100">
+      <div className="border-b border-gray-200/70 bg-white">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-lg tracking-tight">Seller Dashboard</span>
+            <span className="font-semibold text-base text-gray-900">Seller Dashboard</span>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/">
-               <Button variant="ghost" className="text-sm font-medium hover:bg-transparent hover:text-iwanyu-primary">Go to store</Button>
+               <Button variant="ghost" className="text-sm font-medium hover:bg-transparent hover:text-gray-900">Go to store</Button>
             </Link>
             <div className="h-8 w-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {user.name?.charAt(0) || "S"}
@@ -214,18 +214,18 @@ export default function SellerDashboardPage() {
         <div className="flex flex-col lg:flex-row gap-12">
             
             {/* Minimal Sidebar */}
-            <aside className="w-full lg:w-48 shrink-0">
-                <nav className="flex flex-col gap-1">
+            <aside className="w-full lg:w-56 shrink-0">
+              <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.href;
                         return (
                             <Link
                                 key={item.label}
                                 to={item.href}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    isActive 
-                                    ? "bg-black text-white" 
-                                    : "text-gray-500 hover:text-black hover:bg-gray-50"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                        isActive 
+                        ? "bg-gray-900 text-white" 
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`}
                             >
                                 <item.icon size={16} />
@@ -239,12 +239,12 @@ export default function SellerDashboardPage() {
             {/* Main Content Area */}
             <main className="flex-1">
                 <div className="mb-8">
-                  <h1 className="text-2xl font-bold mb-2">Overview</h1>
-                  <p className="text-gray-500 text-sm">Simple view of your store.</p>
+                  <h1 className="text-2xl font-semibold text-gray-900 mb-2">Overview</h1>
+                  <p className="text-gray-600 text-sm">Simple view of your store.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                  <div className="rounded-xl border border-gray-200 p-5">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">Sales</p>
                       <Wallet size={18} className="text-gray-400" />
@@ -253,7 +253,7 @@ export default function SellerDashboardPage() {
                       {metricsLoading ? "..." : formatMoney(metrics.salesRwf)}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-gray-200 p-5">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">Orders</p>
                       <ShoppingBag size={18} className="text-gray-400" />

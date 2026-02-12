@@ -158,50 +158,50 @@ export default function AccountPage() {
     <StorefrontPage>
       <div className="container min-h-screen py-12">
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-iwanyu-foreground mb-4">My Account</h1>
-          <p className="text-lg text-gray-600">Manage your account settings and preferences</p>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2">My Account</h1>
+          <p className="text-base text-gray-600">Manage your account settings and preferences</p>
         </div>
 
         {!user ? (
-          <div className="rounded-2xl border border-iwanyu-border bg-white p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="text-lg font-semibold text-gray-900">Sign in to manage your account</div>
             <div className="mt-1 text-gray-600">Your profile, orders, and wishlist are tied to your account.</div>
             <Link to="/login" className="mt-4 inline-block">
-              <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">Go to login</Button>
+              <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">Go to login</Button>
             </Link>
           </div>
         ) : !supabase ? (
-          <div className="rounded-2xl border border-iwanyu-border bg-white p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="text-lg font-semibold text-gray-900">Profile is unavailable</div>
             <div className="mt-1 text-gray-600">Database connection is not configured.</div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl border border-iwanyu-border p-6">
-                <h2 className="text-xl font-semibold text-iwanyu-foreground mb-6">Account Menu</h2>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Menu</h2>
                 <nav className="space-y-2">
-                  <Link to="/account" className="block rounded-xl p-3 hover:bg-iwanyu-primary/5">
-                    <span className="font-medium text-iwanyu-foreground">Profile</span>
+                  <Link to="/account" className="block rounded-xl p-3 hover:bg-gray-50">
+                    <span className="font-medium text-gray-900">Profile</span>
                   </Link>
-                  <Link to="/orders" className="block rounded-xl p-3 hover:bg-iwanyu-primary/5">
-                    <span className="font-medium text-iwanyu-foreground">Orders</span>
+                  <Link to="/orders" className="block rounded-xl p-3 hover:bg-gray-50">
+                    <span className="font-medium text-gray-900">Orders</span>
                   </Link>
-                  <Link to="/wishlist" className="block rounded-xl p-3 hover:bg-iwanyu-primary/5">
-                    <span className="font-medium text-iwanyu-foreground">Wishlist</span>
+                  <Link to="/wishlist" className="block rounded-xl p-3 hover:bg-gray-50">
+                    <span className="font-medium text-gray-900">Wishlist</span>
                   </Link>
                 </nav>
               </div>
 
               {(user.role === 'seller' || user.role === 'admin') && (
                 <div className="mt-6 grid gap-4">
-                  <Card>
+                  <Card className="border border-gray-200 shadow-sm">
                     <CardHeader>
                       <CardTitle>Quick Links</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-3">
                       <Link to="/orders">
-                        <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90">View orders</Button>
+                        <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">View orders</Button>
                       </Link>
                       <Link to="/seller">
                         <Button variant="outline" className="rounded-full">Seller dashboard</Button>

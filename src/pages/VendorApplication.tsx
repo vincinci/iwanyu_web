@@ -98,7 +98,7 @@ export default function VendorApplicationPage() {
     <StorefrontPage>
       <div className="container py-8 max-w-2xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-iwanyu-foreground">Become a seller</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">Become a seller</h1>
           <p className="mt-1 text-gray-600">Complete the 3-step application to start selling on iwanyu.</p>
         </div>
 
@@ -111,7 +111,7 @@ export default function VendorApplicationPage() {
                   s < step
                     ? "bg-green-500 text-white"
                     : s === step
-                    ? "bg-iwanyu-primary text-white"
+                    ? "bg-gray-900 text-white"
                     : "bg-gray-200 text-gray-600"
                 }`}
               >
@@ -122,7 +122,7 @@ export default function VendorApplicationPage() {
           ))}
         </div>
 
-        <Card>
+        <Card className="border border-gray-200 shadow-sm">
           {step === 1 && (
             <>
               <CardHeader>
@@ -159,7 +159,7 @@ export default function VendorApplicationPage() {
 
                 <div className="flex gap-3 pt-4">
                   <Button
-                    className="flex-1 rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                    className="flex-1 rounded-full bg-gray-900 text-white hover:bg-gray-800"
                     onClick={() => setStep(2)}
                     disabled={!canProceedStep1}
                   >
@@ -213,7 +213,7 @@ export default function VendorApplicationPage() {
                     Back
                   </Button>
                   <Button
-                    className="flex-1 rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                    className="flex-1 rounded-full bg-gray-900 text-white hover:bg-gray-800"
                     onClick={() => setStep(3)}
                     disabled={!canProceedStep2}
                   >
@@ -230,7 +230,7 @@ export default function VendorApplicationPage() {
                 <CardTitle>Step 3: Review and submit</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3 rounded-lg border border-iwanyu-border bg-gray-50 p-4 text-sm">
+                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
                   <div>
                     <div className="font-semibold text-gray-700">Store name</div>
                     <div className="text-gray-900">{storeName}</div>
@@ -265,7 +265,7 @@ export default function VendorApplicationPage() {
                     Back
                   </Button>
                   <Button
-                    className="flex-1 rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90"
+                    className="flex-1 rounded-full bg-gray-900 text-white hover:bg-gray-800"
                     onClick={handleSubmit}
                     disabled={!canSubmit || submitting}
                   >
@@ -279,7 +279,7 @@ export default function VendorApplicationPage() {
 
         <div className="mt-6 text-center text-sm text-gray-600">
           Already have a store?{" "}
-          <Link to="/seller" className="font-semibold text-iwanyu-primary hover:underline">
+          <Link to="/seller" className="font-semibold text-gray-900 hover:underline">
             Go to dashboard
           </Link>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, Plus } from 'lucide-react';
+import { Heart, Star } from 'lucide-react';
 import { Product } from '@/types/product';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart';
@@ -8,6 +8,7 @@ import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
 import { formatMoney } from '@/lib/money';
 import { getOptimizedCloudinaryUrl } from '@/lib/cloudinary';
+import { Button } from '@/components/ui/button';
 
 interface ProductCardProps {
   product: Product;
@@ -34,7 +35,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   const vendorName = vendorId ? getVendorById(vendorId)?.name : undefined;
   const isFavorite = contains(id);
-  const soldCount = Math.max(reviewCount * 7 + 12, 5); // Mock sold count based on reviews
+  const ratingLabel = reviewCount > 0 ? `${rating.toFixed(1)} (${reviewCount})` : "New";
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -73,15 +74,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative overflow-hidden rounded-xl bg-white transition-all duration-300 hover:shadow-lg">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white transition-all duration-300 hover:shadow-md">
         
         {/* Image Container */}
-        <div className="relative aspect-square overflow-hidden rounded-xl bg-gray-50">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
           {image ? (
             <img
               src={getOptimizedCloudinaryUrl(image, { kind: "image", width: 600 })}
               alt={title}
-              className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
@@ -101,45 +102,45 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <button
             type="button"
             onClick={handleToggleFavorite}
-            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm transition-all duration-200 hover:scale-110 hover:bg-white"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-gray-700 shadow-sm transition-all duration-200 hover:scale-105"
             aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart size={16} className={isFavorite ? "fill-current text-red-500" : ""} />
           </button>
-          
-          {/* Add to cart button - always visible */}
-          <button
-            onClick={handleAddToCart}
-            disabled={!inStock}
-            className="absolute bottom-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-300/90 text-amber-900 shadow-lg shadow-amber-300/60 backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-amber-400 hover:shadow-amber-400/70 disabled:opacity-50"
-            title="Add to cart"
-          >
-            <Plus size={20} strokeWidth={2.5} />
-          </button>
         </div>
         
         {/* Product Info */}
-        <div className="pt-3 pb-1">
+        <div className="p-4">
           <div className="flex items-start justify-between gap-2">
             <h3 className="line-clamp-1 text-[15px] font-medium text-gray-900">
               {title}
             </h3>
-            <div className="flex items-center gap-1 text-sm shrink-0">
-              <Star size={12} className="fill-current text-black" />
-              <span className="font-medium">{rating.toFixed(1)}</span>
+            <div className="flex items-center gap-1 text-xs text-gray-700 shrink-0">
+              <Star size={12} className="fill-current text-gray-900" />
+              <span className="font-medium">{ratingLabel}</span>
             </div>
           </div>
 
-          <p className="mt-0.5 text-sm text-gray-500">
-            {soldCount} sold · by iwanyu
+          <p className="mt-1 text-sm text-gray-500">
+            Sold by {vendorName ?? "iwanyu"}
           </p>
           
-          <div className="mt-1.5 flex items-center gap-2">
+          <div className="mt-2 flex items-center justify-between gap-2">
             <span className="text-[15px] font-semibold text-gray-900">{formatMoney(price)}</span>
-            {!inStock && (
-              <span className="text-xs text-red-500">Out of stock</span>
-            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleAddToCart}
+              disabled={!inStock}
+              className="h-8 px-3"
+            >
+              Add
+            </Button>
           </div>
+          {!inStock && (
+            <span className="mt-2 block text-xs text-red-500">Out of stock</span>
+          )}
         </div>
       </div>
     </Link>

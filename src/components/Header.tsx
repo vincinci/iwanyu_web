@@ -79,16 +79,16 @@ export const Header = () => {
   const sellLink = user ? "/sell" : "/signup?next=/sell";
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200/70">
       <div className="bg-background">
-        <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center gap-6 lg:gap-8">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center gap-5 lg:gap-7">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0 group">
               <img
                 src="/logo.png"
                 alt="iwanyu"
-                className="h-20 w-auto object-contain"
+                className="h-14 w-auto object-contain"
                 loading="eager"
               />
               <span className="sr-only">iwanyu</span>
@@ -96,34 +96,31 @@ export const Header = () => {
             
             {/* Search Bar */}
             <div className="hidden md:flex flex-1 max-w-xl mx-auto relative">
-              <form onSubmit={handleSearchSubmit} className="w-full relative flex">
-                <div className="relative flex-1">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <form onSubmit={handleSearchSubmit} className="w-full relative">
+                <div className="relative flex items-center rounded-full border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                  <Search size={16} className="text-gray-400" />
                   <Input
                     type="text"
-                    placeholder="Search products, brands, categories..."
+                    placeholder="Search products, brands, categories"
                     value={searchQuery}
                     onChange={handleSearchChange}
                     onFocus={() => searchQuery.length > 1 && setShowSearchSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSearchSuggestions(false), 200)}
-                    className="h-11 w-full rounded-l-full border-2 border-gray-200 bg-gray-50 pl-10 pr-10 text-sm placeholder:text-gray-400 focus:border-amber-400 focus:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
+                    className="h-8 border-0 bg-transparent px-2 py-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={handleClearSearch}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600"
                     >
                       <XCircle size={16} />
                     </button>
                   )}
-                </div>
-                <Button
-                    type="submit"
-                    className="h-11 px-6 rounded-r-full bg-amber-400 hover:bg-amber-500 text-black font-medium"
-                  >
+                  <Button type="submit" size="sm" className="ml-2 h-8 px-4">
                     Search
                   </Button>
+                </div>
               </form>
               
               {/* Search Suggestions */}

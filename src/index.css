@@ -14,23 +14,23 @@
   }
 
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 0 0% 10%;
 
     --primary: 42 100% 55%; /* Yellowish Orange */
     --primary-foreground: 0 0% 0%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 12%;
 
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
+    --muted-foreground: 0 0% 45%;
 
     --accent: 42 100% 55%;
     --accent-foreground: 0 0% 0%;
@@ -38,8 +38,8 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
     --ring: 42 100% 55%;
 
     --radius: 0.5rem;
@@ -109,19 +109,19 @@
   }
 
   h1 {
-    @apply text-4xl font-bold md:text-5xl;
-  }
-
-  h2 {
     @apply text-3xl font-semibold md:text-4xl;
   }
 
-  h3 {
+  h2 {
     @apply text-2xl font-semibold md:text-3xl;
   }
 
+  h3 {
+    @apply text-xl font-semibold md:text-2xl;
+  }
+
   h4 {
-    @apply text-xl font-semibold;
+    @apply text-lg font-semibold;
   }
 
   p {

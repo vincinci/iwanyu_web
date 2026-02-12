@@ -25,7 +25,7 @@ export default function WishlistPage() {
       <div className="container min-h-screen py-12">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-iwanyu-foreground flex items-center gap-3">
+            <h1 className="text-3xl font-semibold text-gray-900 flex items-center gap-3">
               <Heart className="h-8 w-8 text-red-500" fill="currentColor" />
               Your Wishlist
             </h1>
@@ -56,7 +56,7 @@ export default function WishlistPage() {
               Save items you love by clicking the heart icon on any product. Your favorites will appear here!
             </p>
             <Link to="/">
-              <Button className="rounded-full bg-iwanyu-primary text-white hover:bg-iwanyu-primary/90 px-8">
+              <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-8">
                 <ShoppingBag className="mr-2 h-4 w-4" />
                 Start Shopping
               </Button>
@@ -66,8 +66,8 @@ export default function WishlistPage() {
             {recommended.length > 0 && (
               <div className="mt-16 text-left">
                 <div className="flex items-center gap-2 mb-6">
-                  <Sparkles className="h-5 w-5 text-iwanyu-primary" />
-                  <h3 className="text-xl font-bold text-gray-900">You might like</h3>
+                  <Sparkles className="h-5 w-5 text-gray-700" />
+                  <h3 className="text-xl font-semibold text-gray-900">You might like</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                   {recommended.map((p) => (
@@ -89,8 +89,8 @@ export default function WishlistPage() {
             {recommended.length > 0 && (
               <div className="mt-16">
                 <div className="flex items-center gap-2 mb-6">
-                  <Sparkles className="h-5 w-5 text-iwanyu-primary" />
-                  <h2 className="text-xl font-bold text-gray-900">You might also like</h2>
+                  <Sparkles className="h-5 w-5 text-gray-700" />
+                  <h2 className="text-xl font-semibold text-gray-900">You might also like</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                   {recommended.map((p) => (
