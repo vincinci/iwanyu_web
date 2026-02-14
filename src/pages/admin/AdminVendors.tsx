@@ -141,19 +141,19 @@ export default function AdminVendorsPage() {
       {/* Top Bar */}
       <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="iwanyu" className="h-14 w-auto" />
+              <img src="/logo.png" alt="iwanyu" className="h-10 sm:h-12 md:h-14 w-auto" />
             </Link>
-            <div className="h-6 w-px bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <Link to="/admin" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">Admin</Link>
+            <div className="hidden sm:block h-6 w-px bg-gray-200" />
+            <div className="flex items-center gap-2 min-w-0">
+              <Link to="/admin" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors truncate">Admin</Link>
               <span className="text-gray-300">/</span>
-              <span className="text-gray-900 font-semibold text-sm">{t("admin.vendors")}</span>
+              <span className="text-gray-900 font-semibold text-sm truncate">{t("admin.vendors")}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← {t("admin.storefront")}</Link>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← <span className="hidden sm:inline">{t("admin.storefront")}</span></Link>
           </div>
         </div>
       </div>
