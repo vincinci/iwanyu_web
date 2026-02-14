@@ -1,70 +1,40 @@
-# Welcome to your Lovable project
+# IwanYu Marketplace
 
-## Project info
+IwanYu is an e-commerce marketplace for Rwanda, built with React, TypeScript, Vite, Tailwind CSS, and Supabase.
 
-**URL**: https://lovable.dev/projects/04d23b33-c7b2-4d5c-8553-cd8f051427ef
+## Local development
 
-## How can I edit this code?
+Prerequisites:
+- Node.js 18+
+- npm
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/04d23b33-c7b2-4d5c-8553-cd8f051427ef) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Run locally:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Build for production:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+npm run preview
+```
 
-**Use GitHub Codespaces**
+## Project structure
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `src/` — app source code (pages, components, context, hooks)
+- `public/` — static assets
+- `supabase/` — migrations and Supabase config
+- `scripts/` — import and utility scripts
+- `e2e/` — Playwright tests
 
-## What technologies are used for this project?
+## Deployment
 
-This project is built with .
+This app is configured for Vercel (`vercel.json`) and can be deployed on any static frontend platform with API support.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Notes
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/04d23b33-c7b2-4d5c-8553-cd8f051427ef) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
-# iwanyu_web
+- Social preview metadata is defined in `index.html` and `src/components/SEO.tsx`.
+- Environment and deployment guides are in `VERCEL_ENV.md`, `DEPLOYMENT.md`, and `ADMIN_GUIDE.md`.
