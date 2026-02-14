@@ -2,6 +2,7 @@ import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard,
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -54,6 +55,9 @@ export default function AdminDashboardPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
+  const [heroImageInput, setHeroImageInput] = useState("");
+  const [heroImageLoading, setHeroImageLoading] = useState(false);
+  const [heroImageSaving, setHeroImageSaving] = useState(false);
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
   const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
   const getSoldCount = (product: unknown) => Number((product as { soldCount?: number } | null)?.soldCount ?? 0);
@@ -83,6 +87,29 @@ export default function AdminDashboardPage() {
     }
 
     void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHeroSetting() {
+      if (!supabase) return;
+      setHeroImageLoading(true);
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value_text")
+        .eq("key", "hero_image_url")
+        .maybeSingle();
+
+      if (!cancelled) {
+        setHeroImageInput(data?.value_text ?? "");
+        setHeroImageLoading(false);
+      }
+    }
+
+    void loadHeroSetting();
     return () => {
       cancelled = true;
     };
@@ -242,6 +269,33 @@ export default function AdminDashboardPage() {
     await refresh();
   }
 
+  async function saveHeroImageSetting() {
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
+    if (!user) throw new Error(t("admin.notSignedIn"));
+
+    const next = heroImageInput.trim();
+    if (!next) throw new Error("Hero image URL is required");
+
+    setHeroImageSaving(true);
+    try {
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert(
+          {
+            key: "hero_image_url",
+            value_text: next,
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
+      if (error) throw new Error(error.message);
+      toast({ title: "Saved", description: "Homepage hero image updated" });
+    } finally {
+      setHeroImageSaving(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
@@ -375,6 +429,41 @@ export default function AdminDashboardPage() {
                   <span className="text-xs text-gray-500 font-medium">Categories</span>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{new Set(products.map(p => normalizeCategoryName(p.category))).size}</p>
                 </div>
+              </div>
+
+              <div className="mt-6 bg-white rounded-2xl p-5 border border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900">Homepage Hero Image</h3>
+                <p className="mt-1 text-xs text-gray-500">Set the image URL shown on the storefront hero section.</p>
+                <div className="mt-3 flex flex-col gap-3 md:flex-row">
+                  <Input
+                    value={heroImageInput}
+                    onChange={(e) => setHeroImageInput(e.target.value)}
+                    placeholder="https://..."
+                    disabled={heroImageLoading || heroImageSaving}
+                  />
+                  <Button
+                    className="rounded-full bg-gray-900 text-white hover:bg-gray-800 md:px-6"
+                    disabled={heroImageLoading || heroImageSaving}
+                    onClick={async () => {
+                      try {
+                        await saveHeroImageSetting();
+                      } catch (e) {
+                        toast({
+                          title: "Failed",
+                          description: e instanceof Error ? e.message : "Unknown error",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    {heroImageSaving ? "Saving..." : "Save Image"}
+                  </Button>
+                </div>
+                {heroImageInput ? (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                    <img src={heroImageInput} alt="Hero preview" className="h-36 w-full object-cover" />
+                  </div>
+                ) : null}
               </div>
             </div>
 
