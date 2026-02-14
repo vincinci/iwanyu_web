@@ -85,13 +85,13 @@ export const Header = () => {
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200/70">
       <div className="bg-background">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-5 lg:gap-7">
+          <div className="flex items-center gap-3 sm:gap-5 lg:gap-7">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0 group">
               <img
                 src="/logo.png"
                 alt="iwanyu"
-                className="h-14 w-auto object-contain"
+                className="h-10 w-auto object-contain sm:h-14"
                 loading="eager"
               />
               <span className="sr-only">iwanyu</span>
@@ -275,7 +275,7 @@ export const Header = () => {
             </div>
 
             {/* Mobile Menu Toggle */}
-            <div className="flex items-center gap-4 md:hidden ml-auto">
+            <div className="ml-auto flex items-center gap-2 md:hidden">
               <Link
                 to={sellLink}
                 className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-black"
