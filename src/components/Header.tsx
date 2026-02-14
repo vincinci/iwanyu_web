@@ -8,6 +8,8 @@ import { useAuth } from '@/context/auth';
 import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
+import { useLanguage } from '@/context/languageContext';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -17,6 +19,7 @@ export const Header = () => {
   const { user, signOut } = useAuth();
   const { products } = useMarketplace();
   const { count: wishlistCount } = useWishlist();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const categories = useMemo(() => {
@@ -101,7 +104,7 @@ export const Header = () => {
                   <Search size={16} className="text-gray-400" />
                   <Input
                     type="text"
-                    placeholder="Search products, brands, categories"
+                    placeholder={t("header.search")}
                     value={searchQuery}
                     onChange={handleSearchChange}
                     onFocus={() => searchQuery.length > 1 && setShowSearchSuggestions(true)}
@@ -118,7 +121,7 @@ export const Header = () => {
                     </button>
                   )}
                   <Button type="submit" size="sm" className="ml-2 h-8 px-4">
-                    Search
+                    {t("header.searchButton")}
                   </Button>
                 </div>
               </form>
@@ -144,11 +147,15 @@ export const Header = () => {
 
             {/* Desktop Nav Items */}
             <div className="hidden md:flex items-center gap-4 ml-auto">
+              <div className="hidden lg:flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500">{t("lang.label")}</span>
+                <LanguageSwitcher />
+              </div>
               <Link
                 to={sellLink}
                 className="inline-flex items-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-black shadow-sm hover:bg-amber-600 transition-colors"
               >
-                Sell on iwanyu
+                {t("header.sellOn")}
               </Link>
               
               <Link
@@ -156,7 +163,7 @@ export const Header = () => {
                 className="flex flex-col items-center justify-center group"
               >
                 <Truck size={22} className="text-foreground/80 group-hover:text-foreground transition-colors" strokeWidth={1.5} />
-                <span className="text-[11px] text-muted-foreground mt-1">Orders</span>
+                <span className="text-[11px] text-muted-foreground mt-1">{t("header.orders")}</span>
               </Link>
 
               <Link
@@ -171,7 +178,7 @@ export const Header = () => {
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] text-muted-foreground mt-1">Wishlist</span>
+                <span className="text-[11px] text-muted-foreground mt-1">{t("header.wishlist")}</span>
               </Link>
 
               {user ? (
@@ -181,7 +188,7 @@ export const Header = () => {
                       {user.name?.charAt(0).toUpperCase() ?? user.email?.charAt(0).toUpperCase() ?? 'U'}
                     </div>
                     <div className="hidden lg:flex flex-col items-start">
-                      <span className="text-xs text-muted-foreground">Account</span>
+                      <span className="text-xs text-muted-foreground">{t("header.account")}</span>
                       <span className="text-sm font-medium text-foreground leading-none">{user.name?.split(' ')[0] ?? "User"}</span>
                     </div>
                     <ChevronDown size={16} className="text-gray-400 hidden lg:block" />
@@ -205,26 +212,26 @@ export const Header = () => {
                         {(user.role === 'seller' || user.role === 'admin') && (
                           <Link to="/seller" className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm font-medium border-b border-border mb-2">
                             <Sparkles size={16} className="text-iwanyu-primary" />
-                            <span>Seller Dashboard</span>
+                            <span>{t("header.sellerDashboard")}</span>
                           </Link>
                         )}
                         {user.role === 'admin' && (
                           <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm font-medium border-b border-border mb-2">
                             <Shield size={16} className="text-iwanyu-primary" />
-                            <span>Admin Dashboard</span>
+                            <span>{t("header.adminDashboard")}</span>
                           </Link>
                         )}
                         <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm font-medium">
                           <Settings size={16} className="text-muted-foreground" />
-                          <span>Account Settings</span>
+                          <span>{t("header.accountSettings")}</span>
                         </Link>
                         <Link to="/orders" className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm font-medium">
                           <Truck size={16} className="text-muted-foreground" />
-                          <span>My Orders</span>
+                          <span>{t("header.myOrders")}</span>
                         </Link>
                         <Link to="/wishlist" className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm font-medium">
                           <Heart size={16} className="text-muted-foreground" />
-                          <span>My Wishlist</span>
+                          <span>{t("header.myWishlist")}</span>
                         </Link>
                         <hr className="my-2 border-border" />
                         <button 
@@ -235,7 +242,7 @@ export const Header = () => {
                           className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 rounded-md transition-colors text-red-600 text-sm font-medium"
                         >
                           <LogOut size={16} />
-                          <span>Sign Out</span>
+                          <span>{t("header.signOut")}</span>
                         </button>
                       </div>
                     </div>
@@ -247,7 +254,7 @@ export const Header = () => {
                   className="flex flex-col items-center justify-center group"
                 >
                   <UserCircle2 size={22} className="text-foreground/80 group-hover:text-foreground transition-colors" strokeWidth={1.5} />
-                  <span className="text-[11px] text-muted-foreground mt-1">Log in</span>
+                  <span className="text-[11px] text-muted-foreground mt-1">{t("header.login")}</span>
                 </Link>
               )}
 
@@ -263,7 +270,7 @@ export const Header = () => {
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] text-muted-foreground mt-1">Cart</span>
+                <span className="text-[11px] text-muted-foreground mt-1">{t("header.cart")}</span>
               </Link>
             </div>
 
@@ -273,7 +280,7 @@ export const Header = () => {
                 to={sellLink}
                 className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-black"
               >
-                Sell
+                {t("header.sell")}
               </Link>
               <Link to="/cart" className="relative text-black">
                 <ShoppingBag size={24} strokeWidth={1.5} />
@@ -298,7 +305,7 @@ export const Header = () => {
             <form onSubmit={handleSearchSubmit} className="flex">
               <Input
                 type="text"
-                placeholder="Search..."
+                placeholder={t("header.search")}
                 value={searchQuery}
                 onChange={handleSearchChange}
                 className="h-10 w-full rounded-l-md border border-border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -317,13 +324,17 @@ export const Header = () => {
         <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={toggleMobileMenu}>
           <div className="absolute right-0 top-0 h-full w-[85%] max-w-[320px] bg-background shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-4 flex items-center justify-between border-b border-border">
-              <span className="font-medium text-foreground">Menu</span>
+              <span className="font-medium text-foreground">{t("header.menu")}</span>
               <button onClick={toggleMobileMenu} className="p-2 text-muted-foreground">
                 <X size={24} />
               </button>
             </div>
             
             <div className="p-4 space-y-4">
+                <div className="rounded-md border border-border bg-muted/20 p-3">
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">{t("lang.label")}</div>
+                  <LanguageSwitcher compact />
+                </div>
                 {user ? (
                     <div className="rounded-md border border-border bg-muted/40 p-4 mb-4">
                         <div className="font-medium text-foreground">{user.name}</div>
@@ -332,26 +343,26 @@ export const Header = () => {
                 ) : (
                     <div className="grid grid-cols-2 gap-2 mb-4">
                         <Button variant="outline" asChild className="w-full rounded-md">
-                            <Link to="/login">Log In</Link>
+                            <Link to="/login">{t("header.login")}</Link>
                         </Button>
                         <Button asChild className="w-full rounded-md">
-                            <Link to="/signup">Sign Up</Link>
+                            <Link to="/signup">{t("header.signup")}</Link>
                         </Button>
                     </div>
                 )}
 
                 <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Shop</div>
-                  <Link to={sellLink} onClick={toggleMobileMenu} className="block py-2 text-sm font-semibold text-amber-700">Sell on iwanyu</Link>
-                  <Link to="/category/all" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">All categories</Link>
-                  <Link to="/deals" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">Deals</Link>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">{t("footer.shop")}</div>
+                  <Link to={sellLink} onClick={toggleMobileMenu} className="block py-2 text-sm font-semibold text-amber-700">{t("header.sellOn")}</Link>
+                  <Link to="/category/all" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.allCategories")}</Link>
+                  <Link to="/deals" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.deals")}</Link>
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-1">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">Account</div>
-                    <Link to="/orders" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">Orders</Link>
-                    <Link to="/wishlist" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">Wishlist</Link>
-                    <Link to="/account" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">Profile</Link>
+                    <div className="text-xs font-medium text-muted-foreground mb-2">{t("header.account")}</div>
+                    <Link to="/orders" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.orders")}</Link>
+                    <Link to="/wishlist" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.wishlist")}</Link>
+                    <Link to="/account" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.profile")}</Link>
                     {user && (
                          <button 
                            onClick={async () => { 
@@ -361,13 +372,13 @@ export const Header = () => {
                            }} 
                            className="block w-full text-left py-2 text-sm text-red-600 mt-2"
                          >
-                           Sign Out
+                           {t("header.signOut")}
                          </button>
                     )}
                 </div>
 
                 <div className="border-t border-border pt-4 text-xs text-muted-foreground">
-                  Payments in RWF
+                  {t("header.paymentsRwf")}
                 </div>
             </div>
           </div>

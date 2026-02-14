@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart';
 import { useMarketplace } from '@/context/marketplace';
 import { useWishlist } from '@/context/wishlist';
+import { useLanguage } from '@/context/languageContext';
 import { formatMoney } from '@/lib/money';
 import { getOptimizedCloudinaryUrl } from '@/lib/cloudinary';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const { addItem } = useCart();
   const { getVendorById } = useMarketplace();
   const { contains, toggle } = useWishlist();
+  const { t } = useLanguage();
 
   const {
     id,
@@ -35,15 +37,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   const vendorName = vendorId ? getVendorById(vendorId)?.name : undefined;
   const isFavorite = contains(id);
-  const ratingLabel = reviewCount > 0 ? `${rating.toFixed(1)} (${reviewCount})` : "New";
+  const ratingLabel = reviewCount > 0 ? `${rating.toFixed(1)} (${reviewCount})` : t("product.new");
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     addItem({ productId: id, title, price, image });
     toast({
-      title: "✓ Added to cart",
-      description: `${title} has been added to your cart.`,
+      title: t("product.toastAddedTitle"),
+      description: `${title} ${t("product.toastAddedDesc")}`,
       variant: "default",
     });
   };
@@ -54,14 +56,14 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     try {
       const result = await toggle(id);
       toast({
-        title: result.added ? "♥ Added to wishlist" : "Removed from wishlist",
-        description: `${title} has been ${result.added ? "added to" : "removed from"} your wishlist.`,
+        title: result.added ? t("product.toastWishAdded") : t("product.toastWishRemoved"),
+        description: `${title} ${result.added ? t("product.toastWishDescAdd") : t("product.toastWishDescRemove")}`,
         variant: "default",
       });
     } catch {
       toast({
-        title: "⚠ Wishlist update failed",
-        description: "Please try again.",
+        title: t("product.toastWishFail"),
+        description: t("product.toastTryAgain"),
         variant: "destructive",
       });
     }
@@ -87,7 +89,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gray-100">
-              <span className="text-xs text-gray-400">No Image</span>
+              <span className="text-xs text-gray-400">{t("product.noImage")}</span>
             </div>
           )}
           
@@ -103,7 +105,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             type="button"
             onClick={handleToggleFavorite}
             className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-gray-700 shadow-sm transition-all duration-200 hover:scale-105"
-            aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+            aria-label={isFavorite ? t("product.removeWishlist") : t("product.addWishlist")}
           >
             <Heart size={16} className={isFavorite ? "fill-current text-red-500" : ""} />
           </button>
@@ -122,7 +124,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           </div>
 
           <p className="mt-1 text-sm text-gray-500">
-            Sold by {vendorName ?? "iwanyu"}
+            {t("product.soldBy")} {vendorName ?? "iwanyu"}
           </p>
           
           <div className="mt-2 flex items-center justify-between gap-2">
@@ -135,11 +137,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
               disabled={!inStock}
               className="h-8 px-3"
             >
-              Add
+              {t("product.add")}
             </Button>
           </div>
           {!inStock && (
-            <span className="mt-2 block text-xs text-red-500">Out of stock</span>
+            <span className="mt-2 block text-xs text-red-500">{t("product.outOfStock")}</span>
           )}
         </div>
       </div>

@@ -11,10 +11,12 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Product } from "@/types/product";
+import { useLanguage } from "@/context/languageContext";
 
 const Index = () => {
   const { products, loading, error } = useMarketplace();
   const { productIds: recentlyViewedIds, clear: clearRecentlyViewed } = useRecentlyViewed();
+  const { t } = useLanguage();
 
   // Get recently viewed products
   const recentlyViewedProducts = recentlyViewedIds
@@ -51,15 +53,15 @@ const Index = () => {
           <section className="container py-10">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Recently viewed</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Pick up where you left off.</p>
+                <h2 className="text-2xl font-bold text-gray-900">{t("home.recentlyViewed")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t("home.pickup")}</p>
               </div>
               <Button 
                 variant="ghost" 
                 className="h-9 px-3 text-xs font-semibold rounded-full" 
                 onClick={clearRecentlyViewed}
               >
-                Clear
+                {t("home.clear")}
               </Button>
             </div>
 
@@ -100,10 +102,10 @@ const Index = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No products available</h3>
-              <p className="text-gray-600 mb-2">No products to show yet.</p>
-              <p className="text-sm text-gray-500 mb-6">Try again in a moment.</p>
-              <Button variant="outline" onClick={() => window.location.reload()}>Reload</Button>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("home.noProducts")}</h3>
+              <p className="text-gray-600 mb-2">{t("home.noProductsDesc")}</p>
+              <p className="text-sm text-gray-500 mb-6">{t("home.tryAgain")}</p>
+              <Button variant="outline" onClick={() => window.location.reload()}>{t("home.reload")}</Button>
             </div>
           ) : (
             <div className="space-y-12">
@@ -124,12 +126,12 @@ const Index = () => {
           <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Free shipping on your first order</h2>
-                <p className="mt-1 text-base text-gray-700">Create an account to unlock perks and faster checkout.</p>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t("home.freeShipTitle")}</h2>
+                <p className="mt-1 text-base text-gray-700">{t("home.freeShipDesc")}</p>
               </div>
               <Link to="/account">
                 <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 font-semibold px-7 py-6 text-base shadow-sm flex items-center gap-2">
-                  Create account
+                  {t("home.createAccount")}
                   <ArrowRight size={18} />
                 </Button>
               </Link>
@@ -152,6 +154,7 @@ interface CategorySectionProps {
 }
 
 const CategorySection = ({ category, products, categoryId }: CategorySectionProps) => {
+  const { t } = useLanguage();
   if (products.length === 0) return null;
 
   return (
@@ -163,7 +166,7 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
           to={`/category/${categoryId}`}
           className="group/link text-sm font-semibold text-gray-600 hover:text-black transition-colors flex items-center gap-1"
         >
-          View all 
+          {t("category.viewAll")} 
           <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
         </Link>
       </div>

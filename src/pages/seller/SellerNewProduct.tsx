@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
@@ -58,6 +59,7 @@ function colorToHex(name: string): string {
 export default function SellerNewProductPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { vendors, createVendor, upsertProduct, getVendorsForOwner } = useMarketplace();
 
@@ -173,13 +175,13 @@ export default function SellerNewProductPage() {
       const isVideo = f.type.startsWith("video/");
       const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
       if (!f.type.startsWith("image/") && !isVideo) {
-        toast({ title: "Unsupported file", description: f.name, variant: "destructive" });
+        toast({ title: t("sellerNew.unsupportedFile"), description: f.name, variant: "destructive" });
         continue;
       }
       if (f.size > maxBytes) {
         toast({
-          title: "File too large",
-          description: `${f.name} exceeds the upload limit`,
+          title: t("sellerNew.fileTooLarge"),
+          description: `${f.name} ${t("sellerNew.exceedsUploadLimit")}`,
           variant: "destructive",
         });
         continue;
@@ -250,12 +252,12 @@ export default function SellerNewProductPage() {
       <div className="border-b bg-white">
         <div className="container py-5 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Create product</h1>
-            <p className="text-sm text-muted-foreground">Fast setup with media preview and simple variants.</p>
+            <h1 className="text-2xl font-semibold text-gray-900">{t("sellerNew.createProduct")}</h1>
+            <p className="text-sm text-muted-foreground">{t("sellerNew.fastSetup")}</p>
           </div>
           <div className="shrink-0">
             <Link to="/seller/products">
-              <Button variant="outline">Back</Button>
+              <Button variant="outline">{t("sellerNew.back")}</Button>
             </Link>
           </div>
         </div>
@@ -266,16 +268,16 @@ export default function SellerNewProductPage() {
           <div className="lg:col-span-8 space-y-6">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="text-base font-medium">Basics</CardTitle>
+                <CardTitle className="text-base font-medium">{t("sellerNew.basics")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
             {!isAdmin && vendorOptions.length === 0 ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
-                <div className="font-medium text-foreground">No approved store yet</div>
-                <div className="mt-1 text-muted-foreground">Submit your vendor application on the onboarding page first.</div>
+                <div className="font-medium text-foreground">{t("sellerNew.noApprovedStore")}</div>
+                <div className="mt-1 text-muted-foreground">{t("sellerNew.submitVendorApplication")}</div>
                 <div className="mt-3">
                   <Link to="/sell">
-                    <Button variant="outline" className="rounded-md">Go to onboarding</Button>
+                    <Button variant="outline" className="rounded-md">{t("sellerNew.goToOnboarding")}</Button>
                   </Link>
                 </div>
               </div>
@@ -283,10 +285,10 @@ export default function SellerNewProductPage() {
 
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <div className="text-sm font-medium text-muted-foreground">Vendor</div>
+                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.vendor")}</div>
                 <Select value={vendorId} onValueChange={(v) => setVendorId(v)}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Choose vendor" />
+                    <SelectValue placeholder={t("sellerNew.chooseVendor")} />
                   </SelectTrigger>
                   <SelectContent>
                     {vendorOptions.map((v) => (
@@ -297,50 +299,50 @@ export default function SellerNewProductPage() {
                   </SelectContent>
                 </Select>
                 {!isAdmin && myVendors.length === 0 ? (
-                  <div className="mt-2 text-xs text-muted-foreground">No store yet. Create one below.</div>
+                  <div className="mt-2 text-xs text-muted-foreground">{t("sellerNew.noStoreYet")}</div>
                 ) : null}
               </div>
 
               <div>
-                <div className="text-sm font-medium text-muted-foreground">Or create vendor</div>
+                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.orCreateVendor")}</div>
                 <Input
                   className="mt-1"
                   value={vendorName}
                   onChange={(e) => setVendorName(e.target.value)}
-                  placeholder="Vendor name"
+                  placeholder={t("sellerNew.vendorName")}
                 />
                 {!isAdmin ? (
-                  <div className="mt-2 text-xs text-muted-foreground">Vendors require admin approval. Use onboarding.</div>
+                  <div className="mt-2 text-xs text-muted-foreground">{t("sellerNew.vendorRequiresApproval")}</div>
                 ) : null}
               </div>
             </div>
 
             <div>
-              <div className="text-sm font-medium text-muted-foreground">Title</div>
-              <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Classic cotton t-shirt" />
+              <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.title")}</div>
+              <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("sellerNew.titlePlaceholder")} />
             </div>
 
             <div>
-              <div className="text-sm font-medium text-muted-foreground">Description</div>
+              <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.description")}</div>
               <Textarea
                 className="mt-1"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Short, clear description. Include material, fit, what’s included."
+                placeholder={t("sellerNew.descriptionPlaceholder")}
               />
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
               <div>
-                <div className="text-sm font-medium text-muted-foreground">Category</div>
+                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.category")}</div>
                 {categoryOptions.length === 0 ? (
                   <div className="mt-1 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                    No categories available.
+                    {t("sellerNew.noCategories")}
                   </div>
                 ) : (
                   <Select value={category} onValueChange={(v) => setCategory(v)}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={t("sellerNew.selectCategory")} />
                     </SelectTrigger>
                     <SelectContent>
                       {categoryOptions.map((c) => (
@@ -353,25 +355,25 @@ export default function SellerNewProductPage() {
                 )}
               </div>
               <div>
-                <div className="text-sm font-medium text-muted-foreground">Price (RWF)</div>
+                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.priceRwf")}</div>
                 <Input className="mt-1" value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
               </div>
               <div>
-                <div className="text-sm font-medium text-muted-foreground">Stock</div>
+                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.stock")}</div>
                 <Select value={inStock ? "in" : "out"} onValueChange={(v) => setInStock(v === "in")}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="in">In stock</SelectItem>
-                    <SelectItem value="out">Out of stock</SelectItem>
+                    <SelectItem value="in">{t("seller.inStock")}</SelectItem>
+                    <SelectItem value="out">{t("seller.out")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div>
-              <div className="text-sm font-medium text-muted-foreground">Discount (%)</div>
+              <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.discountPercent")}</div>
               <Input
                 className="mt-1"
                 value={discountPercentage}
@@ -385,7 +387,7 @@ export default function SellerNewProductPage() {
 
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="text-base font-medium">Media</CardTitle>
+                <CardTitle className="text-base font-medium">{t("sellerNew.media")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div
@@ -401,14 +403,14 @@ export default function SellerNewProductPage() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-sm font-medium text-foreground">Images & videos</div>
+                      <div className="text-sm font-medium text-foreground">{t("sellerNew.imagesVideos")}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        Drag & drop, or choose files. Up to {MAX_MEDIA_FILES}. Images ≤ {Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB, videos ≤ {Math.round(MAX_VIDEO_BYTES / 1024 / 1024)}MB.
+                        {t("sellerNew.dragDrop")} {MAX_MEDIA_FILES}. {t("sellerNew.imagesMax")} {Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB, {t("sellerNew.videosMax")} {Math.round(MAX_VIDEO_BYTES / 1024 / 1024)}MB.
                       </div>
                     </div>
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm hover:bg-muted transition-colors">
                       <ImagePlus size={16} />
-                      <span>Add media</span>
+                      <span>{t("sellerNew.addMedia")}</span>
                       <input
                         className="sr-only"
                         type="file"
@@ -433,7 +435,7 @@ export default function SellerNewProductPage() {
                             type="button"
                             onClick={() => setPrimaryMediaId(p.id)}
                             className="block w-full"
-                            title="Set as primary"
+                            title={t("sellerNew.setAsPrimary")}
                           >
                             <div className="aspect-square bg-muted">
                               {p.kind === "video" ? (
@@ -446,7 +448,7 @@ export default function SellerNewProductPage() {
 
                           <div className="absolute left-2 top-2 flex items-center gap-2">
                             {isPrimary ? (
-                              <Badge variant="secondary" className="bg-background/90">Primary</Badge>
+                              <Badge variant="secondary" className="bg-background/90">{t("sellerNew.primary")}</Badge>
                             ) : null}
                           </div>
 
@@ -456,7 +458,7 @@ export default function SellerNewProductPage() {
                               setMediaFiles((prev) => prev.filter((f) => fileKey(f) !== p.id));
                             }}
                             className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm hover:text-foreground"
-                            aria-label="Remove media"
+                            aria-label={t("sellerNew.removeMedia")}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -469,7 +471,7 @@ export default function SellerNewProductPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground">No media selected yet.</div>
+                  <div className="text-xs text-muted-foreground">{t("sellerNew.noMediaYet")}</div>
                 )}
               </CardContent>
             </Card>
@@ -477,25 +479,25 @@ export default function SellerNewProductPage() {
             <Card className="border-border">
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-base font-medium">Variants</CardTitle>
+                  <CardTitle className="text-base font-medium">{t("sellerNew.variants")}</CardTitle>
                   <button
                     type="button"
                     onClick={() => setVariantsEnabled((v) => !v)}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {variantsEnabled ? "Disable" : "Enable"}
+                    {variantsEnabled ? t("sellerNew.disable") : t("sellerNew.enable")}
                   </button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="text-sm text-muted-foreground">
-                  Add common options (like colors and sizes). These help buyers choose quickly.
+                  {t("sellerNew.variantsHelp")}
                 </div>
 
                 {variantsEnabled ? (
                   <>
                     <div>
-                      <div className="text-sm font-medium text-foreground">Colors</div>
+                      <div className="text-sm font-medium text-foreground">{t("sellerNew.colors")}</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {colors.map((c) => (
                           <div key={`${c.name}-${c.hex}`} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm">
@@ -521,7 +523,7 @@ export default function SellerNewProductPage() {
                         <Input
                           value={newColor}
                           onChange={(e) => setNewColor(e.target.value)}
-                          placeholder="Add a color (e.g. Blue or #3b82f6)"
+                          placeholder={t("sellerNew.addColorPlaceholder")}
                         />
                         <Button
                           type="button"
@@ -545,7 +547,7 @@ export default function SellerNewProductPage() {
                     </div>
 
                     <div>
-                      <div className="text-sm font-medium text-foreground">Sizes</div>
+                      <div className="text-sm font-medium text-foreground">{t("sellerNew.sizes")}</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {sizes.map((s) => (
                           <div key={s} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm">
@@ -563,7 +565,7 @@ export default function SellerNewProductPage() {
                       </div>
 
                       <div className="mt-3 flex gap-2">
-                        <Input value={newSize} onChange={(e) => setNewSize(e.target.value)} placeholder="Add a size (e.g. XXL)" />
+                        <Input value={newSize} onChange={(e) => setNewSize(e.target.value)} placeholder={t("sellerNew.addSizePlaceholder")} />
                         <Button
                           type="button"
                           variant="outline"
@@ -582,7 +584,7 @@ export default function SellerNewProductPage() {
                   </>
                 ) : (
                   <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                    Variants are disabled. Product will be listed without selectable options.
+                    {t("sellerNew.variantsDisabled")}
                   </div>
                 )}
               </CardContent>
@@ -592,27 +594,27 @@ export default function SellerNewProductPage() {
           <div className="lg:col-span-4">
             <Card className="border-border lg:sticky lg:top-24">
               <CardHeader>
-                <CardTitle className="text-base font-medium">Ready to publish</CardTitle>
+                <CardTitle className="text-base font-medium">{t("sellerNew.readyToPublish")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-sm text-muted-foreground">
                   {canSubmit ? (
                     <span className="inline-flex items-center gap-2 text-foreground">
-                      <CheckCircle2 size={16} className="text-green-600" /> Looks good
+                      <CheckCircle2 size={16} className="text-green-600" /> {t("sellerNew.looksGood")}
                     </span>
                   ) : (
-                    "Add title, price, category, and vendor to publish."
+                    t("sellerNew.publishChecklist")
                   )}
                 </div>
 
                 <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Media</span>
+                    <span className="text-muted-foreground">{t("sellerNew.media")}</span>
                     <span className="text-foreground">{mediaFiles.length}/{MAX_MEDIA_FILES}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-muted-foreground">Variants</span>
-                    <span className="text-foreground">{variantsEnabled ? `${colors.length} colors · ${sizes.length} sizes` : "Off"}</span>
+                    <span className="text-muted-foreground">{t("sellerNew.variants")}</span>
+                    <span className="text-foreground">{variantsEnabled ? `${colors.length} ${t("sellerNew.colorsLower")} · ${sizes.length} ${t("sellerNew.sizesLower")}` : t("sellerNew.off")}</span>
                   </div>
                 </div>
 
@@ -621,14 +623,14 @@ export default function SellerNewProductPage() {
                   disabled={!canSubmit || uploading || (!isAdmin && vendorOptions.length === 0)}
                   onClick={async () => {
                     try {
-                      if (!supabase) throw new Error("Supabase is not configured");
-                      if (!user) throw new Error("Not signed in");
-                      if (categoryOptions.length === 0) throw new Error("No categories available");
-                      if (!category.trim()) throw new Error("Please select a category");
+                      if (!supabase) throw new Error(t("admin.supabaseMissing"));
+                      if (!user) throw new Error(t("admin.notSignedIn"));
+                      if (categoryOptions.length === 0) throw new Error(t("sellerNew.noCategories"));
+                      if (!category.trim()) throw new Error(t("sellerNew.selectCategoryError"));
 
                       let resolvedVendorId = vendorId;
                       if (!resolvedVendorId && vendorName.trim().length >= 2) {
-                        if (!isAdmin) throw new Error("Vendor creation requires approval. Use onboarding (/sell). ");
+                        if (!isAdmin) throw new Error(t("sellerNew.vendorCreationRequiresApproval"));
                         const created = await createVendor({
                           name: vendorName.trim(),
                           location: "Kigali, Rwanda",
@@ -638,7 +640,7 @@ export default function SellerNewProductPage() {
                         resolvedVendorId = created.id;
                       }
 
-                      if (!resolvedVendorId) throw new Error("Missing vendor");
+                      if (!resolvedVendorId) throw new Error(t("sellerNew.missingVendor"));
 
                       setUploading(true);
                       setUploadProgress({});
@@ -646,7 +648,7 @@ export default function SellerNewProductPage() {
 
                       const { data } = await supabase.auth.getSession();
                       const accessToken = data.session?.access_token;
-                      if (!accessToken) throw new Error("Missing session");
+                      if (!accessToken) throw new Error(t("sellerNew.missingSession"));
 
                       const productId = createId("p");
 
@@ -722,12 +724,12 @@ export default function SellerNewProductPage() {
                         );
                       }
 
-                      toast({ title: "Product uploaded", description: "Your product is live." });
+                      toast({ title: t("sellerNew.productUploaded"), description: t("sellerNew.productLive") });
                       navigate("/seller/products");
                     } catch (e) {
                       toast({
-                        title: "Upload failed",
-                        description: e instanceof Error ? e.message : "Unknown error",
+                        title: t("sellerNew.uploadFailed"),
+                        description: e instanceof Error ? e.message : t("seller.unknownError"),
                         variant: "destructive",
                       });
                     } finally {
@@ -735,15 +737,15 @@ export default function SellerNewProductPage() {
                     }
                   }}
                 >
-                  {uploading ? "Uploading..." : "Publish product"}
+                  {uploading ? t("sellerNew.uploading") : t("sellerNew.publishProduct")}
                 </Button>
 
                 {uploading && mediaFiles.length > 0 && (
                   <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-3">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">Uploading media...</span>
+                      <span className="font-medium text-foreground">{t("sellerNew.uploadingMedia")}</span>
                       <span className="text-muted-foreground">
-                        {mediaFiles.length - uploadingCount} / {mediaFiles.length} complete
+                        {mediaFiles.length - uploadingCount} / {mediaFiles.length} {t("sellerNew.complete")}
                       </span>
                     </div>
                     
@@ -780,7 +782,7 @@ export default function SellerNewProductPage() {
 
                 <Link to="/seller/products" className="block">
                   <Button variant="outline" className="w-full rounded-md">
-                    Cancel
+                    {t("admin.cancel")}
                   </Button>
                 </Link>
               </CardContent>

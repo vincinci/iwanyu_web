@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { Package, ShoppingBag, Clock, CheckCircle, Truck, XCircle, LogIn } from "lucide-react";
@@ -33,6 +34,7 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; bgCol
 
 export default function OrdersPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const supabase = getSupabaseClient();
   const [dbOrders, setDbOrders] = useState<DbOrder[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,9 +93,9 @@ export default function OrdersPage() {
       <div className="container min-h-screen py-12">
         <div className="flex items-center gap-3 mb-2">
           <Package className="h-8 w-8 text-gray-900" />
-          <h1 className="text-3xl font-semibold text-gray-900">Your Orders</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">{t("orders.title")}</h1>
         </div>
-        <p className="text-gray-600 mb-8">Track and manage your orders</p>
+        <p className="text-gray-600 mb-8">{t("orders.subtitle")}</p>
 
         {!user ? (
           <div className="text-center py-16">
@@ -101,15 +103,15 @@ export default function OrdersPage() {
               <LogIn className="w-12 h-12 text-gray-400" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              Sign in to see your orders
+              {t("orders.signInTitle")}
             </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Your order history, tracking information, and purchase details are available after signing in.
+              {t("orders.signInDesc")}
             </p>
             <Link to="/login">
               <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-8">
                 <LogIn className="mr-2 h-4 w-4" />
-                Sign In
+                {t("orders.signIn")}
               </Button>
             </Link>
           </div>
@@ -117,8 +119,8 @@ export default function OrdersPage() {
 
         {!supabase && user ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-            <div className="font-semibold text-red-900">Orders are not available</div>
-            <div className="mt-1 text-red-700">Database connection is not configured.</div>
+            <div className="font-semibold text-red-900">{t("orders.unavailable")}</div>
+            <div className="mt-1 text-red-700">{t("orders.dbNotConfigured")}</div>
           </div>
         ) : null}
 
@@ -143,15 +145,15 @@ export default function OrdersPage() {
                   <ShoppingBag className="w-12 h-12 text-orange-400" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                  No orders yet
+                  {t("orders.noneTitle")}
                 </h3>
                 <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                  When you make a purchase, your orders will appear here. Start shopping to see your order history!
+                  {t("orders.noneDesc")}
                 </p>
                 <Link to="/">
                   <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-8">
                     <ShoppingBag className="mr-2 h-4 w-4" />
-                    Start Shopping
+                    {t("orders.startShopping")}
                   </Button>
                 </Link>
               </div>
@@ -174,7 +176,7 @@ export default function OrdersPage() {
                     <CardContent>
                       <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
                         <div>
-                          <span className="text-gray-500">Date:</span>{" "}
+                          <span className="text-gray-500">{t("orders.date")}:</span>{" "}
                           <span className="font-medium text-gray-900">
                             {new Date(order.createdAt).toLocaleDateString('en-US', {
                               year: 'numeric',
@@ -184,7 +186,7 @@ export default function OrdersPage() {
                           </span>
                         </div>
                         <div>
-                          <span className="text-gray-500">Total:</span>{" "}
+                          <span className="text-gray-500">{t("orders.total")}:</span>{" "}
                           <span className="font-bold text-gray-900">{formatMoney(order.total)}</span>
                         </div>
                       </div>

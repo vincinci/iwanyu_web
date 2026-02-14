@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
@@ -32,6 +33,7 @@ const nav = [
 
 export default function AdminProductsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
   const { products, vendors, refresh } = useMarketplace();
@@ -43,36 +45,24 @@ export default function AdminProductsPage() {
   const [deleteReason, setDeleteReason] = useState("");
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
   const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
+  const getSoldCount = (product: unknown) => Number((product as { soldCount?: number } | null)?.soldCount ?? 0);
 
   const productToDelete = useMemo(
     () => (deleteProductId ? products.find((p) => p.id === deleteProductId) : undefined),
     [deleteProductId, products]
   );
 
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md text-center">
-          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-6">Admin privileges required</p>
-          <Link to="/"><Button variant="outline" className="rounded-full">Home</Button></Link>
-        </div>
-      </div>
-    );
-  }
-
   async function updateProductCategory(productId: string, category: string) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase.from("products").update({ category: category.trim() }).eq("id", productId);
     if (error) throw new Error(error.message);
     await refresh();
   }
 
   async function deleteProductWithReason() {
-    if (!supabase || !user || !productToDelete) throw new Error("Missing data");
+    if (!supabase || !user || !productToDelete) throw new Error(t("admin.missingData"));
     const reason = deleteReason.trim();
-    if (reason.length < 5) throw new Error("Please provide a reason (min 5 chars)");
+    if (reason.length < 5) throw new Error(t("admin.reasonMin"));
 
     const { error: notifyErr } = await supabase.from("vendor_notifications").insert({
       vendor_id: productToDelete.vendorId,
@@ -117,6 +107,19 @@ export default function AdminProductsPage() {
     return result;
   }, [products, searchQuery, categoryFilter, stockFilter]);
 
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+          <h2 className="text-2xl font-bold mb-2">{t("admin.accessDenied")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.privilegesRequired")}</p>
+          <Link to="/"><Button variant="outline" className="rounded-full">{t("admin.home")}</Button></Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
@@ -130,11 +133,11 @@ export default function AdminProductsPage() {
             <div className="flex items-center gap-2">
               <Link to="/admin" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">Admin</Link>
               <span className="text-gray-300">/</span>
-              <span className="text-gray-900 font-semibold text-sm">Products</span>
+              <span className="text-gray-900 font-semibold text-sm">{t("admin.products")}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← Store front</Link>
+            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← {t("admin.storefront")}</Link>
           </div>
         </div>
       </div>
@@ -163,14 +166,14 @@ export default function AdminProductsPage() {
           <main className="flex-1">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
-                <h1 className="text-2xl font-bold">Products</h1>
-                <p className="text-sm text-gray-500">{products.length} total products</p>
+                <h1 className="text-2xl font-bold">{t("admin.products")}</h1>
+                <p className="text-sm text-gray-500">{products.length} {t("admin.totalProducts")}</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <div className="relative w-48">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search..."
+                    placeholder={t("admin.search")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-9"
@@ -178,10 +181,10 @@ export default function AdminProductsPage() {
                 </div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-36 h-9">
-                    <SelectValue placeholder="Category" />
+                    <SelectValue placeholder={t("admin.category")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="all">{t("admin.allCategories")}</SelectItem>
                     {categoryOptions.map(c => (
                       <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
@@ -189,12 +192,12 @@ export default function AdminProductsPage() {
                 </Select>
                 <Select value={stockFilter} onValueChange={setStockFilter}>
                   <SelectTrigger className="w-32 h-9">
-                    <SelectValue placeholder="Stock" />
+                    <SelectValue placeholder={t("admin.stock")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Stock</SelectItem>
-                    <SelectItem value="in-stock">In Stock</SelectItem>
-                    <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                    <SelectItem value="all">{t("admin.allStock")}</SelectItem>
+                    <SelectItem value="in-stock">{t("admin.inStock")}</SelectItem>
+                    <SelectItem value="out-of-stock">{t("admin.outOfStock")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -203,19 +206,19 @@ export default function AdminProductsPage() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Total Products</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.totalProducts")}</p>
                 <p className="text-2xl font-bold">{products.length}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">In Stock</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.inStock")}</p>
                 <p className="text-2xl font-bold text-green-600">{products.filter(p => p.inStock).length}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Out of Stock</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.outOfStock")}</p>
                 <p className="text-2xl font-bold text-red-600">{products.filter(p => !p.inStock).length}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Total Value</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.totalValue")}</p>
                 <p className="text-2xl font-bold">{formatMoney(products.reduce((sum, p) => sum + p.price, 0))}</p>
               </div>
             </div>
@@ -267,7 +270,7 @@ export default function AdminProductsPage() {
 
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-bold text-sm">{formatMoney(product.price)}</span>
-                        <span className="text-[10px] text-gray-400">{product.soldCount || 0} sold</span>
+                        <span className="text-[10px] text-gray-400">{getSoldCount(product)} {t("admin.sold")}</span>
                       </div>
 
                       <Select
@@ -276,14 +279,14 @@ export default function AdminProductsPage() {
                           setCategoryEdits((prev) => ({ ...prev, [product.id]: v }));
                           try {
                             await updateProductCategory(product.id, v);
-                            toast({ title: "Updated" });
+                            toast({ title: t("admin.updated") });
                           } catch (e) {
-                            toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                            toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                           }
                         }}
                       >
                         <SelectTrigger className="h-7 text-[11px]">
-                          <SelectValue placeholder="Category" />
+                          <SelectValue placeholder={t("admin.category")} />
                         </SelectTrigger>
                         <SelectContent>
                           {categoryOptions.map((c) => (
@@ -300,7 +303,7 @@ export default function AdminProductsPage() {
             {filteredProducts.length === 0 && (
               <div className="bg-white rounded-xl p-12 border border-dashed border-gray-200 text-center">
                 <Boxes size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500">No products found</p>
+                <p className="text-gray-500">{t("admin.noProductsFound")}</p>
               </div>
             )}
           </main>
@@ -311,35 +314,35 @@ export default function AdminProductsPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.deleteProduct")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the product and notify the vendor.
+              {t("admin.deleteProductDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Reason for removal</label>
+            <label className="text-sm font-medium">{t("admin.reasonForRemoval")}</label>
             <Textarea
               value={deleteReason}
               onChange={(e) => setDeleteReason(e.target.value)}
-              placeholder="Explain policy violation..."
+              placeholder={t("admin.explainPolicy")}
               rows={3}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full">{t("admin.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="rounded-full bg-red-600 hover:bg-red-700"
               onClick={async (e) => {
                 e.preventDefault();
                 try {
                   await deleteProductWithReason();
-                  toast({ title: "Deleted", description: "Product removed" });
+                  toast({ title: t("admin.deleted"), description: t("admin.productRemoved") });
                 } catch (err) {
-                  toast({ title: "Failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+                  toast({ title: t("admin.failed"), description: err instanceof Error ? err.message : t("admin.unknownError"), variant: "destructive" });
                 }
               }}
             >
-              Delete Product
+              {t("admin.deleteProduct")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

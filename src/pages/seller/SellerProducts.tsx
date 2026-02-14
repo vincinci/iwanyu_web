@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export default function SellerProductsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { products, vendors, deleteProduct, getVendorsForOwner } = useMarketplace();
   const supabase = getSupabaseClient();
@@ -59,17 +61,17 @@ export default function SellerProductsPage() {
       <div className="border-b border-gray-200/70 bg-white">
         <div className="container py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Seller Products</h1>
-            <p className="text-sm text-gray-600">Create and manage vendor listings.</p>
+            <h1 className="text-2xl font-semibold text-gray-900">{t("seller.productsTitle")}</h1>
+            <p className="text-sm text-gray-600">{t("seller.productsSubtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Link to="/seller">
-              <Button variant="outline" className="rounded-full">Dashboard</Button>
+              <Button variant="outline" className="rounded-full">{t("seller.dashboard")}</Button>
             </Link>
             <Link to="/seller/products/new">
               <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">
                 <Plus size={16} className="mr-2" />
-                New product
+                {t("seller.newProduct")}
               </Button>
             </Link>
           </div>
@@ -87,15 +89,15 @@ export default function SellerProductsPage() {
                 </CardHeader>
                 <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <div className="text-gray-600">
-                    Vendor: <span className="font-medium text-gray-900">{vendor?.name ?? "Unknown"}</span>
+                    {t("seller.vendor")}: <span className="font-medium text-gray-900">{vendor?.name ?? t("seller.unknown")}</span>
                     <span className="mx-2">•</span>
-                    Price: <span className="font-medium text-gray-900">{formatMoney(p.price)}</span>
+                    {t("seller.price")}: <span className="font-medium text-gray-900">{formatMoney(p.price)}</span>
                     <span className="mx-2">•</span>
-                    Stock: <span className="font-medium text-gray-900">{p.inStock ? "In stock" : "Out"}</span>
+                    {t("seller.stock")}: <span className="font-medium text-gray-900">{p.inStock ? t("seller.inStock") : t("seller.out")}</span>
                   </div>
                   <div className="flex gap-2">
                     <Link to={`/product/${p.id}`}>
-                      <Button variant="outline" className="rounded-full">View</Button>
+                      <Button variant="outline" className="rounded-full">{t("seller.view")}</Button>
                     </Link>
                     <Button
                       variant="outline"
@@ -104,11 +106,11 @@ export default function SellerProductsPage() {
                         if (!isAdmin && !ownedVendorIds.has(p.vendorId)) return;
                         try {
                           await deleteProduct(p.id);
-                          toast({ title: "Deleted", description: "Product removed." });
+                          toast({ title: t("seller.deleted"), description: t("seller.productRemoved") });
                         } catch (e) {
                           toast({
-                            title: "Delete failed",
-                            description: e instanceof Error ? e.message : "Unknown error",
+                            title: t("seller.deleteFailed"),
+                            description: e instanceof Error ? e.message : t("seller.unknownError"),
                             variant: "destructive",
                           });
                         }
@@ -116,7 +118,7 @@ export default function SellerProductsPage() {
                       disabled={!isAdmin && !ownedVendorIds.has(p.vendorId)}
                     >
                       <Trash2 size={16} className="mr-2" />
-                      Delete
+                      {t("seller.delete")}
                     </Button>
                   </div>
                 </CardContent>

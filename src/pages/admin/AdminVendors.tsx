@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { formatMoney } from "@/lib/money";
 
@@ -30,6 +31,7 @@ const nav = [
 
 export default function AdminVendorsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
   const { products, vendors, refresh } = useMarketplace();
@@ -37,59 +39,34 @@ export default function AdminVendorsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteVendorId, setDeleteVendorId] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
+  const getSoldCount = (product: unknown) => Number((product as { soldCount?: number } | null)?.soldCount ?? 0);
 
   const vendorToDelete = useMemo(
     () => (deleteVendorId ? vendors.find((v) => v.id === deleteVendorId) : undefined),
     [deleteVendorId, vendors]
   );
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md text-center">
-          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Sign In Required</h2>
-          <p className="text-gray-500 mb-6">Admin authentication needed</p>
-          <Link to="/login"><Button className="rounded-full">Login</Button></Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (user.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md text-center">
-          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-6">Admin privileges required</p>
-          <Link to="/"><Button variant="outline" className="rounded-full">Home</Button></Link>
-        </div>
-      </div>
-    );
-  }
-
   async function approveVendor(vendorId: string) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase.from("vendors").update({ status: "approved" }).eq("id", vendorId);
     if (error) throw new Error(error.message);
     await refresh();
   }
 
   async function toggleVendorRevoke(vendorId: string, currentRevoked: boolean) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase.from("vendors").update({ revoked: !currentRevoked }).eq("id", vendorId);
     if (error) throw new Error(error.message);
     await refresh();
   }
 
   async function deleteVendorWithReason() {
-    if (!supabase) throw new Error("Supabase is not configured");
-    if (!user) throw new Error("Not signed in");
-    if (!vendorToDelete) throw new Error("Missing vendor");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
+    if (!user) throw new Error(t("admin.notSignedIn"));
+    if (!vendorToDelete) throw new Error(t("admin.missingVendor"));
 
     const reason = deleteReason.trim();
-    if (reason.length < 5) throw new Error("Please provide a short reason (min 5 chars)");
+    if (reason.length < 5) throw new Error(t("admin.reasonMin"));
 
     const now = new Date().toISOString();
 
@@ -133,6 +110,32 @@ export default function AdminVendorsPage() {
     return vendors.filter(v => v.name.toLowerCase().includes(q) || v.location?.toLowerCase().includes(q));
   }, [vendors, searchQuery]);
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+          <h2 className="text-2xl font-bold mb-2">{t("admin.signInRequired")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.authRequired")}</p>
+          <Link to="/login"><Button className="rounded-full">{t("auth.login")}</Button></Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+          <h2 className="text-2xl font-bold mb-2">{t("admin.accessDenied")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.privilegesRequired")}</p>
+          <Link to="/"><Button variant="outline" className="rounded-full">{t("admin.home")}</Button></Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
@@ -146,11 +149,11 @@ export default function AdminVendorsPage() {
             <div className="flex items-center gap-2">
               <Link to="/admin" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">Admin</Link>
               <span className="text-gray-300">/</span>
-              <span className="text-gray-900 font-semibold text-sm">Vendors</span>
+              <span className="text-gray-900 font-semibold text-sm">{t("admin.vendors")}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← Store front</Link>
+            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← {t("admin.storefront")}</Link>
           </div>
         </div>
       </div>
@@ -179,13 +182,13 @@ export default function AdminVendorsPage() {
           <main className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-bold">Vendors</h1>
-                <p className="text-sm text-gray-500">{vendors.length} total vendors</p>
+                <h1 className="text-2xl font-bold">{t("admin.vendors")}</h1>
+                <p className="text-sm text-gray-500">{vendors.length} {t("admin.totalVendors")}</p>
               </div>
               <div className="relative w-64">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Search vendors..."
+                  placeholder={t("admin.searchVendors")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-9"
@@ -196,19 +199,19 @@ export default function AdminVendorsPage() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Total Vendors</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.totalVendors")}</p>
                 <p className="text-2xl font-bold">{vendors.length}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Approved</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.approved")}</p>
                 <p className="text-2xl font-bold text-green-600">{vendors.filter(v => v.status === 'approved').length}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Pending</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.pending")}</p>
                 <p className="text-2xl font-bold text-amber-600">{vendors.filter(v => !v.status || v.status === 'pending').length}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Revoked</p>
+                <p className="text-xs text-gray-500 mb-1">{t("admin.revoked")}</p>
                 <p className="text-2xl font-bold text-red-600">{vendors.filter(v => v.revoked).length}</p>
               </div>
             </div>
@@ -217,8 +220,8 @@ export default function AdminVendorsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredVendors.map((vendor) => {
                 const vendorProducts = products.filter(p => p.vendorId === vendor.id);
-                const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * (p.soldCount || 0)), 0);
-                const vendorSales = vendorProducts.reduce((sum, p) => sum + (p.soldCount || 0), 0);
+                const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * getSoldCount(p)), 0);
+                const vendorSales = vendorProducts.reduce((sum, p) => sum + getSoldCount(p), 0);
 
                 return (
                   <div key={vendor.id} className="bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all">
@@ -228,7 +231,7 @@ export default function AdminVendorsPage() {
                           <h4 className="font-bold">{vendor.name}</h4>
                           {vendor.verified && <BadgeCheck size={14} className="text-blue-600" />}
                         </div>
-                        <p className="text-xs text-gray-500">{vendor.location || "No location"}</p>
+                        <p className="text-xs text-gray-500">{vendor.location || t("admin.noLocation")}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         {vendor.status === "approved" ? (
@@ -248,15 +251,15 @@ export default function AdminVendorsPage() {
                     <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
                       <div className="text-center">
                         <p className="text-lg font-bold">{vendorProducts.length}</p>
-                        <p className="text-[10px] text-gray-500">Products</p>
+                        <p className="text-[10px] text-gray-500">{t("admin.products")}</p>
                       </div>
                       <div className="text-center border-x border-gray-200">
                         <p className="text-lg font-bold">{vendorSales}</p>
-                        <p className="text-[10px] text-gray-500">Sales</p>
+                        <p className="text-[10px] text-gray-500">{t("admin.sales")}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-lg font-bold text-green-600">{formatMoney(vendorRevenue)}</p>
-                        <p className="text-[10px] text-gray-500">Revenue</p>
+                        <p className="text-[10px] text-gray-500">{t("admin.revenue")}</p>
                       </div>
                     </div>
 
@@ -268,13 +271,13 @@ export default function AdminVendorsPage() {
                           onClick={async () => {
                             try {
                               await approveVendor(vendor.id);
-                              toast({ title: "Approved", description: `${vendor.name} is now approved` });
+                              toast({ title: t("admin.approved"), description: `${vendor.name} ${t("admin.isNowApproved")}` });
                             } catch (e) {
-                              toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                              toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                             }
                           }}
                         >
-                          Approve
+                          {t("admin.approve")}
                         </Button>
                       )}
                       <Button
@@ -284,13 +287,13 @@ export default function AdminVendorsPage() {
                         onClick={async () => {
                           try {
                             await toggleVendorRevoke(vendor.id, vendor.revoked ?? false);
-                            toast({ title: vendor.revoked ? "Restored" : "Revoked", description: vendor.revoked ? "Vendor can sell again" : "Vendor cannot sell" });
+                            toast({ title: vendor.revoked ? t("admin.restored") : t("admin.revoked"), description: vendor.revoked ? t("admin.vendorCanSellAgain") : t("admin.vendorCannotSell") });
                           } catch (e) {
-                            toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                            toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                           }
                         }}
                       >
-                        {vendor.revoked ? "Restore" : "Revoke"}
+                        {vendor.revoked ? t("admin.restore") : t("admin.revoke")}
                       </Button>
                       <Button
                         size="sm"
@@ -301,7 +304,7 @@ export default function AdminVendorsPage() {
                           setDeleteReason("");
                           setDeleteOpen(true);
                         }}
-                        title="Remove vendor"
+                        title={t("admin.removeVendor")}
                       >
                         <Trash2 size={14} />
                       </Button>
@@ -314,7 +317,7 @@ export default function AdminVendorsPage() {
             {filteredVendors.length === 0 && (
               <div className="bg-white rounded-xl p-12 border border-dashed border-gray-200 text-center">
                 <Users size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500">No vendors found</p>
+                <p className="text-gray-500">{t("admin.noVendorsFound")}</p>
               </div>
             )}
           </main>
@@ -325,39 +328,39 @@ export default function AdminVendorsPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Vendor</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.deleteVendor")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the vendor and unlist all their products. Existing orders remain intact.
+              {t("admin.deleteVendorDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Reason for removal</label>
+            <label className="text-sm font-medium">{t("admin.reasonForRemoval")}</label>
             <Textarea
               value={deleteReason}
               onChange={(e) => setDeleteReason(e.target.value)}
-              placeholder="Explain policy violation..."
+              placeholder={t("admin.explainPolicy")}
               rows={3}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full">{t("admin.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="rounded-full bg-red-600 hover:bg-red-700"
               onClick={async (e) => {
                 e.preventDefault();
                 try {
                   await deleteVendorWithReason();
-                  toast({ title: "Deleted", description: "Vendor removed" });
+                  toast({ title: t("admin.deleted"), description: t("admin.vendorRemoved") });
                 } catch (err) {
                   toast({
-                    title: "Failed",
-                    description: err instanceof Error ? err.message : "Unknown error",
+                    title: t("admin.failed"),
+                    description: err instanceof Error ? err.message : t("admin.unknownError"),
                     variant: "destructive",
                   });
                 }
               }}
             >
-              Delete Vendor
+              {t("admin.deleteVendor")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

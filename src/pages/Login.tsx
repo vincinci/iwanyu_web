@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import StorefrontPage from "@/components/StorefrontPage";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function LoginPage() {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      setError("Supabase is not configured");
+      setError(t("auth.supabaseNotConfigured"));
       return;
     }
 
@@ -51,14 +53,14 @@ export default function LoginPage() {
       // Optimistically navigate - the auth state will update in background
       navigate(nextPath, { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign in failed");
+      setError(e instanceof Error ? e.message : t("auth.signinFailed"));
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     if (!supabase) {
-      setError("Supabase is not configured");
+      setError(t("auth.supabaseNotConfigured"));
       return;
     }
 
@@ -79,17 +81,17 @@ export default function LoginPage() {
         <div className="mx-auto max-w-md">
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl text-gray-900">Sign in</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">{t("auth.signIn")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">Sign in to manage your account and sell products.</p>
+              <p className="text-sm text-gray-600">{t("auth.signinSubtitle")}</p>
 
               {supabase ? (
                 <>
                   <form onSubmit={handleEmailLogin} className="space-y-3">
                     <div>
                       <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                        Email
+                        {t("auth.email")}
                       </Label>
                       <Input
                         id="email"
@@ -104,7 +106,7 @@ export default function LoginPage() {
 
                     <div>
                       <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                        Password
+                        {t("auth.password")}
                       </Label>
                       <Input
                         id="password"
@@ -122,7 +124,7 @@ export default function LoginPage() {
                       className="w-full rounded-full bg-gray-900 text-white hover:bg-gray-800"
                       disabled={loading}
                     >
-                      {loading ? "Signing in..." : "Sign in"}
+                      {loading ? t("auth.signingIn") : t("auth.signIn")}
                     </Button>
                   </form>
 
@@ -157,15 +159,14 @@ export default function LoginPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    Continue with Google
+                    {t("auth.continueWithGoogle")}
                   </Button>
                 </>
               ) : (
                 <div className="rounded-lg border border-iwanyu-border bg-white p-4 text-sm text-gray-700">
-                  <div className="font-semibold">Supabase auth is not configured</div>
+                  <div className="font-semibold">{t("auth.supabaseNotConfigured")}</div>
                   <div className="mt-1 text-gray-600">
-                    Set <span className="font-mono">VITE_SUPABASE_URL</span> and{" "}
-                    <span className="font-mono">VITE_SUPABASE_ANON_KEY</span>.
+                    {t("auth.configureKeys")}
                   </div>
                 </div>
               )}
@@ -175,14 +176,14 @@ export default function LoginPage() {
               ) : null}
 
               <div className="text-center text-sm text-gray-600">
-                Don't have an account?{" "}
+                {t("auth.noAccount")}{" "}
                 <Link to="/signup" className="font-semibold text-gray-900 hover:underline">
-                  Sign up
+                  {t("auth.signUp")}
                 </Link>
               </div>
 
               <Button variant="outline" className="w-full rounded-full" onClick={() => navigate("/")}>
-                Continue shopping
+                {t("auth.continueShopping")}
               </Button>
             </CardContent>
           </Card>

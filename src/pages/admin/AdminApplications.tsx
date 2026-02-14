@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 
@@ -29,6 +30,7 @@ type VendorApplication = {
 
 export default function AdminApplicationsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
   const { refresh } = useMarketplace();
@@ -69,16 +71,16 @@ export default function AdminApplicationsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md text-center">
           <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-6">Admin privileges required</p>
-          <Link to="/"><Button variant="outline" className="rounded-full">Home</Button></Link>
+          <h2 className="text-2xl font-bold mb-2">{t("admin.accessDenied")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.privilegesRequired")}</p>
+          <Link to="/"><Button variant="outline" className="rounded-full">{t("admin.home")}</Button></Link>
         </div>
       </div>
     );
   }
 
   async function approveApplication(app: VendorApplication) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const vendorId = createId("v");
     
     const { error: vendorErr } = await supabase.from("vendors").insert({
@@ -108,7 +110,7 @@ export default function AdminApplicationsPage() {
   }
 
   async function rejectApplication(app: VendorApplication) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase
       .from("vendor_applications")
       .update({ status: "rejected", updated_at: new Date().toISOString() })
@@ -135,11 +137,11 @@ export default function AdminApplicationsPage() {
             <div className="flex items-center gap-2">
               <Link to="/admin" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">Admin</Link>
               <span className="text-gray-300">/</span>
-              <span className="text-gray-900 font-semibold text-sm">Applications</span>
+              <span className="text-gray-900 font-semibold text-sm">{t("admin.applications")}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← Store front</Link>
+            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← {t("admin.storefront")}</Link>
           </div>
         </div>
       </div>
@@ -171,14 +173,14 @@ export default function AdminApplicationsPage() {
           <main className="flex-1">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
-                <h1 className="text-2xl font-bold">Vendor Applications</h1>
-                <p className="text-sm text-gray-500">{allApplications.length} total applications</p>
+                <h1 className="text-2xl font-bold">{t("admin.vendorApplications")}</h1>
+                <p className="text-sm text-gray-500">{allApplications.length} {t("admin.totalApplications")}</p>
               </div>
               <div className="flex gap-3">
                 <div className="relative w-48">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search..."
+                    placeholder={t("admin.search")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-9"
@@ -196,7 +198,7 @@ export default function AdminApplicationsPage() {
                 }`}
               >
                 <Clock size={14} className="inline mr-1.5" />
-                Pending ({pendingCount})
+                {t("admin.pending")} ({pendingCount})
               </button>
               <button
                 onClick={() => setStatusFilter("approved")}
@@ -205,7 +207,7 @@ export default function AdminApplicationsPage() {
                 }`}
               >
                 <CheckCircle2 size={14} className="inline mr-1.5" />
-                Approved ({approvedCount})
+                {t("admin.approved")} ({approvedCount})
               </button>
               <button
                 onClick={() => setStatusFilter("rejected")}
@@ -214,7 +216,7 @@ export default function AdminApplicationsPage() {
                 }`}
               >
                 <X size={14} className="inline mr-1.5" />
-                Rejected ({rejectedCount})
+                {t("admin.rejected")} ({rejectedCount})
               </button>
               <button
                 onClick={() => setStatusFilter("all")}
@@ -222,19 +224,19 @@ export default function AdminApplicationsPage() {
                   statusFilter === "all" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-100"
                 }`}
               >
-                All ({allApplications.length})
+                {t("admin.all")} ({allApplications.length})
               </button>
             </div>
 
             {/* Applications List */}
             {loading ? (
               <div className="bg-white rounded-xl p-8 text-center">
-                <p className="text-gray-500">Loading applications...</p>
+                <p className="text-gray-500">{t("admin.loadingApplications")}</p>
               </div>
             ) : filteredApplications.length === 0 ? (
               <div className="bg-white rounded-xl p-12 border border-dashed border-gray-200 text-center">
                 <BadgeCheck size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500">No applications found</p>
+                <p className="text-gray-500">{t("admin.noApplicationsFound")}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -260,9 +262,9 @@ export default function AdminApplicationsPage() {
                             <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">REJECTED</span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{app.location || "No location specified"}</p>
+                        <p className="text-sm text-gray-500">{app.location || t("admin.noLocationSpecified")}</p>
                         <p className="text-xs text-gray-400 mt-1">
-                          Applied: {new Date(app.created_at).toLocaleDateString()} • User: {app.owner_user_id.slice(0, 8)}...
+                          {t("admin.applied")}: {new Date(app.created_at).toLocaleDateString()} • {t("admin.user")}: {app.owner_user_id.slice(0, 8)}...
                         </p>
                       </div>
 
@@ -273,13 +275,13 @@ export default function AdminApplicationsPage() {
                             onClick={async () => {
                               try {
                                 await approveApplication(app);
-                                toast({ title: "Approved", description: `${app.store_name} can now sell` });
+                                toast({ title: t("admin.approved"), description: `${app.store_name} ${t("admin.canNowSell")}` });
                               } catch (e) {
-                                toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                                toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                               }
                             }}
                           >
-                            <CheckCircle2 size={16} className="mr-1" /> Approve
+                            <CheckCircle2 size={16} className="mr-1" /> {t("admin.approve")}
                           </Button>
                           <Button
                             variant="outline"
@@ -287,13 +289,13 @@ export default function AdminApplicationsPage() {
                             onClick={async () => {
                               try {
                                 await rejectApplication(app);
-                                toast({ title: "Rejected" });
+                                toast({ title: t("admin.rejected") });
                               } catch (e) {
-                                toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                                toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                               }
                             }}
                           >
-                            <X size={16} className="mr-1" /> Reject
+                            <X size={16} className="mr-1" /> {t("admin.reject")}
                           </Button>
                         </div>
                       )}

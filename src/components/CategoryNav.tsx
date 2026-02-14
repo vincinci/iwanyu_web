@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useMarketplace } from '@/context/marketplace';
+import { useLanguage } from '@/context/languageContext';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
 import { ArrowRight, Smartphone, Laptop, Shirt, Home, ShoppingBag, Sparkles, Dumbbell, Gamepad2, Watch, Heart } from 'lucide-react';
 
@@ -24,6 +25,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
 
 export const CategoryNav = () => {
   const { products } = useMarketplace();
+  const { t } = useLanguage();
 
   const categories = useMemo(() => {
     return getNavCategoriesWithCounts(products).slice(0, 6);
@@ -34,12 +36,12 @@ export const CategoryNav = () => {
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Shop by Category</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t("category.shopBy")}</h2>
           <Link 
             to="/category/all" 
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-black transition-colors"
           >
-            View all
+            {t("category.viewAll")}
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -62,7 +64,7 @@ export const CategoryNav = () => {
 
         {categories.length === 0 && (
           <div className="rounded-2xl bg-gray-50 py-12 text-center">
-            <p className="text-sm text-gray-500">No categories available</p>
+            <p className="text-sm text-gray-500">{t("category.none")}</p>
           </div>
         )}
       </div>

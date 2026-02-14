@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { useMarketplace } from "@/context/marketplace";
 import type { OrderStatus } from "@/types/order";
 import { formatMoney } from "@/lib/money";
@@ -20,6 +21,7 @@ const SELLER_STATUSES: OrderStatus[] = ["Placed", "Processing", "Shipped", "Deli
 
 export default function SellerOrdersPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { getVendorsForOwner } = useMarketplace();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
@@ -143,8 +145,8 @@ export default function SellerOrdersPage() {
         if (!cancelled) {
           setOrders([]);
           toast({
-            title: "Failed to load orders",
-            description: e instanceof Error ? e.message : "Unknown error",
+            title: t("seller.ordersLoadFailed"),
+            description: e instanceof Error ? e.message : t("seller.unknownError"),
             variant: "destructive",
           });
         }
@@ -157,7 +159,7 @@ export default function SellerOrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, user, isAdmin, ownedVendorIds, toast]);
+  }, [supabase, user, isAdmin, ownedVendorIds, toast, t]);
 
   const visibleOrders = useMemo(() => {
     if (isAdmin) return orders;
@@ -172,12 +174,12 @@ export default function SellerOrdersPage() {
       <div className="border-b border-gray-200/70 bg-white">
         <div className="container py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Seller Orders</h1>
-            <p className="text-sm text-gray-600">Manage fulfillment and status updates.</p>
+            <h1 className="text-2xl font-semibold text-gray-900">{t("seller.ordersTitle")}</h1>
+            <p className="text-sm text-gray-600">{t("seller.ordersSubtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Link to="/seller">
-              <Button variant="outline" className="rounded-full">Dashboard</Button>
+              <Button variant="outline" className="rounded-full">{t("seller.dashboard")}</Button>
             </Link>
           </div>
         </div>
@@ -187,17 +189,17 @@ export default function SellerOrdersPage() {
         {loading ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Loading…</CardTitle>
+              <CardTitle className="text-base">{t("seller.loading")}</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-gray-600">Fetching orders.</CardContent>
+            <CardContent className="text-sm text-gray-600">{t("seller.fetchingOrders")}</CardContent>
           </Card>
         ) : visibleOrders.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">No orders yet</CardTitle>
+              <CardTitle className="text-base">{t("seller.noOrdersYet")}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-600">
-              Orders containing your products will appear here.
+              {t("seller.noOrdersDesc")}
             </CardContent>
           </Card>
         ) : (
@@ -214,39 +216,39 @@ export default function SellerOrdersPage() {
                 <Card key={o.id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
-                      <span>Order #{o.id}</span>
+                      <span>{t("seller.order")} #{o.id}</span>
                       <span className="text-sm font-medium text-gray-700">{new Date(o.createdAt).toLocaleString()}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                       <div className="text-gray-700">
-                        Buyer: <span className="font-medium text-gray-900">{o.buyerEmail}</span>
+                        {t("seller.buyer")}: <span className="font-medium text-gray-900">{o.buyerEmail}</span>
                         <span className="mx-2">•</span>
-                        Total: <span className="font-medium text-gray-900">{formatMoney(o.total)}</span>
+                        {t("seller.total")}: <span className="font-medium text-gray-900">{formatMoney(o.total)}</span>
                         {!isAdmin ? (
                           <>
                             <span className="mx-2">•</span>
-                            Your items: <span className="font-medium text-gray-900">{formatMoney(sellerSubtotal)}</span>
+                            {t("seller.yourItems")}: <span className="font-medium text-gray-900">{formatMoney(sellerSubtotal)}</span>
                           </>
                         ) : null}
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <div className="text-xs text-gray-600">Order status</div>
+                        <div className="text-xs text-gray-600">{t("seller.orderStatus")}</div>
                         <div className="text-sm font-medium text-gray-900">{o.status}</div>
                       </div>
                     </div>
 
                     <div className="rounded-lg border border-gray-200 p-3">
-                      <div className="text-sm font-medium text-gray-900">Items</div>
+                      <div className="text-sm font-medium text-gray-900">{t("seller.items")}</div>
                       <div className="mt-2 grid gap-2">
                         {relevantItems.map((i) => (
                           <div key={`${o.id}:${i.productId}`} className="flex flex-wrap items-center justify-between gap-3 text-sm">
                             <div className="text-gray-700">
                               <span className="font-medium text-gray-900">{i.title}</span>
                               <span className="mx-2">•</span>
-                              Qty: <span className="font-medium text-gray-900">{i.quantity}</span>
+                              {t("seller.qty")}: <span className="font-medium text-gray-900">{i.quantity}</span>
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -277,8 +279,8 @@ export default function SellerOrdersPage() {
                                     );
                                   } catch (e) {
                                     toast({
-                                      title: "Update failed",
-                                      description: e instanceof Error ? e.message : "Unknown error",
+                                      title: t("seller.updateFailed"),
+                                      description: e instanceof Error ? e.message : t("seller.unknownError"),
                                       variant: "destructive",
                                     });
                                   }

@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMarketplace } from "@/context/marketplace";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { formatMoney } from "@/lib/money";
@@ -42,6 +43,7 @@ type VendorApplication = {
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
   const { products, vendors, refresh } = useMarketplace();
@@ -54,6 +56,7 @@ export default function AdminDashboardPage() {
   const [deleteReason, setDeleteReason] = useState("");
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
   const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
+  const getSoldCount = (product: unknown) => Number((product as { soldCount?: number } | null)?.soldCount ?? 0);
   
   const productToDelete = useMemo(
     () => (deleteProductId ? products.find((p) => p.id === deleteProductId) : undefined),
@@ -90,14 +93,14 @@ export default function AdminDashboardPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md text-center">
           <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Sign In Required</h2>
-          <p className="text-gray-500 mb-6">Admin authentication needed</p>
+          <h2 className="text-2xl font-bold mb-2">{t("admin.signInRequired")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.authRequired")}</p>
           <div className="flex gap-3 justify-center">
             <Link to="/login">
-              <Button className="rounded-full bg-black text-white hover:bg-gray-800">Login</Button>
+              <Button className="rounded-full bg-black text-white hover:bg-gray-800">{t("auth.login")}</Button>
             </Link>
             <Link to="/">
-              <Button variant="outline" className="rounded-full">Home</Button>
+              <Button variant="outline" className="rounded-full">{t("admin.home")}</Button>
             </Link>
           </div>
         </div>
@@ -110,14 +113,14 @@ export default function AdminDashboardPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-between p-4">
         <div className="max-w-md text-center">
           <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-6">Admin privileges required</p>
+          <h2 className="text-2xl font-bold mb-2">{t("admin.accessDenied")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.privilegesRequired")}</p>
           <div className="flex gap-3 justify-center">
             <Link to="/account">
-              <Button className="rounded-full bg-black text-white hover:bg-gray-800">Account</Button>
+              <Button className="rounded-full bg-black text-white hover:bg-gray-800">{t("admin.account")}</Button>
             </Link>
             <Link to="/">
-              <Button variant="outline" className="rounded-full">Home</Button>
+              <Button variant="outline" className="rounded-full">{t("admin.home")}</Button>
             </Link>
           </div>
         </div>
@@ -126,16 +129,16 @@ export default function AdminDashboardPage() {
   }
 
   async function updateProductCategory(productId: string, category: string) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const next = category.trim();
-    if (!next) throw new Error("Missing category");
+    if (!next) throw new Error(t("admin.missingCategory"));
     const { error } = await supabase.from("products").update({ category: next }).eq("id", productId);
     if (error) throw new Error(error.message);
     await refresh();
   }
 
   async function approveVendor(vendorId: string) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase
       .from("vendors")
       .update({ status: "approved" })
@@ -145,7 +148,7 @@ export default function AdminDashboardPage() {
   }
 
   async function rejectVendor(vendorId: string) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase
       .from("vendors")
       .update({ status: "rejected" })
@@ -155,7 +158,7 @@ export default function AdminDashboardPage() {
   }
 
   async function approveApplication(app: VendorApplication) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const vendorId = createId("v");
     const { error: vendorErr } = await supabase.from("vendors").insert({
       id: vendorId,
@@ -184,7 +187,7 @@ export default function AdminDashboardPage() {
   }
 
   async function rejectApplication(app: VendorApplication) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase
       .from("vendor_applications")
       .update({ status: "rejected", updated_at: new Date().toISOString() })
@@ -195,7 +198,7 @@ export default function AdminDashboardPage() {
   }
 
   async function toggleVendorRevoke(vendorId: string, currentRevoked: boolean) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase
       .from("vendors")
       .update({ revoked: !currentRevoked })
@@ -205,13 +208,13 @@ export default function AdminDashboardPage() {
   }
 
   async function deleteProductWithReason() {
-    if (!supabase) throw new Error("Supabase is not configured");
-    if (!user) throw new Error("Not signed in");
-    if (!productToDelete) throw new Error("Missing product");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
+    if (!user) throw new Error(t("admin.notSignedIn"));
+    if (!productToDelete) throw new Error(t("admin.missingProduct"));
 
     const vendorId = productToDelete.vendorId;
     const reason = deleteReason.trim();
-    if (reason.length < 5) throw new Error("Please provide a short reason (min 5 chars)");
+    if (reason.length < 5) throw new Error(t("admin.reasonMin"));
 
     const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? "Vendor";
     const title = `Product removed: ${productToDelete.title}`;
@@ -250,12 +253,12 @@ export default function AdminDashboardPage() {
             </Link>
             <div className="h-6 w-px bg-gray-200" />
             <div className="flex items-center gap-2">
-              <span className="text-gray-900 font-semibold text-sm">Admin Panel</span>
+              <span className="text-gray-900 font-semibold text-sm">{t("admin.panel")}</span>
               <span className="bg-amber-100 text-amber-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Pro</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← Store front</Link>
+            <Link to="/" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">← {t("admin.storefront")}</Link>
             <div className="h-5 w-px bg-gray-200" />
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow">
@@ -291,7 +294,7 @@ export default function AdminDashboardPage() {
           <main className="flex-1 space-y-10">
             {/* Stats Grid */}
             <div>
-              <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
+              <h1 className="text-2xl font-bold mb-6">{t("admin.dashboardOverview")}</h1>
               
               {/* Primary Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -300,10 +303,10 @@ export default function AdminDashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
                       <Users size={18} className="text-purple-600" />
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">Vendors</span>
+                    <span className="text-xs text-gray-500 font-medium">{t("admin.vendors")}</span>
                   </div>
                   <p className="text-3xl font-bold">{vendors.length}</p>
-                  <p className="text-xs text-green-600 mt-1">+{vendors.filter(v => v.status === 'approved').length} approved</p>
+                  <p className="text-xs text-green-600 mt-1">+{vendors.filter(v => v.status === 'approved').length} {t("admin.approved")}</p>
                 </div>
                 
                 <div className="bg-white rounded-2xl p-5 border border-gray-100">
@@ -311,10 +314,10 @@ export default function AdminDashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
                       <Boxes size={18} className="text-blue-600" />
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">Products</span>
+                    <span className="text-xs text-gray-500 font-medium">{t("admin.products")}</span>
                   </div>
                   <p className="text-3xl font-bold">{products.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">{products.filter(p => p.inStock).length} in stock</p>
+                  <p className="text-xs text-gray-500 mt-1">{products.filter(p => p.inStock).length} {t("admin.inStock")}</p>
                 </div>
                 
                 <div className="bg-white rounded-2xl p-5 border border-gray-100">
@@ -322,10 +325,10 @@ export default function AdminDashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
                       <DollarSign size={18} className="text-green-600" />
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">Revenue</span>
+                    <span className="text-xs text-gray-500 font-medium">{t("admin.revenue")}</span>
                   </div>
-                  <p className="text-3xl font-bold">{formatMoney(products.reduce((sum, p) => sum + (p.price * (p.soldCount || 0)), 0))}</p>
-                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><TrendingUp size={10} /> Total sales</p>
+                  <p className="text-3xl font-bold">{formatMoney(products.reduce((sum, p) => sum + (p.price * getSoldCount(p)), 0))}</p>
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><TrendingUp size={10} /> {t("admin.totalSales")}</p>
                 </div>
                 
                 <div className="bg-white rounded-2xl p-5 border border-gray-100">
@@ -333,10 +336,10 @@ export default function AdminDashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                       <ShoppingCart size={18} className="text-amber-600" />
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">Total Sold</span>
+                    <span className="text-xs text-gray-500 font-medium">{t("admin.totalSold")}</span>
                   </div>
-                  <p className="text-3xl font-bold">{products.reduce((sum, p) => sum + (p.soldCount || 0), 0).toLocaleString()}</p>
-                  <p className="text-xs text-gray-500 mt-1">Units sold</p>
+                  <p className="text-3xl font-bold">{products.reduce((sum, p) => sum + getSoldCount(p), 0).toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">{t("admin.unitsSold")}</p>
                 </div>
               </div>
               
@@ -460,7 +463,7 @@ export default function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...products].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0)).slice(0, 10).map((product) => {
+                    {[...products].sort((a, b) => getSoldCount(b) - getSoldCount(a)).slice(0, 10).map((product) => {
                       const vendor = vendors.find(v => v.id === product.vendorId);
                       return (
                         <tr key={product.id} className="border-b border-gray-50 hover:bg-gray-50">
@@ -478,8 +481,8 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="px-4 py-3 text-gray-500">{vendor?.name || "—"}</td>
                           <td className="px-4 py-3 text-right font-medium">{formatMoney(product.price)}</td>
-                          <td className="px-4 py-3 text-right">{product.soldCount || 0}</td>
-                          <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(product.price * (product.soldCount || 0))}</td>
+                          <td className="px-4 py-3 text-right">{getSoldCount(product)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(product.price * getSoldCount(product))}</td>
                         </tr>
                       );
                     })}
@@ -504,8 +507,8 @@ export default function AdminDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {vendors.map((vendor) => {
                     const vendorProducts = products.filter(p => p.vendorId === vendor.id);
-                    const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * (p.soldCount || 0)), 0);
-                    const vendorSales = vendorProducts.reduce((sum, p) => sum + (p.soldCount || 0), 0);
+                    const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * getSoldCount(p)), 0);
+                    const vendorSales = vendorProducts.reduce((sum, p) => sum + getSoldCount(p), 0);
                     
                     return (
                       <div key={vendor.id} className="bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all">
@@ -654,7 +657,7 @@ export default function AdminDashboardPage() {
                           
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-bold text-sm">{formatMoney(product.price)}</span>
-                            <span className="text-[10px] text-gray-400">{product.soldCount || 0} sold</span>
+                            <span className="text-[10px] text-gray-400">{getSoldCount(product)} {t("admin.sold")}</span>
                           </div>
                           
                           {/* Category Select */}

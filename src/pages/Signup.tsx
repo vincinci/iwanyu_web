@@ -7,11 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import StorefrontPage from "@/components/StorefrontPage";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useEffect } from "react";
 
 export default function SignupPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const supabase = getSupabaseClient();
   const location = useLocation();
@@ -32,7 +34,7 @@ export default function SignupPage() {
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      setError("Supabase is not configured");
+      setError(t("auth.supabaseNotConfigured"));
       return;
     }
 
@@ -54,7 +56,7 @@ export default function SignupPage() {
 
       navigate(nextPath);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign up failed");
+      setError(e instanceof Error ? e.message : t("auth.signupFailed"));
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,7 @@ export default function SignupPage() {
 
   const handleGoogleSignup = async () => {
     if (!supabase) {
-      setError("Supabase is not configured");
+      setError(t("auth.supabaseNotConfigured"));
       return;
     }
 
@@ -83,17 +85,17 @@ export default function SignupPage() {
         <div className="mx-auto max-w-md">
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl text-gray-900">Create account</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">{t("auth.createAccount")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">Sign up to shop and sell on iwanyu marketplace.</p>
+              <p className="text-sm text-gray-600">{t("auth.signupSubtitle")}</p>
 
               {supabase ? (
                 <>
                   <form onSubmit={handleEmailSignup} className="space-y-3">
                     <div>
                       <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
-                        Full name (optional)
+                        {t("auth.fullNameOptional")}
                       </Label>
                       <Input
                         id="fullName"
@@ -107,7 +109,7 @@ export default function SignupPage() {
 
                     <div>
                       <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                        Email
+                        {t("auth.email")}
                       </Label>
                       <Input
                         id="email"
@@ -122,7 +124,7 @@ export default function SignupPage() {
 
                     <div>
                       <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                        Password
+                        {t("auth.password")}
                       </Label>
                       <Input
                         id="password"
@@ -141,7 +143,7 @@ export default function SignupPage() {
                       className="w-full rounded-full bg-gray-900 text-white hover:bg-gray-800"
                       disabled={loading}
                     >
-                      {loading ? "Creating account..." : "Sign up"}
+                      {loading ? t("auth.creatingAccount") : t("auth.signUp")}
                     </Button>
                   </form>
 
@@ -176,15 +178,14 @@ export default function SignupPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    Continue with Google
+                    {t("auth.continueWithGoogle")}
                   </Button>
                 </>
               ) : (
                 <div className="rounded-lg border border-iwanyu-border bg-white p-4 text-sm text-gray-700">
-                  <div className="font-semibold">Supabase auth is not configured</div>
+                  <div className="font-semibold">{t("auth.supabaseNotConfigured")}</div>
                   <div className="mt-1 text-gray-600">
-                    Set <span className="font-mono">VITE_SUPABASE_URL</span> and{" "}
-                    <span className="font-mono">VITE_SUPABASE_ANON_KEY</span>.
+                    {t("auth.configureKeys")}
                   </div>
                 </div>
               )}
@@ -194,14 +195,14 @@ export default function SignupPage() {
               ) : null}
 
               <div className="text-center text-sm text-gray-600">
-                Already have an account?{" "}
+                {t("auth.haveAccount")}{" "}
                 <Link to="/login" className="font-semibold text-gray-900 hover:underline">
-                  Sign in
+                  {t("auth.signIn")}
                 </Link>
               </div>
 
               <Button variant="outline" className="w-full rounded-full" onClick={() => navigate("/")}>
-                Continue shopping
+                {t("auth.continueShopping")}
               </Button>
             </CardContent>
           </Card>

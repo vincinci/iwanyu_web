@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import {
   Table,
@@ -48,6 +49,7 @@ const nav = [
 
 export default function AdminDiscountsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const supabase = getSupabaseClient();
   const { toast } = useToast();
 
@@ -63,25 +65,8 @@ export default function AdminDiscountsPage() {
   const [minSubtotalRwf, setMinSubtotalRwf] = useState("0");
   const [maxRedemptions, setMaxRedemptions] = useState("");
 
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md text-center">
-          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
-          <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-6">Admin privileges required</p>
-          <Link to="/">
-            <Button variant="outline" className="rounded-full">
-              Home
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   async function load() {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -109,11 +94,28 @@ export default function AdminDiscountsPage() {
     return rows.filter((r) => r.code.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q));
   }, [rows, search]);
 
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <ShieldAlert size={48} className="mx-auto mb-6 text-gray-300" strokeWidth={1} />
+          <h2 className="text-2xl font-bold mb-2">{t("admin.accessDenied")}</h2>
+          <p className="text-gray-500 mb-6">{t("admin.privilegesRequired")}</p>
+          <Link to="/">
+            <Button variant="outline" className="rounded-full">
+              {t("admin.home")}
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   async function createCode() {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
 
     const normalizedCode = code.trim().toUpperCase();
-    if (normalizedCode.length < 3) throw new Error("Code must be at least 3 characters");
+    if (normalizedCode.length < 3) throw new Error(t("admin.codeMin"));
 
     const minSubtotal = Math.max(0, Math.round(Number(minSubtotalRwf || 0)));
 
@@ -147,20 +149,20 @@ export default function AdminDiscountsPage() {
 
     setCode("");
     setDescription("");
-    toast({ title: "Created", description: `Discount code ${normalizedCode} created` });
+    toast({ title: t("admin.created"), description: `${t("admin.discountCode")} ${normalizedCode} ${t("admin.createdLower")}` });
     await load();
   }
 
   async function toggleActive(row: DiscountCodeRow) {
-    if (!supabase) throw new Error("Supabase is not configured");
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
     const { error } = await supabase.from("discount_codes").update({ active: !row.active }).eq("id", row.id);
     if (error) throw new Error(error.message);
     await load();
   }
 
   async function deleteCode(row: DiscountCodeRow) {
-    if (!supabase) throw new Error("Supabase is not configured");
-    const ok = window.confirm(`Delete code ${row.code}?`);
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
+    const ok = window.confirm(`${t("admin.deleteCodeConfirm")} ${row.code}?`);
     if (!ok) return;
     const { error } = await supabase.from("discount_codes").delete().eq("id", row.id);
     if (error) throw new Error(error.message);
@@ -185,7 +187,7 @@ export default function AdminDiscountsPage() {
                 Admin
               </Link>
               <span className="text-gray-300">/</span>
-              <span className="text-gray-900 font-semibold text-sm">Discounts</span>
+              <span className="text-gray-900 font-semibold text-sm">{t("admin.discounts")}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -193,7 +195,7 @@ export default function AdminDiscountsPage() {
               to="/"
               className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors"
             >
-              ← Store front
+              ← {t("admin.storefront")}
             </Link>
           </div>
         </div>
@@ -226,16 +228,16 @@ export default function AdminDiscountsPage() {
             <div className="bg-white rounded-xl p-5 border border-gray-100">
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={16} className="text-amber-600" />
-                <h1 className="text-xl font-bold">Create Discount Code</h1>
+                <h1 className="text-xl font-bold">{t("admin.createDiscountCode")}</h1>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="text-xs text-gray-500">Code</label>
+                  <label className="text-xs text-gray-500">{t("admin.code")}</label>
                   <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="SAVE10" />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Description</label>
+                  <label className="text-xs text-gray-500">{t("admin.description")}</label>
                   <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -243,19 +245,19 @@ export default function AdminDiscountsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Type</label>
+                  <label className="text-xs text-gray-500">{t("admin.type")}</label>
                   <Select value={type} onValueChange={(v) => setType(v as "percentage" | "fixed")}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="percentage">Percentage</SelectItem>
-                      <SelectItem value="fixed">Fixed amount (RWF)</SelectItem>
+                      <SelectItem value="percentage">{t("admin.percentage")}</SelectItem>
+                      <SelectItem value="fixed">{t("admin.fixedAmountRwf")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Value</label>
+                  <label className="text-xs text-gray-500">{t("admin.value")}</label>
                   {type === "percentage" ? (
                     <Input
                       value={percentage}
@@ -273,7 +275,7 @@ export default function AdminDiscountsPage() {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Min subtotal (RWF)</label>
+                  <label className="text-xs text-gray-500">{t("admin.minSubtotalRwf")}</label>
                   <Input
                     value={minSubtotalRwf}
                     onChange={(e) => setMinSubtotalRwf(e.target.value)}
@@ -282,7 +284,7 @@ export default function AdminDiscountsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">Max redemptions (optional)</label>
+                  <label className="text-xs text-gray-500">{t("admin.maxRedemptionsOptional")}</label>
                   <Input
                     value={maxRedemptions}
                     onChange={(e) => setMaxRedemptions(e.target.value)}
@@ -300,14 +302,14 @@ export default function AdminDiscountsPage() {
                       await createCode();
                     } catch (e) {
                       toast({
-                        title: "Failed",
-                        description: e instanceof Error ? e.message : "Unknown error",
+                        title: t("admin.failed"),
+                        description: e instanceof Error ? e.message : t("admin.unknownError"),
                         variant: "destructive",
                       });
                     }
                   }}
                 >
-                  Create
+                  {t("admin.create")}
                 </Button>
               </div>
             </div>
@@ -315,11 +317,11 @@ export default function AdminDiscountsPage() {
             {/* List */}
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <div className="p-4 border-b flex items-center justify-between gap-3">
-                <div className="font-semibold">Discount Codes</div>
+                <div className="font-semibold">{t("admin.discountCodes")}</div>
                 <div className="relative w-64">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search codes..."
+                    placeholder={t("admin.searchCodes")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 h-9"
@@ -330,12 +332,12 @@ export default function AdminDiscountsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Min subtotal</TableHead>
-                    <TableHead>Redeemed</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("admin.code")}</TableHead>
+                    <TableHead>{t("admin.type")}</TableHead>
+                    <TableHead>{t("admin.minSubtotal")}</TableHead>
+                    <TableHead>{t("admin.redeemed")}</TableHead>
+                    <TableHead>{t("admin.status")}</TableHead>
+                    <TableHead className="text-right">{t("admin.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

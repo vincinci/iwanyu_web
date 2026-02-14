@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
-import { useLanguage } from "@/context/language";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { useToast } from "@/hooks/use-toast";

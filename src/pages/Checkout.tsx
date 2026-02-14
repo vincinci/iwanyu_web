@@ -13,6 +13,7 @@ import { formatMoney } from "@/lib/money";
 import { calculateServiceFee, calculateVendorPayout, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
+import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { initializeFlutterwavePayment, redirectToFlutterwave } from "@/lib/flutterwave";
 
@@ -20,6 +21,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { items, subtotal } = useCart();
   const { user } = useAuth();
   const { products } = useMarketplace();
@@ -85,7 +87,7 @@ export default function CheckoutPage() {
       nextDiscount = Math.min(Math.max(0, Math.round(subtotal)), Math.max(0, nextDiscount));
 
       setAppliedDiscount({ code: data.code, discountRwf: nextDiscount });
-      toast({ title: "Discount applied", description: `${data.code} applied` });
+      toast({ title: t("checkout.discountAppliedToast"), description: `${data.code} ${t("checkout.apply")}` });
     } finally {
       setIsApplyingDiscount(false);
     }
@@ -222,7 +224,7 @@ export default function CheckoutPage() {
       redirectToFlutterwave(result.paymentLink);
     } catch (e) {
       toast({
-        title: "Checkout failed",
+        title: t("checkout.checkoutFailed"),
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
@@ -237,11 +239,11 @@ export default function CheckoutPage() {
           <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mb-6">
             <ShoppingBag className="h-10 w-10 text-gray-400" />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your cart is empty</h1>
-          <p className="text-gray-500 mb-6">Add some items to get started</p>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">{t("checkout.emptyTitle")}</h1>
+          <p className="text-gray-500 mb-6">{t("checkout.emptyDesc")}</p>
           <Link to="/">
             <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-full px-8">
-              Start Shopping
+              {t("checkout.startShopping")}
             </Button>
           </Link>
         </div>
@@ -261,11 +263,11 @@ export default function CheckoutPage() {
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft size={20} />
-                <span className="font-medium">Back to cart</span>
+                <span className="font-medium">{t("checkout.backToCart")}</span>
               </button>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Lock size={14} />
-                <span>Secure checkout</span>
+                <span>{t("checkout.secure")}</span>
               </div>
             </div>
           </div>
@@ -278,10 +280,10 @@ export default function CheckoutPage() {
               <div className="lg:col-span-3 space-y-6">
                 {/* Contact Information */}
                 <div className="bg-white rounded-2xl p-6 border border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("checkout.contactInfo")}</h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("checkout.emailAddress")}</label>
                       <Input 
                         type="email"
                         value={email} 
@@ -291,7 +293,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone number</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("checkout.phone")}</label>
                       <Input 
                         type="tel"
                         value={phone} 
@@ -299,7 +301,7 @@ export default function CheckoutPage() {
                         placeholder="0788 123 456" 
                         className="h-12 rounded-xl border-gray-200 focus:border-amber-500 focus:ring-amber-500"
                       />
-                      <p className="mt-1.5 text-xs text-gray-500">For delivery updates and Mobile Money payments</p>
+                      <p className="mt-1.5 text-xs text-gray-500">{t("checkout.phoneHint")}</p>
                     </div>
                   </div>
                 </div>
@@ -310,11 +312,11 @@ export default function CheckoutPage() {
                     <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
                       <Truck className="h-5 w-5 text-amber-600" />
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">Shipping Address</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">{t("checkout.shippingAddress")}</h2>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Street address</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("checkout.streetAddress")}</label>
                       <Input 
                         value={address} 
                         onChange={(e) => setAddress(e.target.value)} 
@@ -323,7 +325,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">City / District</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("checkout.cityDistrict")}</label>
                       <Input 
                         value={city} 
                         onChange={(e) => setCity(e.target.value)} 
@@ -341,8 +343,8 @@ export default function CheckoutPage() {
                       <Shield className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900">Payment Method</h2>
-                      <p className="text-sm text-gray-500">Secure payment powered by Flutterwave</p>
+                      <h2 className="text-lg font-semibold text-gray-900">{t("checkout.paymentMethod")}</h2>
+                      <p className="text-sm text-gray-500">{t("checkout.paymentSubtitle")}</p>
                     </div>
                   </div>
                   
@@ -362,8 +364,8 @@ export default function CheckoutPage() {
                         <Smartphone className={`h-6 w-6 ${paymentMethod === "momo" ? "text-white" : "text-gray-500"}`} />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold text-gray-900">Mobile Money</div>
-                        <div className="text-xs text-gray-500">MTN MoMo / Airtel Money</div>
+                        <div className="font-semibold text-gray-900">{t("checkout.mobileMoney")}</div>
+                        <div className="text-xs text-gray-500">{t("checkout.mobileMoneyHint")}</div>
                       </div>
                       {paymentMethod === "momo" && (
                         <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-amber-500" />
@@ -385,8 +387,8 @@ export default function CheckoutPage() {
                         <CreditCard className={`h-6 w-6 ${paymentMethod === "card" ? "text-white" : "text-gray-500"}`} />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold text-gray-900">Debit / Credit Card</div>
-                        <div className="text-xs text-gray-500">Visa, Mastercard</div>
+                        <div className="font-semibold text-gray-900">{t("checkout.card")}</div>
+                        <div className="text-xs text-gray-500">{t("checkout.cardHint")}</div>
                       </div>
                       {paymentMethod === "card" && (
                         <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-amber-500" />
@@ -397,7 +399,7 @@ export default function CheckoutPage() {
                   <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
                     <Lock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                     <p className="text-xs text-blue-700">
-                      You'll be redirected to Flutterwave's secure payment page to complete your {paymentMethod === "momo" ? "Mobile Money" : "card"} payment.
+                      {t("checkout.redirectHint")}
                     </p>
                   </div>
                 </div>
@@ -406,7 +408,7 @@ export default function CheckoutPage() {
               {/* Right Column - Order Summary */}
               <div className="lg:col-span-2">
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 sticky top-24">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("checkout.orderSummary")}</h2>
                   
                   {/* Items */}
                   <div className="space-y-4 max-h-64 overflow-y-auto">
@@ -423,7 +425,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 text-sm truncate">{item.title}</div>
-                          <div className="text-xs text-gray-500">Qty: {item.quantity}</div>
+                          <div className="text-xs text-gray-500">{t("checkout.qty")}: {item.quantity}</div>
                           <div className="text-sm font-semibold text-gray-900 mt-1">
                             {formatMoney(item.price * item.quantity)}
                           </div>
@@ -434,7 +436,7 @@ export default function CheckoutPage() {
 
                   {/* Discount Code */}
                   <div className="mt-4">
-                    <div className="text-xs font-medium text-gray-700 mb-1.5">Discount code</div>
+                    <div className="text-xs font-medium text-gray-700 mb-1.5">{t("checkout.discountCode")}</div>
                     <div className="flex gap-2">
                       <Input
                         value={discountCodeInput}
@@ -453,25 +455,25 @@ export default function CheckoutPage() {
                             await applyDiscountCode();
                           } catch (e) {
                             toast({
-                              title: "Discount failed",
+                              title: t("checkout.discountFailed"),
                               description: e instanceof Error ? e.message : "Unknown error",
                               variant: "destructive",
                             });
                           }
                         }}
                       >
-                        Apply
+                        {t("checkout.apply")}
                       </Button>
                     </div>
                     {appliedDiscount && (
                       <div className="mt-2 text-xs text-green-700">
-                        Applied: <span className="font-semibold">{appliedDiscount.code}</span> (-{formatMoney(appliedDiscount.discountRwf)})
+                        {t("checkout.discountApplied")}: <span className="font-semibold">{appliedDiscount.code}</span> (-{formatMoney(appliedDiscount.discountRwf)})
                         <button
                           type="button"
                           className="ml-2 text-gray-500 hover:text-gray-900 underline"
                           onClick={() => setAppliedDiscount(null)}
                         >
-                          Remove
+                          {t("checkout.remove")}
                         </button>
                       </div>
                     )}
@@ -480,28 +482,28 @@ export default function CheckoutPage() {
                   {/* Pricing */}
                   <div className="border-t mt-4 pt-4 space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Subtotal</span>
+                      <span className="text-gray-500">{t("cart.subtotal")}</span>
                       <span className="font-medium text-gray-900">{formatMoney(subtotal)}</span>
                     </div>
                     {discountRwf > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Discount</span>
+                        <span className="text-gray-500">{t("checkout.discount")}</span>
                         <span className="font-medium text-green-700">-{formatMoney(discountRwf)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Service fee ({GUEST_SERVICE_FEE_RATE * 100}%)</span>
+                      <span className="text-gray-500">{t("cart.serviceFee")} ({GUEST_SERVICE_FEE_RATE * 100}%)</span>
                       <span className="font-medium text-gray-900">{formatMoney(serviceFee)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Shipping</span>
-                      <span className="font-medium text-green-600">Free</span>
+                      <span className="text-gray-500">{t("cart.shipping")}</span>
+                      <span className="font-medium text-green-600">{t("checkout.free")}</span>
                     </div>
                   </div>
 
                   <div className="border-t mt-4 pt-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold text-gray-900">Total</span>
+                      <span className="text-lg font-semibold text-gray-900">{t("cart.total")}</span>
                       <span className="text-2xl font-bold text-gray-900">{formatMoney(total)}</span>
                     </div>
                   </div>
@@ -515,11 +517,11 @@ export default function CheckoutPage() {
                     {isPlacing ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                        Processing...
+                        {t("checkout.processing")}
                       </>
                     ) : (
                       <>
-                        Pay {formatMoney(total)}
+                        {t("checkout.pay")} {formatMoney(total)}
                         <ChevronRight className="ml-2 h-5 w-5" />
                       </>
                     )}
@@ -529,11 +531,11 @@ export default function CheckoutPage() {
                   <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-400">
                     <div className="flex items-center gap-1">
                       <Lock size={12} />
-                      <span>SSL Secured</span>
+                      <span>{t("checkout.sslSecured")}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Shield size={12} />
-                      <span>Buyer Protection</span>
+                      <span>{t("checkout.buyerProtection")}</span>
                     </div>
                   </div>
                 </div>
