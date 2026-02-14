@@ -12,6 +12,7 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Product } from "@/types/product";
 import { useLanguage } from "@/context/languageContext";
+import { ArrowLeftRight } from "lucide-react";
 
 const Index = () => {
   const { products, loading, error } = useMarketplace();
@@ -55,6 +56,10 @@ const Index = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">{t("home.recentlyViewed")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("home.pickup")}</p>
+                <div className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500 sm:hidden">
+                  <ArrowLeftRight size={12} />
+                  <span>Swipe</span>
+                </div>
               </div>
               <Button 
                 variant="ghost" 
@@ -168,13 +173,19 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
       {/* Section Header */}
       <div className="flex items-center justify-between gap-4 mb-5">
         <h2 className="text-2xl font-semibold text-gray-900">{category}</h2>
-        <Link 
-          to={`/category/${categoryId}`}
-          className="group/link text-sm font-semibold text-gray-600 hover:text-black transition-colors flex items-center gap-1"
-        >
-          {t("category.viewAll")} 
-          <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-1 text-xs text-gray-500 sm:hidden">
+            <ArrowLeftRight size={12} />
+            <span>Swipe</span>
+          </div>
+          <Link 
+            to={`/category/${categoryId}`}
+            className="group/link text-sm font-semibold text-gray-600 hover:text-black transition-colors flex items-center gap-1"
+          >
+            {t("category.viewAll")} 
+            <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
+          </Link>
+        </div>
       </div>
 
       <div className="-mx-4 overflow-x-auto px-4 scroll-hide sm:mx-0 sm:overflow-visible sm:px-0">
