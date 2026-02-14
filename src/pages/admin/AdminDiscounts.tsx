@@ -170,9 +170,9 @@ export default function AdminDiscountsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200/70">
+      <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function AdminDiscountsPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full lg:w-56 shrink-0">
-            <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
+            <nav className="dashboard-sidebar flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
                   key={item.label}
@@ -225,7 +225,7 @@ export default function AdminDiscountsPage() {
 
           <main className="flex-1 space-y-6">
             {/* Create */}
-            <div className="bg-white rounded-xl p-5 border border-gray-100">
+            <div className="dashboard-card p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={16} className="text-amber-600" />
                 <h1 className="text-xl font-bold">{t("admin.createDiscountCode")}</h1>

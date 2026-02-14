@@ -125,9 +125,9 @@ export default function AdminApplicationsPage() {
   const rejectedCount = allApplications.filter(a => a.status === "rejected").length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200/70">
+      <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export default function AdminApplicationsPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full lg:w-56 shrink-0">
-            <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
+            <nav className="dashboard-sidebar flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
                   key={item.label}
@@ -194,7 +194,7 @@ export default function AdminApplicationsPage() {
               <button
                 onClick={() => setStatusFilter("pending")}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  statusFilter === "pending" ? "bg-amber-100 text-amber-700" : "bg-white text-gray-500 hover:bg-gray-100"
+                  statusFilter === "pending" ? "bg-amber-100 text-amber-700" : "bg-white text-gray-500 hover:bg-gray-100 border border-slate-200"
                 }`}
               >
                 <Clock size={14} className="inline mr-1.5" />
@@ -203,7 +203,7 @@ export default function AdminApplicationsPage() {
               <button
                 onClick={() => setStatusFilter("approved")}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  statusFilter === "approved" ? "bg-green-100 text-green-700" : "bg-white text-gray-500 hover:bg-gray-100"
+                  statusFilter === "approved" ? "bg-green-100 text-green-700" : "bg-white text-gray-500 hover:bg-gray-100 border border-slate-200"
                 }`}
               >
                 <CheckCircle2 size={14} className="inline mr-1.5" />
@@ -212,7 +212,7 @@ export default function AdminApplicationsPage() {
               <button
                 onClick={() => setStatusFilter("rejected")}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  statusFilter === "rejected" ? "bg-red-100 text-red-700" : "bg-white text-gray-500 hover:bg-gray-100"
+                  statusFilter === "rejected" ? "bg-red-100 text-red-700" : "bg-white text-gray-500 hover:bg-gray-100 border border-slate-200"
                 }`}
               >
                 <X size={14} className="inline mr-1.5" />
@@ -221,7 +221,7 @@ export default function AdminApplicationsPage() {
               <button
                 onClick={() => setStatusFilter("all")}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  statusFilter === "all" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-100"
+                  statusFilter === "all" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-100 border border-slate-200"
                 }`}
               >
                 {t("admin.all")} ({allApplications.length})

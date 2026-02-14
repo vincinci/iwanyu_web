@@ -137,9 +137,9 @@ export default function AdminVendorsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200/70">
+      <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export default function AdminVendorsPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full lg:w-56 shrink-0">
-            <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
+            <nav className="dashboard-sidebar flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
                   key={item.label}
@@ -198,19 +198,19 @@ export default function AdminVendorsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.totalVendors")}</p>
                 <p className="text-2xl font-bold">{vendors.length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.approved")}</p>
                 <p className="text-2xl font-bold text-green-600">{vendors.filter(v => v.status === 'approved').length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.pending")}</p>
                 <p className="text-2xl font-bold text-amber-600">{vendors.filter(v => !v.status || v.status === 'pending').length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.revoked")}</p>
                 <p className="text-2xl font-bold text-red-600">{vendors.filter(v => v.revoked).length}</p>
               </div>
@@ -224,7 +224,7 @@ export default function AdminVendorsPage() {
                 const vendorSales = vendorProducts.reduce((sum, p) => sum + getSoldCount(p), 0);
 
                 return (
-                  <div key={vendor.id} className="bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all">
+                  <div key={vendor.id} className="dashboard-card p-5 transition-all hover:shadow-md">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-2 mb-1">

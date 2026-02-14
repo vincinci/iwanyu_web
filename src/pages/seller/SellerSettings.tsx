@@ -11,7 +11,8 @@ export default function SellerSettingsPage() {
 
   return (
     <StorefrontPage>
-      <div className="container py-8 max-w-4xl mx-auto">
+            <div className="dashboard-shell">
+            <div className="container py-8 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
             <div>
                 <h1 className="text-3xl font-semibold text-gray-900">{t("seller.storeSettings")}</h1>
@@ -24,7 +25,7 @@ export default function SellerSettingsPage() {
 
         <div className="space-y-8">
             {/* General Information */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+            <div className="dashboard-card p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("seller.storeInformation")}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -43,7 +44,7 @@ export default function SellerSettingsPage() {
             </div>
 
             {/* Branding */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+            <div className="dashboard-card p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("seller.branding")}</h2>
                 <div className="flex items-center gap-6">
                     <div className="h-24 w-24 rounded-full bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs">
@@ -60,7 +61,8 @@ export default function SellerSettingsPage() {
                                 <Button className="bg-gray-900 text-white hover:bg-gray-800 rounded-full px-8">{t("seller.saveChanges")}</Button>
             </div>
         </div>
-      </div>
+            </div>
+            </div>
     </StorefrontPage>
   );
 }

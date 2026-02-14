@@ -121,9 +121,9 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200/70">
+      <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
@@ -146,7 +146,7 @@ export default function AdminProductsPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full lg:w-56 shrink-0">
-            <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
+            <nav className="dashboard-sidebar flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
                   key={item.label}
@@ -205,19 +205,19 @@ export default function AdminProductsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.totalProducts")}</p>
                 <p className="text-2xl font-bold">{products.length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.inStock")}</p>
                 <p className="text-2xl font-bold text-green-600">{products.filter(p => p.inStock).length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.outOfStock")}</p>
                 <p className="text-2xl font-bold text-red-600">{products.filter(p => !p.inStock).length}</p>
               </div>
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="dashboard-stat-card">
                 <p className="text-xs text-gray-500 mb-1">{t("admin.totalValue")}</p>
                 <p className="text-2xl font-bold">{formatMoney(products.reduce((sum, p) => sum + p.price, 0))}</p>
               </div>
@@ -231,7 +231,7 @@ export default function AdminProductsPage() {
                 const selected = categoryEdits[product.id] ?? (isRealCategoryName(current) ? current : "");
 
                 return (
-                  <div key={product.id} className="bg-white rounded-xl border border-gray-100 hover:shadow-md transition-all overflow-hidden group">
+                  <div key={product.id} className="dashboard-card overflow-hidden transition-all group hover:shadow-md">
                     {/* Product Image */}
                     <div className="relative aspect-square bg-gray-50">
                       {product.image ? (

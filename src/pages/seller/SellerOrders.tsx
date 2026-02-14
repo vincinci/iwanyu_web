@@ -170,8 +170,8 @@ export default function SellerOrdersPage() {
   }, [orders, isAdmin, ownedVendorIdSet]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200/70 bg-white">
+    <div className="dashboard-shell">
+      <div className="dashboard-topbar">
         <div className="container py-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">{t("seller.ordersTitle")}</h1>
@@ -187,14 +187,14 @@ export default function SellerOrdersPage() {
 
       <div className="container py-6">
         {loading ? (
-          <Card>
+          <Card className="dashboard-card">
             <CardHeader>
               <CardTitle className="text-base">{t("seller.loading")}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-gray-600">{t("seller.fetchingOrders")}</CardContent>
           </Card>
         ) : visibleOrders.length === 0 ? (
-          <Card>
+          <Card className="dashboard-card">
             <CardHeader>
               <CardTitle className="text-base">{t("seller.noOrdersYet")}</CardTitle>
             </CardHeader>
@@ -213,7 +213,7 @@ export default function SellerOrdersPage() {
               );
 
               return (
-                <Card key={o.id}>
+                <Card key={o.id} className="dashboard-card">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
                       <span>{t("seller.order")} #{o.id}</span>

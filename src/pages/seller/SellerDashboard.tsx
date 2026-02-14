@@ -194,9 +194,9 @@ export default function SellerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
       {/* Top Bar */}
-      <div className="border-b border-gray-200/70 bg-white">
+      <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-base text-gray-900">{t("seller.dashboard")}</span>
@@ -217,7 +217,7 @@ export default function SellerDashboardPage() {
             
             {/* Minimal Sidebar */}
             <aside className="w-full lg:w-56 shrink-0">
-              <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
+              <nav className="dashboard-sidebar flex flex-col gap-1">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.href;
                         return (
@@ -246,7 +246,7 @@ export default function SellerDashboardPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                  <div className="dashboard-card p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">{t("seller.sales")}</p>
                       <Wallet size={18} className="text-gray-400" />
@@ -255,7 +255,7 @@ export default function SellerDashboardPage() {
                       {metricsLoading ? "..." : formatMoney(metrics.salesRwf)}
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                  <div className="dashboard-card p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">{t("seller.orders")}</p>
                       <ShoppingBag size={18} className="text-gray-400" />
@@ -264,7 +264,7 @@ export default function SellerDashboardPage() {
                       {metricsLoading ? "..." : metrics.orderCount}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-gray-200 p-5">
+                  <div className="dashboard-card p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">{t("seller.products")}</p>
                       <Package size={18} className="text-gray-400" />

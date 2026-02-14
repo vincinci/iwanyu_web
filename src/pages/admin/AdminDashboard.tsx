@@ -297,9 +297,9 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200/70">
+      <div className="dashboard-topbar">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
@@ -328,7 +328,7 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full lg:w-56 shrink-0">
-            <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
+            <nav className="dashboard-sidebar flex flex-col gap-1">
               {nav.map((item) => (
                 <Link
                   key={item.labelKey}
@@ -352,7 +352,7 @@ export default function AdminDashboardPage() {
               
               {/* Primary Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                <div className="dashboard-card p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
                       <Users size={18} className="text-purple-600" />
@@ -363,7 +363,7 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-green-600 mt-1">+{vendors.filter(v => v.status === 'approved').length} {t("admin.approved")}</p>
                 </div>
                 
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                <div className="dashboard-card p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
                       <Boxes size={18} className="text-blue-600" />
@@ -374,7 +374,7 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-gray-500 mt-1">{products.filter(p => p.inStock).length} {t("admin.inStock")}</p>
                 </div>
                 
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                <div className="dashboard-card p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
                       <DollarSign size={18} className="text-green-600" />
@@ -385,7 +385,7 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><TrendingUp size={10} /> {t("admin.totalSales")}</p>
                 </div>
                 
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                <div className="dashboard-card p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                       <ShoppingCart size={18} className="text-amber-600" />
@@ -431,7 +431,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="mt-6 bg-white rounded-2xl p-5 border border-gray-100">
+              <div className="dashboard-card mt-6 p-5">
                 <h3 className="text-sm font-semibold text-gray-900">{t("admin.heroImageTitle")}</h3>
                 <p className="mt-1 text-xs text-gray-500">{t("admin.heroImageDesc")}</p>
                 <div className="mt-3 flex flex-col gap-3 md:flex-row">
@@ -479,18 +479,18 @@ export default function AdminDashboardPage() {
               </div>
               
               {loadingApps ? (
-                <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
+                <div className="dashboard-card p-6 text-center">
                   <p className="text-gray-500 text-sm">{t("admin.loading")}</p>
                 </div>
               ) : applications.length === 0 ? (
-                <div className="bg-white rounded-xl p-6 border border-dashed border-gray-200 text-center">
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center shadow-sm">
                   <CheckCircle2 size={20} className="mx-auto text-green-400 mb-2" />
                   <p className="text-sm text-gray-500">{t("admin.noPendingApplications")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {applications.map((app) => (
-                    <div key={app.id} className="bg-white rounded-xl p-5 border border-amber-200 bg-gradient-to-br from-amber-50 to-white">
+                    <div key={app.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="font-bold">{app.store_name}</h4>
@@ -540,7 +540,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold">{t("admin.topSellingProducts")}</h3>
               </div>
-              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="dashboard-card overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
@@ -600,7 +600,7 @@ export default function AdminDashboardPage() {
                     const vendorSales = vendorProducts.reduce((sum, p) => sum + getSoldCount(p), 0);
                     
                     return (
-                      <div key={vendor.id} className="bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all">
+                      <div key={vendor.id} className="dashboard-card p-5 transition-all hover:shadow-md">
                         <div className="flex items-start justify-between mb-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
@@ -702,7 +702,7 @@ export default function AdminDashboardPage() {
                     const selected = categoryEdits[product.id] ?? (isRealCategoryName(current) ? current : "");
                     
                     return (
-                      <div key={product.id} className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all overflow-hidden group">
+                      <div key={product.id} className="dashboard-card overflow-hidden transition-all group hover:border-slate-300 hover:shadow-md">
                         {/* Product Image */}
                         <div className="relative aspect-square bg-gray-50">
                           {product.image ? (

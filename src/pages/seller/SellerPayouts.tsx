@@ -1,4 +1,4 @@
-import { Wallet, ArrowUpRight, ArrowDownLeft, Calendar } from "lucide-react";
+import { ArrowUpRight, Calendar } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +8,13 @@ import { formatMoney } from "@/lib/money";
 import { Link } from "react-router-dom";
 
 export default function SellerPayoutsPage() {
-  const { user } = useAuth();
+    useAuth();
     const { t } = useLanguage();
 
   return (
     <StorefrontPage>
-      <div className="container py-8">
+    <div className="dashboard-shell">
+    <div className="container py-8">
         <div className="flex items-center justify-between mb-8">
             <div>
                 <h1 className="text-3xl font-semibold text-gray-900">{t("seller.payoutsTitle")}</h1>
@@ -26,7 +27,7 @@ export default function SellerPayoutsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Balance Card */}
-            <Card className="lg:col-span-2 border border-gray-200">
+            <Card className="dashboard-card lg:col-span-2">
                 <CardHeader>
                     <CardTitle className="text-gray-500 font-normal text-sm uppercase tracking-wider">{t("seller.availableBalance")}</CardTitle>
                 </CardHeader>
@@ -44,7 +45,7 @@ export default function SellerPayoutsPage() {
             </Card>
 
             {/* Upcoming Payout */}
-            <Card>
+            <Card className="dashboard-card">
                 <CardHeader>
                     <CardTitle className="text-sm uppercase tracking-wider text-gray-500">{t("seller.nextScheduledPayout")}</CardTitle>
                 </CardHeader>
@@ -66,7 +67,7 @@ export default function SellerPayoutsPage() {
 
         <div className="mt-12">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">{t("seller.transactionHistory")}</h2>
-            <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <div className="dashboard-card overflow-hidden">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 text-gray-500 font-medium">
                         <tr>
@@ -99,7 +100,8 @@ export default function SellerPayoutsPage() {
                 </table>
             </div>
         </div>
-      </div>
+            </div>
+            </div>
     </StorefrontPage>
   );
 }

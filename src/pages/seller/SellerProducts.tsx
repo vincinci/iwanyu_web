@@ -57,8 +57,8 @@ export default function SellerProductsPage() {
   const visibleProducts = isAdmin ? products : products.filter((p) => ownedVendorIds.has(p.vendorId));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200/70 bg-white">
+    <div className="dashboard-shell">
+      <div className="dashboard-topbar">
         <div className="container py-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">{t("seller.productsTitle")}</h1>
@@ -83,7 +83,7 @@ export default function SellerProductsPage() {
           {visibleProducts.map((p) => {
             const vendor = vendors.find((v) => v.id === p.vendorId);
             return (
-              <Card key={p.id}>
+              <Card key={p.id} className="dashboard-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{p.title}</CardTitle>
                 </CardHeader>
