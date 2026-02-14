@@ -46,6 +46,59 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false }
 });
 
+const SHOPIFY_PRODUCTS_URL = 'https://awgags-vn.myshopify.com/products.json?limit=250';
+
+function parseMoneyToRwf(value) {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const cleaned = raw.replace(/[^\d.]/g, '');
+  if (!cleaned) return null;
+  const parsed = Number.parseFloat(cleaned);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.round(parsed);
+}
+
+async function fetchShopifyPriceMap() {
+  const map = new Map();
+  try {
+    const response = await fetch(SHOPIFY_PRODUCTS_URL);
+    if (!response.ok) {
+      throw new Error(`Shopify request failed (${response.status})`);
+    }
+
+    const payload = await response.json();
+    const products = Array.isArray(payload?.products) ? payload.products : [];
+
+    for (const product of products) {
+      const handle = String(product?.handle ?? '').trim();
+      if (!handle) continue;
+
+      const variants = Array.isArray(product?.variants) ? product.variants : [];
+      const prices = variants
+        .map((variant) => parseMoneyToRwf(variant?.price))
+        .filter((price) => Number.isInteger(price) && price > 0);
+
+      if (prices.length === 0) continue;
+
+      const compareAtPrices = variants
+        .map((variant) => parseMoneyToRwf(variant?.compare_at_price))
+        .filter((price) => Number.isInteger(price) && price > 0);
+
+      const price = Math.min(...prices);
+      const compareAt = compareAtPrices.length > 0 ? Math.max(...compareAtPrices) : null;
+
+      map.set(handle, { price, compareAt });
+    }
+
+    console.log(`💲 Loaded ${map.size} fixed prices from Shopify`);
+  } catch (error) {
+    console.warn(`⚠️ Could not load Shopify prices (${error.message}). Falling back to CSV prices.`);
+  }
+
+  return map;
+}
+
 // Category mapping based on product titles
 function categorizeProduct(title, handle) {
   const titleLower = title.toLowerCase();
@@ -90,60 +143,50 @@ function categorizeProduct(title, handle) {
   return 'Fashion'; // Default category
 }
 
-// Generate a price based on product type (in RWF)
-function generatePrice(title, handle) {
-  const titleLower = title.toLowerCase();
-  
-  // Premium shoes
-  if (titleLower.includes('jordan') || titleLower.includes('louis vuitton') ||
-      titleLower.includes('travis scott')) {
-    return Math.floor(Math.random() * 50000) + 150000; // 150,000 - 200,000 RWF
+function getDefaultPriceForCategory(category) {
+  switch (category) {
+    case 'Shoes':
+      return 28000;
+    case 'Sports':
+      return 23000;
+    case 'Accessories':
+      return 5000;
+    case 'Fashion':
+    default:
+      return 15000;
   }
-  
-  // Regular shoes
-  if (titleLower.includes('air force') || titleLower.includes('nike air') ||
-      titleLower.includes('sneaker') || titleLower.includes('puma') ||
-      titleLower.includes('new balance') || titleLower.includes('reebok') ||
-      titleLower.includes('converse')) {
-    return Math.floor(Math.random() * 30000) + 80000; // 80,000 - 110,000 RWF
+}
+
+function getCsvPrice(variants) {
+  const prices = variants
+    .map((variant) => variant.price_rwf)
+    .filter((price) => Number.isInteger(price) && price > 0);
+
+  if (prices.length === 0) return null;
+  return Math.min(...prices);
+}
+
+function getDiscountPercentage({ price, compareAt }) {
+  if (!Number.isFinite(price) || !Number.isFinite(compareAt) || compareAt <= price) {
+    return 0;
   }
-  
-  // Jerseys
-  if (titleLower.includes('jersey')) {
-    return Math.floor(Math.random() * 15000) + 35000; // 35,000 - 50,000 RWF
+
+  return Math.round(((compareAt - price) / compareAt) * 100);
+}
+
+// Generate a deterministic price (fixed unless Shopify host changes it)
+function generatePrice({ handle, category, variants, shopifyPriceMap }) {
+  const fromShopify = shopifyPriceMap.get(handle);
+  if (fromShopify?.price) {
+    return fromShopify.price;
   }
-  
-  // Tracksuits/Outfits
-  if (titleLower.includes('tracksuit') || titleLower.includes('outfit') ||
-      titleLower.includes('two-piece')) {
-    return Math.floor(Math.random() * 20000) + 45000; // 45,000 - 65,000 RWF
+
+  const fromCsv = getCsvPrice(variants);
+  if (fromCsv) {
+    return fromCsv;
   }
-  
-  // Hoodies/Jackets
-  if (titleLower.includes('hoodie') || titleLower.includes('jacket') ||
-      titleLower.includes('jumper')) {
-    return Math.floor(Math.random() * 15000) + 30000; // 30,000 - 45,000 RWF
-  }
-  
-  // T-shirts
-  if (titleLower.includes('t-shirt') || titleLower.includes('shirt')) {
-    return Math.floor(Math.random() * 10000) + 15000; // 15,000 - 25,000 RWF
-  }
-  
-  // Jeans/Pants
-  if (titleLower.includes('jeans') || titleLower.includes('pants') ||
-      titleLower.includes('cargo')) {
-    return Math.floor(Math.random() * 15000) + 25000; // 25,000 - 40,000 RWF
-  }
-  
-  // Accessories (hats, socks, bracelets)
-  if (titleLower.includes('hat') || titleLower.includes('cap') ||
-      titleLower.includes('socks') || titleLower.includes('bracelet')) {
-    return Math.floor(Math.random() * 8000) + 8000; // 8,000 - 16,000 RWF
-  }
-  
-  // Default price
-  return Math.floor(Math.random() * 15000) + 20000; // 20,000 - 35,000 RWF
+
+  return getDefaultPriceForCategory(category);
 }
 
 // Generate placeholder image URLs based on product type
@@ -209,6 +252,8 @@ function generateDescription(title, variants) {
 
 async function main() {
   console.log('🚀 Starting inventory import...\n');
+  const shopifyPriceMap = await fetchShopifyPriceMap();
+  console.log('');
   
   // Read and parse CSV
   const csvPath = './inventory_export_1.csv';
@@ -248,7 +293,9 @@ async function main() {
              record['Option2 Name'] === 'Color' ? record['Option2 Value'] : null,
       size: record['Option1 Name'] === 'Size' ? record['Option1 Value'] : 
             record['Option2 Name'] === 'Size' ? record['Option2 Value'] : null,
-      available: parseInt(record['Available (not editable)'] || '0', 10)
+      available: parseInt(record['Available (not editable)'] || '0', 10),
+      price_rwf: parseMoneyToRwf(record['Variant Price']),
+      compare_at_price_rwf: parseMoneyToRwf(record['Variant Compare At Price'])
     };
     
     productMap.get(handle).variants.push(variant);
@@ -307,13 +354,25 @@ async function main() {
     }
     
     const category = categorizeProduct(title, handle);
-    const price = generatePrice(title, handle);
+    const price = generatePrice({
+      handle,
+      category,
+      variants,
+      shopifyPriceMap,
+    });
+
+    const shopifyCompareAt = shopifyPriceMap.get(handle)?.compareAt;
+    const csvCompareAtCandidates = variants
+      .map((variant) => variant.compare_at_price_rwf)
+      .filter((value) => Number.isInteger(value) && value > 0);
+    const csvCompareAt = csvCompareAtCandidates.length > 0 ? Math.max(...csvCompareAtCandidates) : null;
+    const compareAt = Number.isInteger(shopifyCompareAt) && shopifyCompareAt > 0 ? shopifyCompareAt : csvCompareAt;
+
     const imageUrl = getPlaceholderImage(title, handle);
     const description = generateDescription(title, variants);
     const totalStock = variants.reduce((sum, v) => sum + v.available, 0);
     
-    // Random discount for some products (20% chance)
-    const discount = Math.random() < 0.2 ? Math.floor(Math.random() * 20) + 5 : 0;
+    const discount = getDiscountPercentage({ price, compareAt });
     
     // Random free shipping (30% chance)
     const freeShipping = Math.random() < 0.3;
