@@ -65,12 +65,18 @@ const Index = () => {
               </Button>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
-              {recentlyViewedProducts.map((product, idx) => (
-                <div key={product!.id} style={{ animationDelay: `${idx * 50}ms` }}>
-                  <ProductCard product={product!} />
-                </div>
-              ))}
+            <div className="mt-6 -mx-4 overflow-x-auto px-4 scroll-hide sm:mx-0 sm:overflow-visible sm:px-0">
+              <div className="flex min-w-max gap-3 sm:min-w-0 sm:grid sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+                {recentlyViewedProducts.map((product, idx) => (
+                  <div
+                    key={product!.id}
+                    style={{ animationDelay: `${idx * 50}ms` }}
+                    className="w-[44vw] min-w-[160px] max-w-[210px] shrink-0 sm:w-auto sm:min-w-0 sm:max-w-none"
+                  >
+                    <ProductCard product={product!} />
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -171,10 +177,17 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {products.slice(0, 10).map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+      <div className="-mx-4 overflow-x-auto px-4 scroll-hide sm:mx-0 sm:overflow-visible sm:px-0">
+        <div className="flex min-w-max gap-4 sm:min-w-0 sm:grid sm:grid-cols-3 lg:grid-cols-5">
+          {products.slice(0, 10).map((product) => (
+            <div
+              key={product.id}
+              className="w-[44vw] min-w-[160px] max-w-[220px] shrink-0 sm:w-auto sm:min-w-0 sm:max-w-none"
+            >
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
