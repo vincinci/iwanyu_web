@@ -274,7 +274,7 @@ export default function AdminDashboardPage() {
     if (!user) throw new Error(t("admin.notSignedIn"));
 
     const next = heroImageInput.trim();
-    if (!next) throw new Error("Hero image URL is required");
+    if (!next) throw new Error(t("admin.heroImageRequired"));
 
     setHeroImageSaving(true);
     try {
@@ -290,7 +290,7 @@ export default function AdminDashboardPage() {
           { onConflict: "key" }
         );
       if (error) throw new Error(error.message);
-      toast({ title: "Saved", description: "Homepage hero image updated" });
+      toast({ title: t("admin.saved"), description: t("admin.heroImageSaved") });
     } finally {
       setHeroImageSaving(false);
     }
@@ -432,8 +432,8 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="mt-6 bg-white rounded-2xl p-5 border border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-900">Homepage Hero Image</h3>
-                <p className="mt-1 text-xs text-gray-500">Set the image URL shown on the storefront hero section.</p>
+                <h3 className="text-sm font-semibold text-gray-900">{t("admin.heroImageTitle")}</h3>
+                <p className="mt-1 text-xs text-gray-500">{t("admin.heroImageDesc")}</p>
                 <div className="mt-3 flex flex-col gap-3 md:flex-row">
                   <Input
                     value={heroImageInput}
@@ -456,7 +456,7 @@ export default function AdminDashboardPage() {
                       }
                     }}
                   >
-                    {heroImageSaving ? "Saving..." : "Save Image"}
+                    {heroImageSaving ? t("admin.saving") : t("admin.saveImage")}
                   </Button>
                 </div>
                 {heroImageInput ? (
