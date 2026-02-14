@@ -172,20 +172,20 @@ export default function SellerOrdersPage() {
   return (
     <div className="dashboard-shell">
       <div className="dashboard-topbar">
-        <div className="container py-4 flex items-center justify-between">
+        <div className="container">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{t("seller.ordersTitle")}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{t("seller.ordersTitle")}</h1>
             <p className="text-sm text-gray-600">{t("seller.ordersSubtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Link to="/seller">
-              <Button variant="outline" className="rounded-full">{t("seller.dashboard")}</Button>
+              <Button size="sm" variant="outline" className="rounded-full">{t("seller.dashboard")}</Button>
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="container py-6">
+      <div className="container mx-auto px-4 py-6">
         {loading ? (
           <Card className="dashboard-card">
             <CardHeader>

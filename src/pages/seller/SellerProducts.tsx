@@ -59,17 +59,17 @@ export default function SellerProductsPage() {
   return (
     <div className="dashboard-shell">
       <div className="dashboard-topbar">
-        <div className="container py-4 flex items-center justify-between">
+        <div className="container">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{t("seller.productsTitle")}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{t("seller.productsTitle")}</h1>
             <p className="text-sm text-gray-600">{t("seller.productsSubtitle")}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Link to="/seller">
-              <Button variant="outline" className="rounded-full">{t("seller.dashboard")}</Button>
+              <Button size="sm" variant="outline" className="rounded-full">{t("seller.dashboard")}</Button>
             </Link>
             <Link to="/seller/products/new">
-              <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">
+              <Button size="sm" className="rounded-full bg-gray-900 text-white hover:bg-gray-800">
                 <Plus size={16} className="mr-2" />
                 {t("seller.newProduct")}
               </Button>
@@ -78,7 +78,7 @@ export default function SellerProductsPage() {
         </div>
       </div>
 
-      <div className="container py-6">
+      <div className="container mx-auto px-4 py-6">
         <div className="grid gap-4">
           {visibleProducts.map((p) => {
             const vendor = vendors.find((v) => v.id === p.vendorId);
