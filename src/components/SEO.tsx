@@ -12,14 +12,17 @@ interface SEOProps {
 export default function SEO({
   title = 'IwanYu - Rwanda\'s Premier Online Marketplace',
   description = 'Discover amazing products from verified sellers across Rwanda. Shop electronics, fashion, home goods, and more on IwanYu marketplace.',
-  image = 'https://www.iwanyu.store/og-image.jpg',
+  image = 'https://iwanyu.store/og-image.png',
   url,
   type = 'website',
   keywords = ['rwanda marketplace', 'online shopping rwanda', 'buy sell rwanda', 'rwandan ecommerce'],
 }: SEOProps) {
-  const siteUrl = 'https://www.iwanyu.store';
+  const siteUrl = 'https://iwanyu.store';
   const fullUrl = url ? `${siteUrl}${url}` : siteUrl;
   const fullTitle = title.includes('IwanYu') ? title : `${title} | IwanYu`;
+  const fullImage = image && image.trim().length > 0
+    ? (image.startsWith('http') ? image : `${siteUrl}${image.startsWith('/') ? image : `/${image}`}`)
+    : `${siteUrl}/og-image.png`;
 
   return (
     <Helmet>
@@ -34,7 +37,11 @@ export default function SEO({
       <meta property="og:url" content={fullUrl} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
-      <meta property="og:image" content={image} />
+      <meta property="og:image" content={fullImage} />
+      <meta property="og:image:secure_url" content={fullImage} />
+      <meta property="og:image:type" content="image/png" />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:site_name" content="IwanYu" />
 
       {/* Twitter */}
@@ -42,7 +49,8 @@ export default function SEO({
       <meta property="twitter:url" content={fullUrl} />
       <meta property="twitter:title" content={fullTitle} />
       <meta property="twitter:description" content={description} />
-      <meta property="twitter:image" content={image} />
+      <meta property="twitter:image" content={fullImage} />
+      <meta name="twitter:image" content={fullImage} />
 
       {/* Additional SEO */}
       <link rel="canonical" href={fullUrl} />
