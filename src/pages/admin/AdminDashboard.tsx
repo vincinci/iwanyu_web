@@ -25,11 +25,11 @@ import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 
 const nav = [
-  { label: "Overview", icon: ClipboardList, href: "/admin", active: true },
-  { label: "Vendors", icon: Users, href: "/admin/vendors" },
-  { label: "Products", icon: Boxes, href: "/admin/products" },
-  { label: "Discounts", icon: Percent, href: "/admin/discounts" },
-  { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
+  { labelKey: "admin.overview", icon: ClipboardList, href: "/admin", active: true },
+  { labelKey: "admin.vendors", icon: Users, href: "/admin/vendors" },
+  { labelKey: "admin.products", icon: Boxes, href: "/admin/products" },
+  { labelKey: "admin.discounts", icon: Percent, href: "/admin/discounts" },
+  { labelKey: "admin.applications", icon: BadgeCheck, href: "/admin/applications" },
 ];
 
 type VendorApplication = {
@@ -243,7 +243,7 @@ export default function AdminDashboardPage() {
     const reason = deleteReason.trim();
     if (reason.length < 5) throw new Error(t("admin.reasonMin"));
 
-    const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? "Vendor";
+    const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? t("admin.vendor");
     const title = `Product removed: ${productToDelete.title}`;
     const message = `Your product was removed by admin (${vendorName}). Reason: ${reason}`;
 
@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
               <div className="h-8 w-8 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow">
                 {user.name?.charAt(0) || "A"}
               </div>
-              <span className="text-gray-700 text-sm hidden sm:block">{user.name || "Admin"}</span>
+              <span className="text-gray-700 text-sm hidden sm:block">{user.name || t("admin.admin")}</span>
             </div>
           </div>
         </div>
@@ -331,14 +331,14 @@ export default function AdminDashboardPage() {
             <nav className="flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2">
               {nav.map((item) => (
                 <Link
-                  key={item.label}
+                  key={item.labelKey}
                   to={item.href}
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                     item.active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
                   <item.icon size={18} />
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               ))}
             </nav>
@@ -401,19 +401,19 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="bg-gradient-to-br from-red-50 to-white rounded-xl p-4 border border-red-100">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-red-600 font-medium">Pending Apps</span>
+                    <span className="text-xs text-red-600 font-medium">{t("admin.pendingApps")}</span>
                     {applications.length > 0 && <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>}
                   </div>
-                  <p className="text-2xl font-bold text-red-600 mt-1">{loadingApps ? "..." : applications.length}</p>
+                  <p className="text-2xl font-bold text-red-600 mt-1">{loadingApps ? t("admin.loadingShort") : applications.length}</p>
                 </div>
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <span className="text-xs text-gray-500 font-medium">Out of Stock</span>
+                  <span className="text-xs text-gray-500 font-medium">{t("admin.outOfStock")}</span>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{products.filter(p => !p.inStock).length}</p>
                 </div>
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <span className="text-xs text-gray-500 font-medium">Avg Rating</span>
+                  <span className="text-xs text-gray-500 font-medium">{t("admin.avgRating")}</span>
                   <p className="text-2xl font-bold text-gray-900 mt-1 flex items-center gap-1">
                     <Star size={14} className="text-amber-400 fill-amber-400" />
                     {(products.reduce((sum, p) => sum + (p.rating || 0), 0) / products.length || 0).toFixed(1)}
@@ -421,12 +421,12 @@ export default function AdminDashboardPage() {
                 </div>
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <span className="text-xs text-gray-500 font-medium">Avg Price</span>
+                  <span className="text-xs text-gray-500 font-medium">{t("admin.avgPrice")}</span>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(products.reduce((sum, p) => sum + p.price, 0) / products.length || 0)}</p>
                 </div>
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <span className="text-xs text-gray-500 font-medium">Categories</span>
+                  <span className="text-xs text-gray-500 font-medium">{t("admin.categories")}</span>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{new Set(products.map(p => normalizeCategoryName(p.category))).size}</p>
                 </div>
               </div>
@@ -438,7 +438,7 @@ export default function AdminDashboardPage() {
                   <Input
                     value={heroImageInput}
                     onChange={(e) => setHeroImageInput(e.target.value)}
-                    placeholder="https://..."
+                    placeholder={t("admin.imageUrlPlaceholder")}
                     disabled={heroImageLoading || heroImageSaving}
                   />
                   <Button
@@ -449,8 +449,8 @@ export default function AdminDashboardPage() {
                         await saveHeroImageSetting();
                       } catch (e) {
                         toast({
-                          title: "Failed",
-                          description: e instanceof Error ? e.message : "Unknown error",
+                          title: t("admin.failed"),
+                          description: e instanceof Error ? e.message : t("admin.unknownError"),
                           variant: "destructive",
                         });
                       }
@@ -461,7 +461,7 @@ export default function AdminDashboardPage() {
                 </div>
                 {heroImageInput ? (
                   <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                    <img src={heroImageInput} alt="Hero preview" className="h-36 w-full object-cover" />
+                    <img src={heroImageInput} alt={t("admin.heroPreview")} className="h-36 w-full object-cover" />
                   </div>
                 ) : null}
               </div>
@@ -470,22 +470,22 @@ export default function AdminDashboardPage() {
             {/* Applications Section */}
             <div id="applications">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Vendor Applications</h3>
+                <h3 className="text-lg font-bold">{t("admin.vendorApplications")}</h3>
                 {applications.length > 0 && (
                   <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
-                    {applications.length} Pending
+                    {applications.length} {t("admin.pending")}
                   </span>
                 )}
               </div>
               
               {loadingApps ? (
                 <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
-                  <p className="text-gray-500 text-sm">Loading...</p>
+                  <p className="text-gray-500 text-sm">{t("admin.loading")}</p>
                 </div>
               ) : applications.length === 0 ? (
                 <div className="bg-white rounded-xl p-6 border border-dashed border-gray-200 text-center">
                   <CheckCircle2 size={20} className="mx-auto text-green-400 mb-2" />
-                  <p className="text-sm text-gray-500">All caught up! No pending applications.</p>
+                  <p className="text-sm text-gray-500">{t("admin.noPendingApplications")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -494,9 +494,9 @@ export default function AdminDashboardPage() {
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="font-bold">{app.store_name}</h4>
-                          <p className="text-xs text-gray-500">{app.location || "No location"}</p>
+                          <p className="text-xs text-gray-500">{app.location || t("admin.noLocation")}</p>
                         </div>
-                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">REVIEW</span>
+                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{t("admin.review")}</span>
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -505,13 +505,13 @@ export default function AdminDashboardPage() {
                           onClick={async () => {
                             try {
                               await approveApplication(app);
-                              toast({ title: "Approved", description: `${app.store_name} can now sell` });
+                              toast({ title: t("admin.approved"), description: `${app.store_name} ${t("admin.canNowSell")}` });
                             } catch (e) {
-                              toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                              toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                             }
                           }}
                         >
-                          <CheckCircle2 size={14} className="mr-1" /> Approve
+                          <CheckCircle2 size={14} className="mr-1" /> {t("admin.approve")}
                         </Button>
                         <Button
                           size="sm"
@@ -520,13 +520,13 @@ export default function AdminDashboardPage() {
                           onClick={async () => {
                             try {
                               await rejectApplication(app);
-                              toast({ title: "Rejected" });
+                              toast({ title: t("admin.rejected") });
                             } catch (e) {
-                              toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                              toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                             }
                           }}
                         >
-                          <X size={14} className="mr-1" /> Reject
+                          <X size={14} className="mr-1" /> {t("admin.reject")}
                         </Button>
                       </div>
                     </div>
@@ -538,17 +538,17 @@ export default function AdminDashboardPage() {
             {/* Top Products */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Top Selling Products</h3>
+                <h3 className="text-lg font-bold">{t("admin.topSellingProducts")}</h3>
               </div>
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Product</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Vendor</th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-500">Price</th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-500">Sold</th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-500">Revenue</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">{t("admin.product")}</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">{t("admin.vendor")}</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">{t("admin.price")}</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">{t("admin.soldTitle")}</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">{t("admin.revenue")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -568,7 +568,7 @@ export default function AdminDashboardPage() {
                               <span className="font-medium line-clamp-1">{product.title}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-gray-500">{vendor?.name || "—"}</td>
+                          <td className="px-4 py-3 text-gray-500">{vendor?.name || t("admin.none")}</td>
                           <td className="px-4 py-3 text-right font-medium">{formatMoney(product.price)}</td>
                           <td className="px-4 py-3 text-right">{getSoldCount(product)}</td>
                           <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(product.price * getSoldCount(product))}</td>
@@ -583,14 +583,14 @@ export default function AdminDashboardPage() {
             {/* Vendors Section */}
             <div id="vendors">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Vendors</h3>
-                <span className="text-xs text-gray-500">{vendors.length} total</span>
+                <h3 className="text-lg font-bold">{t("admin.vendors")}</h3>
+                <span className="text-xs text-gray-500">{vendors.length} {t("admin.total")}</span>
               </div>
               
               {vendors.length === 0 ? (
                 <div className="bg-white rounded-xl p-8 border border-dashed border-gray-200 text-center">
                   <Users size={24} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-500">No vendors yet</p>
+                  <p className="text-sm text-gray-500">{t("admin.noVendorsFound")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -607,18 +607,18 @@ export default function AdminDashboardPage() {
                               <h4 className="font-bold">{vendor.name}</h4>
                               {vendor.verified && <BadgeCheck size={14} className="text-blue-600" />}
                             </div>
-                            <p className="text-xs text-gray-500">{vendor.location || "No location"}</p>
+                            <p className="text-xs text-gray-500">{vendor.location || t("admin.noLocation")}</p>
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             {vendor.status === "approved" ? (
-                              <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">APPROVED</span>
+                              <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{t("admin.approved")}</span>
                             ) : vendor.status === "rejected" ? (
-                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">REJECTED</span>
+                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{t("admin.rejected")}</span>
                             ) : (
-                              <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full">PENDING</span>
+                              <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full">{t("admin.pending")}</span>
                             )}
                             {vendor.revoked && (
-                              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">REVOKED</span>
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{t("admin.revoked")}</span>
                             )}
                           </div>
                         </div>
@@ -627,15 +627,15 @@ export default function AdminDashboardPage() {
                         <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
                           <div className="text-center">
                             <p className="text-lg font-bold">{vendorProducts.length}</p>
-                            <p className="text-[10px] text-gray-500">Products</p>
+                            <p className="text-[10px] text-gray-500">{t("admin.products")}</p>
                           </div>
                           <div className="text-center border-x border-gray-200">
                             <p className="text-lg font-bold">{vendorSales}</p>
-                            <p className="text-[10px] text-gray-500">Sales</p>
+                            <p className="text-[10px] text-gray-500">{t("admin.sales")}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-lg font-bold text-green-600">{formatMoney(vendorRevenue)}</p>
-                            <p className="text-[10px] text-gray-500">Revenue</p>
+                            <p className="text-[10px] text-gray-500">{t("admin.revenue")}</p>
                           </div>
                         </div>
                         
@@ -647,13 +647,13 @@ export default function AdminDashboardPage() {
                               onClick={async () => {
                                 try {
                                   await approveVendor(vendor.id);
-                                  toast({ title: "Approved", description: `${vendor.name} is now approved` });
+                                  toast({ title: t("admin.approved"), description: `${vendor.name} ${t("admin.isNowApproved")}` });
                                 } catch (e) {
-                                  toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                                  toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                                 }
                               }}
                             >
-                              Approve
+                              {t("admin.approve")}
                             </Button>
                           )}
                           <Button
@@ -663,13 +663,16 @@ export default function AdminDashboardPage() {
                             onClick={async () => {
                               try {
                                 await toggleVendorRevoke(vendor.id, vendor.revoked ?? false);
-                                toast({ title: vendor.revoked ? "Restored" : "Revoked", description: vendor.revoked ? "Vendor can sell again" : "Vendor cannot sell" });
+                                toast({
+                                  title: vendor.revoked ? t("admin.restored") : t("admin.revoked"),
+                                  description: vendor.revoked ? t("admin.vendorCanSellAgain") : t("admin.vendorCannotSell"),
+                                });
                               } catch (e) {
-                                toast({ title: "Failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+                                toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
                               }
                             }}
                           >
-                            {vendor.revoked ? "Restore" : "Revoke"}
+                            {vendor.revoked ? t("admin.restore") : t("admin.revoke")}
                           </Button>
                         </div>
                       </div>
@@ -682,14 +685,14 @@ export default function AdminDashboardPage() {
             {/* Products Section */}
             <div id="products">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Product Management</h3>
-                <span className="text-sm text-gray-500">{products.length} total</span>
+                <h3 className="text-xl font-bold">{t("admin.productManagement")}</h3>
+                <span className="text-sm text-gray-500">{products.length} {t("admin.total")}</span>
               </div>
               
               {products.length === 0 ? (
                 <div className="bg-white rounded-xl p-8 border border-dashed border-gray-200 text-center">
                   <Boxes size={24} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-500">No products yet</p>
+                  <p className="text-sm text-gray-500">{t("admin.noProductsFound")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -716,7 +719,7 @@ export default function AdminDashboardPage() {
                           {/* Stock Badge */}
                           {!product.inStock && (
                             <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                              OUT OF STOCK
+                              {t("admin.outOfStock")}
                             </span>
                           )}
                           {/* Quick Actions */}
@@ -742,7 +745,7 @@ export default function AdminDashboardPage() {
                         {/* Product Info */}
                         <div className="p-3">
                           <h4 className="font-medium text-sm line-clamp-1 mb-1">{product.title}</h4>
-                          <p className="text-xs text-gray-500 mb-2">{vendor?.name || "Unknown"}</p>
+                          <p className="text-xs text-gray-500 mb-2">{vendor?.name || t("admin.unknown")}</p>
                           
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-bold text-sm">{formatMoney(product.price)}</span>
@@ -756,18 +759,18 @@ export default function AdminDashboardPage() {
                               setCategoryEdits((prev) => ({ ...prev, [product.id]: v }));
                               try {
                                 await updateProductCategory(product.id, v);
-                                toast({ title: "Updated", description: "Category saved" });
+                                toast({ title: t("admin.updated"), description: t("admin.categorySaved") });
                               } catch (e) {
                                 toast({
-                                  title: "Failed",
-                                  description: e instanceof Error ? e.message : "Unknown error",
+                                  title: t("admin.failed"),
+                                  description: e instanceof Error ? e.message : t("admin.unknownError"),
                                   variant: "destructive",
                                 });
                               }
                             }}
                           >
                             <SelectTrigger className="h-7 text-[11px]">
-                              <SelectValue placeholder="Category" />
+                              <SelectValue placeholder={t("admin.category")} />
                             </SelectTrigger>
                             <SelectContent>
                               {categoryOptions.map((c) => (
@@ -780,10 +783,10 @@ export default function AdminDashboardPage() {
                           
                           {/* Rating */}
                           <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400">
-                            <span>★ {product.rating?.toFixed(1) || "N/A"}</span>
+                            <span>★ {product.rating?.toFixed(1) || t("admin.notAvailable")}</span>
                             <span>•</span>
                             <span className={product.inStock ? "text-green-600" : "text-red-500"}>
-                              {product.inStock ? "In Stock" : "Out of Stock"}
+                              {product.inStock ? t("admin.inStock") : t("admin.outOfStock")}
                             </span>
                           </div>
                         </div>
@@ -801,41 +804,41 @@ export default function AdminDashboardPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.deleteProduct")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the product and notify the vendor with your reason.
+              {t("admin.deleteProductWithReasonDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Reason for removal</label>
+            <label className="text-sm font-medium">{t("admin.reasonForRemoval")}</label>
             <Textarea 
               value={deleteReason} 
               onChange={(e) => setDeleteReason(e.target.value)} 
-              placeholder="Explain policy violation..." 
+              placeholder={t("admin.explainPolicy")}
               rows={3}
             />
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full">{t("admin.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="rounded-full bg-red-600 hover:bg-red-700"
               onClick={async (e) => {
                 e.preventDefault();
                 try {
                   await deleteProductWithReason();
-                  toast({ title: "Deleted", description: "Product removed and vendor notified" });
+                  toast({ title: t("admin.deleted"), description: t("admin.productRemovedAndNotified") });
                 } catch (err) {
                   toast({
-                    title: "Failed",
-                    description: err instanceof Error ? err.message : "Unknown error",
+                    title: t("admin.failed"),
+                    description: err instanceof Error ? err.message : t("admin.unknownError"),
                     variant: "destructive",
                   });
                 }
               }}
             >
-              Delete Product
+              {t("admin.deleteProduct")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
