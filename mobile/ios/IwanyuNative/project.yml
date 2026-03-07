@@ -1,0 +1,28 @@
+name: IwanyuNative
+author: Iwanyu
+options:
+  bundleIdPrefix: com.iwanyu
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  IwanyuNative:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    resources:
+      - Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.iwanyu.native
+        INFOPLIST_FILE: Sources/Info.plist
+        SWIFT_VERSION: 5.9
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0.0
+    info:
+      path: Sources/Info.plist
+      properties:
+        UILaunchScreen: {}
+        SUPABASE_URL: "https://ygpnvjfxxuabnrpvnfdq.supabase.co"
+        SUPABASE_ANON_KEY: ""
+        APP_NAME: "iwanyu"
