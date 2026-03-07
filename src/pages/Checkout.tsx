@@ -10,9 +10,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/context/cart";
 import { formatMoney } from "@/lib/money";
-import { calculateServiceFee, calculateVendorPayout, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
+import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
-import { useMarketplace } from "@/context/marketplace";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { initializeFlutterwavePayment, redirectToFlutterwave } from "@/lib/flutterwave";
@@ -24,7 +23,6 @@ export default function CheckoutPage() {
   const { t } = useLanguage();
   const { items, subtotal } = useCart();
   const { user } = useAuth();
-  const { products } = useMarketplace();
   const supabase = getSupabaseClient();
   
   const [isPlacing, setIsPlacing] = useState(false);
@@ -101,11 +99,6 @@ export default function CheckoutPage() {
       const trimmedEmail = email.trim();
       const trimmedAddress = `${address.trim()}${city ? `, ${city.trim()}` : ""}`;
       const trimmedPhone = phone.trim();
-      
-      const orderItems = items.map((i) => {
-        const p = products.find((x) => x.id === i.productId);
-        return { ...i, vendorId: p?.vendorId };
-      });
 
       if (!user) {
         navigate("/login", { state: { from: location }, replace: false });
@@ -116,90 +109,50 @@ export default function CheckoutPage() {
         throw new Error("Checkout is not configured.");
       }
 
-      const appliedCode = appliedDiscount?.code ?? null;
-      const appliedDiscountRwf = Math.max(0, Math.round(appliedDiscount?.discountRwf ?? 0));
-      const effectiveSubtotalRwf = Math.max(0, Math.round(subtotal - appliedDiscountRwf));
-
-      const serviceFeeRwf = calculateServiceFee(effectiveSubtotalRwf);
-      const totalRwf = Math.round(effectiveSubtotalRwf + serviceFeeRwf);
-      const vendorPayoutRwf = calculateVendorPayout(effectiveSubtotalRwf);
-
-      const paymentMeta = {
-        provider: "flutterwave",
-        mode: "redirect",
-        selected: paymentMethod,
-        phone: trimmedPhone,
-        discount_code: appliedCode,
-        discount_rwf: appliedDiscountRwf,
-      };
-
-      // Insert order and get the generated UUID
-      const { data: orderData, error: ordErr } = await supabase.from("orders").insert({
-        buyer_user_id: user.id,
-        buyer_email: trimmedEmail,
-        shipping_address: trimmedAddress,
-        status: "Placed",
-        total_rwf: totalRwf,
-        service_fee_rwf: serviceFeeRwf,
-        vendor_payout_rwf: vendorPayoutRwf,
-        discount_code: appliedCode,
-        discount_rwf: appliedDiscountRwf,
-        payment: paymentMeta,
-      }).select("id").single();
-
-      if (ordErr) throw new Error(ordErr.message);
-      
-      const orderId = orderData.id;
-
-      const missingVendor = orderItems.find((i) => !i.vendorId);
-      if (missingVendor) {
-        throw new Error(`Missing vendor for product ${missingVendor.productId}`);
-      }
-
-      const subtotalRwf = Math.max(0, Math.round(subtotal));
-      const lineTotals = orderItems.map((i) => Math.round(i.price * i.quantity));
-      let remainingDiscount = Math.min(appliedDiscountRwf, subtotalRwf);
-      const lineDiscounts = lineTotals.map((lineTotal, idx) => {
-        if (remainingDiscount <= 0 || subtotalRwf <= 0) return 0;
-        if (idx === lineTotals.length - 1) return remainingDiscount;
-        const proportional = Math.floor((lineTotal / subtotalRwf) * appliedDiscountRwf);
-        const alloc = Math.max(0, Math.min(remainingDiscount, proportional));
-        remainingDiscount -= alloc;
-        return alloc;
-      });
-
-      const rows = orderItems.map((i, idx) => {
-        const lineTotal = lineTotals[idx] ?? 0;
-        const lineDiscount = lineDiscounts[idx] ?? 0;
-        const discountedLineTotal = Math.max(0, lineTotal - lineDiscount);
-        return {
-          order_id: orderId,
-          product_id: i.productId,
-          vendor_id: i.vendorId!,
-          title: i.title,
-          price_rwf: Math.round(i.price),
-          quantity: i.quantity,
-          image_url: i.image,
-          status: "Placed",
-          vendor_payout_rwf: calculateVendorPayout(discountedLineTotal),
-        };
-      });
-
-      const { error: itemsErr } = await supabase.from("order_items").insert(rows);
-      if (itemsErr) throw new Error(itemsErr.message);
-
       const session = (await supabase.auth.getSession()).data.session;
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error("Please log in to continue");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) throw new Error("Configuration missing");
+
+      // Create order via server-side edge function (totals computed from DB prices)
+      const createOrderRes = await fetch(
+        `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/create-order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+            email: trimmedEmail,
+            phone: trimmedPhone,
+            address: trimmedAddress,
+            paymentMethod,
+            discountCode: appliedDiscount?.code ?? null,
+          }),
+        }
+      );
+
+      if (!createOrderRes.ok) {
+        const errBody = await createOrderRes.json().catch(() => ({ error: "Order creation failed" }));
+        throw new Error(errBody.error || "Order creation failed");
+      }
+
+      const { orderId, total: serverTotal } = await createOrderRes.json();
 
       const customerName = user.name ?? user.email ?? trimmedEmail;
 
       const result = await initializeFlutterwavePayment(
         {
           txRef: orderId,
-          amount: totalRwf,
+          amount: serverTotal,
           currency: "RWF",
-          redirectUrl: `${window.location.origin}/payment-callback?orderId=${orderId}&amount=${totalRwf}`,
+          redirectUrl: `${window.location.origin}/payment-callback?orderId=${orderId}`,
           paymentOptions: paymentMethod === "momo" ? "mobilemoney" : "card",
           customer: {
             email: trimmedEmail,
@@ -219,7 +172,6 @@ export default function CheckoutPage() {
       }
 
       sessionStorage.setItem("pendingOrderId", orderId);
-      sessionStorage.setItem("pendingOrderAmount", String(totalRwf));
 
       redirectToFlutterwave(result.paymentLink);
     } catch (e) {

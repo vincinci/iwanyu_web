@@ -1,9 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { ProductCard } from "@/components/ProductCard";
+import { Button } from "@/components/ui/button";
 import { useMarketplace } from "@/context/marketplace";
 import { getCategoryById, slugifyCategory } from "@/lib/categories";
+import { ChevronDown } from "lucide-react";
+
+const PAGE_SIZE = 40;
 
 function titleFromSlug(slug: string) {
   if (slug === "all") return "All";
@@ -18,6 +22,10 @@ export default function CategoryPage() {
   const { categoryId: rawCategoryId } = useParams();
   const categoryId = rawCategoryId ?? "all";
   const { products } = useMarketplace();
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset when category changes
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [categoryId]);
 
   const title = (() => {
     if (categoryId === "all") return "All";
@@ -69,10 +77,22 @@ export default function CategoryPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {filtered.map((product) => (
+            {filtered.slice(0, visibleCount).map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
+          {visibleCount < filtered.length && (
+            <div className="text-center mt-8">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                className="rounded-full px-8"
+              >
+                <ChevronDown size={16} className="mr-2" />
+                Show more ({filtered.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
         )}
 
         {categoryId !== "all" ? (

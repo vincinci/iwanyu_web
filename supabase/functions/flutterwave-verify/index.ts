@@ -5,11 +5,11 @@ import { corsHeaders } from "../_shared/cors.ts";
 const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
 interface VerifyRequest {
   orderId: string;
   transactionId: string;
-  expectedAmount: number;
 }
 
 Deno.serve(async (req: Request) => {
@@ -30,14 +30,46 @@ Deno.serve(async (req: Request) => {
 
     // Parse request body
     const body: VerifyRequest = await req.json();
-    const { orderId, transactionId, expectedAmount } = body;
+    const { orderId, transactionId } = body;
 
-    if (!orderId || !transactionId || !expectedAmount) {
+    if (!orderId || !transactionId) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: orderId, transactionId, expectedAmount" }),
+        JSON.stringify({ error: "Missing required fields: orderId, transactionId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ── Idempotency check: if already verified, return success immediately ──
+    const { data: existingOrder, error: fetchErr } = await supabase
+      .from("orders")
+      .select("id, total_rwf, status, payment_verified_at, discount_code, buyer_email")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (fetchErr || !existingOrder) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (existingOrder.payment_verified_at) {
+      // Already verified – idempotent success
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Payment already verified",
+          orderId,
+          alreadyVerified: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Read expected amount from DB, not from client ──
+    const expectedAmount = existingOrder.total_rwf;
 
     // Verify transaction with Flutterwave V3 API
     const flwResponse = await fetch(
@@ -87,6 +119,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Compare against server-stored expected amount
     if (txData.amount < expectedAmount) {
       return new Response(
         JSON.stringify({ error: `Amount mismatch. Expected: ${expectedAmount}, Got: ${txData.amount}` }),
@@ -94,23 +127,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Update order status in Supabase
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    const { error: updateError } = await supabase
+    // ── Update order with idempotency guard (payment_verified_at IS NULL) ──
+    const verifiedAt = new Date().toISOString();
+    const { data: updatedRows, error: updateError } = await supabase
       .from("orders")
       .update({
         status: "Processing",
+        payment_verified_at: verifiedAt,
         payment: {
           verified: true,
           transaction_id: transactionId,
           payment_type: txData.payment_type,
-          verified_at: new Date().toISOString(),
+          verified_at: verifiedAt,
           flutterwave_status: txData.status,
         },
-        updated_at: new Date().toISOString(),
+        updated_at: verifiedAt,
       })
-      .eq("id", orderId);
+      .eq("id", orderId)
+      .is("payment_verified_at", null)   // idempotency: only update if not yet verified
+      .select("id");
 
     if (updateError) {
       console.error("Failed to update order:", updateError);
@@ -120,31 +155,110 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // If no rows were updated, another request already verified this order
+    if (!updatedRows || updatedRows.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Payment already verified",
+          orderId,
+          alreadyVerified: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Update order items to Processing
     await supabase
       .from("order_items")
       .update({
         status: "Processing",
-        updated_at: new Date().toISOString(),
+        updated_at: verifiedAt,
       })
       .eq("order_id", orderId);
 
-    // If a discount code was applied, record a successful redemption.
+    // ── Create vendor payout records ──
     try {
-      const { data: orderRow, error: orderReadErr } = await supabase
-        .from("orders")
-        .select("discount_code")
-        .eq("id", orderId)
-        .maybeSingle();
+      const { data: orderItems } = await supabase
+        .from("order_items")
+        .select("vendor_id, vendor_payout_rwf")
+        .eq("order_id", orderId);
 
-      if (!orderReadErr) {
-        const discountCode = (orderRow as { discount_code?: string | null } | null)?.discount_code;
-        if (discountCode) {
-          await supabase.rpc("increment_discount_redemption", { p_code: discountCode });
+      if (orderItems && orderItems.length > 0) {
+        // Aggregate payouts by vendor
+        const vendorTotals = new Map<string, number>();
+        for (const item of orderItems) {
+          const current = vendorTotals.get(item.vendor_id) || 0;
+          vendorTotals.set(item.vendor_id, current + (item.vendor_payout_rwf || 0));
         }
+
+        const payoutRows = Array.from(vendorTotals.entries()).map(([vendorId, amount]) => ({
+          vendor_id: vendorId,
+          order_id: orderId,
+          amount_rwf: amount,
+          status: "pending",
+        }));
+
+        await supabase.from("vendor_payouts").upsert(payoutRows, {
+          onConflict: "vendor_id,order_id",
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to create vendor payout records", e);
+    }
+
+    // ── Increment discount redemption ──
+    try {
+      const discountCode = existingOrder.discount_code;
+      if (discountCode) {
+        await supabase.rpc("increment_discount_redemption", { p_code: discountCode });
       }
     } catch (e) {
       console.warn("Failed to increment discount redemption", e);
+    }
+
+    // ── Send order confirmation email via Resend ──
+    if (RESEND_API_KEY && existingOrder.buyer_email) {
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: "iwanyu <orders@iwanyu.store>",
+            to: [existingOrder.buyer_email],
+            subject: `Order confirmed – ${orderId.slice(0, 8)}`,
+            html: `
+              <h2>Thank you for your order!</h2>
+              <p>Your payment of <strong>${txData.amount} ${txData.currency || "RWF"}</strong> has been confirmed.</p>
+              <p><strong>Order ID:</strong> ${orderId}</p>
+              <p>We'll notify you when your items ship.</p>
+              <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
+            `,
+          }),
+        });
+
+        // Log the email
+        await supabase.from("email_log").insert({
+          recipient: existingOrder.buyer_email,
+          subject: `Order confirmed – ${orderId.slice(0, 8)}`,
+          template: "order_confirmation",
+          payload: { orderId, amount: txData.amount, currency: txData.currency },
+          status: "sent",
+        });
+      } catch (emailErr) {
+        console.warn("Failed to send order confirmation email:", emailErr);
+        await supabase.from("email_log").insert({
+          recipient: existingOrder.buyer_email,
+          subject: `Order confirmed – ${orderId.slice(0, 8)}`,
+          template: "order_confirmation",
+          payload: { orderId },
+          status: "failed",
+          error: emailErr instanceof Error ? emailErr.message : "Unknown",
+        }).catch(() => {});
+      }
     }
 
     return new Response(

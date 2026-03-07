@@ -7,8 +7,10 @@ import { useMarketplace } from "@/context/marketplace";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Search as SearchIcon, Filter, SortAsc, X, Check } from "lucide-react";
+import { Search as SearchIcon, Filter, SortAsc, X, Check, ChevronDown } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+
+const PAGE_SIZE = 40;
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -18,6 +20,10 @@ const Search = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterInStock, setFilterInStock] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset visible count when filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [query, filterCategory, filterInStock, sortBy]);
 
   // Price range state
   const priceRange = useMemo(() => {
@@ -237,10 +243,22 @@ const Search = () => {
             sortedResults.length > 0 ? (
               <>
                 <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
-                  {sortedResults.map(product => (
+                  {sortedResults.slice(0, visibleCount).map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
+                {visibleCount < sortedResults.length && (
+                  <div className="text-center mt-8">
+                    <Button
+                      variant="outline"
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="rounded-full px-8"
+                    >
+                      <ChevronDown size={16} className="mr-2" />
+                      Show more ({sortedResults.length - visibleCount} remaining)
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-16">
@@ -291,13 +309,20 @@ const Search = () => {
               <div className="text-left">
                 <h4 className="text-lg font-semibold text-gray-900 mb-6">All Products</h4>
                 <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
-                  {products.slice(0, 24).map(product => (
+                  {products.slice(0, visibleCount).map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
-                {products.length > 24 && (
+                {products.length > visibleCount && (
                   <div className="text-center mt-8">
-                    <Button onClick={() => window.location.href = "/"}>View All {products.length} Products</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="rounded-full px-8"
+                    >
+                      <ChevronDown size={16} className="mr-2" />
+                      Show more ({products.length - visibleCount} remaining)
+                    </Button>
                   </div>
                 )}
               </div>

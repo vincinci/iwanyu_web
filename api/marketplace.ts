@@ -15,6 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { type } = req.query;
+    const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 200));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
 
     try {
         if (type === 'products') {
@@ -23,14 +25,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .select('*')
                 .is('deleted_at', null)
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .range(offset, offset + limit - 1);
 
             if (error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(error.message)) {
                 ({ data, error } = await supabase
                     .from('products')
                     .select('*')
                     .order('created_at', { ascending: false })
-                    .limit(1000));
+                    .range(offset, offset + limit - 1));
             }
             
             if (error) throw error;
@@ -43,14 +45,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .select('*')
                 .is('deleted_at', null)
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .range(offset, offset + limit - 1);
 
             if (error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(error.message)) {
                 ({ data, error } = await supabase
                     .from('vendors')
                     .select('*')
                     .order('created_at', { ascending: false })
-                    .limit(1000));
+                    .range(offset, offset + limit - 1));
             }
             
             if (error) throw error;
@@ -63,20 +65,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .select('*')
             .is('deleted_at', null)
             .order('created_at', { ascending: false })
-            .limit(1000);
+            .range(offset, offset + limit - 1);
         let vendorsRes = await supabase
             .from('vendors')
             .select('*')
             .is('deleted_at', null)
             .order('created_at', { ascending: false })
-            .limit(1000);
+            .range(0, 499);
 
         if (productsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(productsRes.error.message)) {
             productsRes = await supabase
                 .from('products')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .range(offset, offset + limit - 1);
         }
 
         if (vendorsRes.error && /column\s+"deleted_at"\s+does\s+not\s+exist/i.test(vendorsRes.error.message)) {
@@ -84,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .from('vendors')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .range(0, 499);
         }
 
         if (productsRes.error) throw productsRes.error;

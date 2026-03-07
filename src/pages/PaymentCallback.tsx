@@ -26,7 +26,6 @@ export default function PaymentCallbackPage() {
         const transactionId = searchParams.get("transaction_id") || searchParams.get("tx_id");
         const flwStatus = searchParams.get("status");
         const orderId = searchParams.get("orderId") || sessionStorage.getItem("pendingOrderId");
-        const expectedAmount = searchParams.get("amount") || sessionStorage.getItem("pendingOrderAmount");
 
         // If payment was cancelled or failed at Flutterwave
         if (flwStatus === "cancelled") {
@@ -41,7 +40,7 @@ export default function PaymentCallbackPage() {
           return;
         }
 
-        if (!transactionId || !orderId || !expectedAmount) {
+        if (!transactionId || !orderId) {
           setStatus("failed");
           setMessage("Missing payment information. Please contact support.");
           return;
@@ -80,7 +79,6 @@ export default function PaymentCallbackPage() {
             body: JSON.stringify({
               orderId,
               transactionId,
-              expectedAmount: Number(expectedAmount),
             }),
           }
         );
@@ -96,7 +94,6 @@ export default function PaymentCallbackPage() {
         // Success!
         clear(); // Clear cart
         sessionStorage.removeItem("pendingOrderId");
-        sessionStorage.removeItem("pendingOrderAmount");
 
         setStatus("success");
         setMessage("Payment successful! Your order is now being processed.");
