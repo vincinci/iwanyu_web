@@ -66,6 +66,9 @@ struct RootView: View {
                         Text("iwanyu Native")
                             .font(.headline)
                     }
+                    Text("Role: \(store.userRole)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Storefront") {
@@ -86,30 +89,36 @@ struct RootView: View {
                     NavigationLink("Logout") { LogoutScreen() }
                     NavigationLink("Account") { AccountScreen() }
                     NavigationLink("Orders") { OrdersScreen() }
-                    NavigationLink("Sell") { SellScreen() }
-                    NavigationLink("Seller Onboarding") { SellerOnboardingScreen() }
-                    NavigationLink("Vendor Application") { VendorApplicationScreen() }
+                    if store.isLoggedIn && store.userRole == "buyer" {
+                        NavigationLink("Sell") { SellScreen() }
+                        NavigationLink("Seller Onboarding") { SellerOnboardingScreen() }
+                        NavigationLink("Vendor Application") { VendorApplicationScreen() }
+                    }
                     NavigationLink("Privacy Policy") { PrivacyPolicyScreen() }
                     NavigationLink("Terms Of Service") { TermsOfServiceScreen() }
                     NavigationLink("Static Page") { StaticPageScreen() }
                     NavigationLink("Not Found") { NotFoundScreen() }
                 }
 
-                Section("Admin") {
-                    NavigationLink("Admin Dashboard") { AdminDashboardScreen() }
-                    NavigationLink("Admin Vendors") { AdminVendorsScreen() }
-                    NavigationLink("Admin Products") { AdminProductsScreen() }
-                    NavigationLink("Admin Discounts") { AdminDiscountsScreen() }
-                    NavigationLink("Admin Applications") { AdminApplicationsScreen() }
+                if store.isLoggedIn && (store.userRole == "seller" || store.userRole == "admin") {
+                    Section("Seller") {
+                        NavigationLink("Seller Dashboard") { SellerDashboardScreen() }
+                        NavigationLink("Seller Products") { SellerProductsScreen() }
+                        NavigationLink("Seller New Product") { SellerNewProductScreen() }
+                        NavigationLink("Seller Orders") { SellerOrdersScreen() }
+                        NavigationLink("Seller Payouts") { SellerPayoutsScreen() }
+                        NavigationLink("Seller Settings") { SellerSettingsScreen() }
+                    }
                 }
 
-                Section("Seller") {
-                    NavigationLink("Seller Dashboard") { SellerDashboardScreen() }
-                    NavigationLink("Seller Products") { SellerProductsScreen() }
-                    NavigationLink("Seller New Product") { SellerNewProductScreen() }
-                    NavigationLink("Seller Orders") { SellerOrdersScreen() }
-                    NavigationLink("Seller Payouts") { SellerPayoutsScreen() }
-                    NavigationLink("Seller Settings") { SellerSettingsScreen() }
+                if store.isLoggedIn && store.userRole == "admin" {
+                    Section("Admin") {
+                        NavigationLink("Admin Dashboard") { AdminDashboardScreen() }
+                        NavigationLink("Admin Vendors") { AdminVendorsScreen() }
+                        NavigationLink("Admin Products") { AdminProductsScreen() }
+                        NavigationLink("Admin Discounts") { AdminDiscountsScreen() }
+                        NavigationLink("Admin Applications") { AdminApplicationsScreen() }
+                    }
                 }
             }
             .navigationTitle("iwanyu")

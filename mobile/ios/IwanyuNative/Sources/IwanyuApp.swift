@@ -18,8 +18,14 @@ final class AppStore: ObservableObject {
     @Published var loading = false
     @Published var errorMessage: String?
     @Published var session: AuthSession?
+    @Published var userRole: String = "buyer"
     @Published var cart: [CartItem] = []
     @Published var orders: [Order] = []
+    @Published var sellerVendors: [Vendor] = []
+    @Published var sellerOrderItems: [SellerOrderItem] = []
+    @Published var sellerPayouts: [VendorPayout] = []
+    @Published var adminVendorApplications: [VendorApplication] = []
+    @Published var adminDiscountCodes: [DiscountCode] = []
 
     let api = SupabaseAPI()
 
@@ -44,8 +50,12 @@ final class AppStore: ObservableObject {
     func signIn(email: String, password: String) async {
         do {
             session = try await api.signIn(email: email, password: password)
+            if let s = session {
+                userRole = try await api.fetchProfileRole(userId: s.user.id, token: s.access_token)
+            }
             errorMessage = nil
             await loadOrders()
+            await loadRoleData()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -55,6 +65,9 @@ final class AppStore: ObservableObject {
     func signUp(email: String, password: String) async {
         do {
             session = try await api.signUp(email: email, password: password)
+            if let s = session {
+                userRole = try await api.fetchProfileRole(userId: s.user.id, token: s.access_token)
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -66,6 +79,34 @@ final class AppStore: ObservableObject {
         guard let userId = session?.user.id, let token = session?.access_token else { return }
         do {
             orders = try await api.fetchOrders(userId: userId, token: token)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func loadRoleData() async {
+        guard let s = session else { return }
+        do {
+            if userRole == "seller" || userRole == "admin" {
+                sellerVendors = try await api.fetchVendorsForOwner(userId: s.user.id, token: s.access_token)
+                let vendorIds = sellerVendors.map { $0.id }
+                sellerOrderItems = try await api.fetchSellerOrderItems(vendorIds: vendorIds, token: s.access_token)
+                sellerPayouts = try await api.fetchSellerPayouts(vendorIds: vendorIds, token: s.access_token)
+            } else {
+                sellerVendors = []
+                sellerOrderItems = []
+                sellerPayouts = []
+            }
+
+            if userRole == "admin" {
+                adminVendorApplications = try await api.fetchAdminVendorApplications(token: s.access_token)
+                adminDiscountCodes = try await api.fetchAdminDiscountCodes(token: s.access_token)
+            } else {
+                adminVendorApplications = []
+                adminDiscountCodes = []
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

@@ -220,7 +220,13 @@ struct LogoutScreen: View {
         VStack(spacing: 12) {
             Button("Logout") {
                 store.session = nil
+                store.userRole = "buyer"
                 store.orders = []
+                store.sellerVendors = []
+                store.sellerOrderItems = []
+                store.sellerPayouts = []
+                store.adminVendorApplications = []
+                store.adminDiscountCodes = []
                 store.clearCart()
             }
             .buttonStyle(.borderedProminent)
@@ -263,16 +269,159 @@ struct StaticPageScreen: View { var body: some View { ScreenTemplate(title: "Sta
 struct NotFoundScreen: View { var body: some View { ScreenTemplate(title: "Not Found") } }
 
 // Admin
-struct AdminDashboardScreen: View { var body: some View { ScreenTemplate(title: "Admin Dashboard") } }
-struct AdminVendorsScreen: View { var body: some View { ScreenTemplate(title: "Admin Vendors") } }
-struct AdminProductsScreen: View { var body: some View { ScreenTemplate(title: "Admin Products") } }
-struct AdminDiscountsScreen: View { var body: some View { ScreenTemplate(title: "Admin Discounts") } }
-struct AdminApplicationsScreen: View { var body: some View { ScreenTemplate(title: "Admin Applications") } }
+struct AdminDashboardScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List {
+            Text("Role: \(store.userRole)")
+            Text("Total products: \(store.products.count)")
+            Text("Total vendors: \(store.vendors.count)")
+            Text("Vendor applications: \(store.adminVendorApplications.count)")
+            Text("Discount codes: \(store.adminDiscountCodes.count)")
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Admin Dashboard")
+    }
+}
+
+struct AdminVendorsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.vendors, id: \.id) { v in
+            VStack(alignment: .leading) {
+                Text(v.name).font(.headline)
+                Text(v.location ?? "Unknown location").font(.caption)
+                Text(v.status ?? "pending").font(.caption2)
+            }
+        }
+        .navigationTitle("Admin Vendors")
+    }
+}
+
+struct AdminProductsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.products, id: \.id) { p in
+            VStack(alignment: .leading) {
+                Text(p.title).font(.headline)
+                Text("RWF \(p.price_rwf)").font(.caption)
+            }
+        }
+        .navigationTitle("Admin Products")
+    }
+}
+
+struct AdminDiscountsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.adminDiscountCodes, id: \.id) { code in
+            VStack(alignment: .leading) {
+                Text(code.code).font(.headline)
+                Text(code.discount_type).font(.caption)
+                Text("Redeemed: \(code.redeemed_count ?? 0)").font(.caption2)
+            }
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Admin Discounts")
+    }
+}
+
+struct AdminApplicationsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.adminVendorApplications, id: \.id) { app in
+            VStack(alignment: .leading) {
+                Text(app.store_name).font(.headline)
+                Text(app.status).font(.caption)
+                Text(app.created_at ?? "").font(.caption2)
+            }
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Admin Applications")
+    }
+}
 
 // Seller
-struct SellerDashboardScreen: View { var body: some View { ScreenTemplate(title: "Seller Dashboard") } }
-struct SellerProductsScreen: View { var body: some View { ScreenTemplate(title: "Seller Products") } }
+struct SellerDashboardScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List {
+            Text("Your stores: \(store.sellerVendors.count)")
+            Text("Your order items: \(store.sellerOrderItems.count)")
+            Text("Your payouts: \(store.sellerPayouts.count)")
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Seller Dashboard")
+    }
+}
+
+struct SellerProductsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        let vendorIds = Set(store.sellerVendors.map { $0.id })
+        List(store.products.filter { vendorIds.contains($0.vendor_id) }, id: \.id) { product in
+            VStack(alignment: .leading) {
+                Text(product.title).font(.headline)
+                Text("RWF \(product.price_rwf)").font(.caption)
+            }
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Seller Products")
+    }
+}
+
 struct SellerNewProductScreen: View { var body: some View { ScreenTemplate(title: "Seller New Product") } }
-struct SellerOrdersScreen: View { var body: some View { ScreenTemplate(title: "Seller Orders") } }
-struct SellerPayoutsScreen: View { var body: some View { ScreenTemplate(title: "Seller Payouts") } }
-struct SellerSettingsScreen: View { var body: some View { ScreenTemplate(title: "Seller Settings") } }
+
+struct SellerOrdersScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.sellerOrderItems, id: \.id) { item in
+            VStack(alignment: .leading) {
+                Text(item.title).font(.headline)
+                Text("Qty \(item.quantity) • \(item.status)").font(.caption)
+                Text(item.order_id).font(.caption2)
+            }
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Seller Orders")
+    }
+}
+
+struct SellerPayoutsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.sellerPayouts, id: \.id) { payout in
+            VStack(alignment: .leading) {
+                Text("RWF \(payout.amount_rwf)").font(.headline)
+                Text(payout.status).font(.caption)
+                Text(payout.order_id).font(.caption2)
+            }
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Seller Payouts")
+    }
+}
+
+struct SellerSettingsScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List(store.sellerVendors, id: \.id) { vendor in
+            VStack(alignment: .leading) {
+                Text(vendor.name).font(.headline)
+                Text(vendor.location ?? "Unknown").font(.caption)
+            }
+        }
+        .task { await store.loadRoleData() }
+        .navigationTitle("Seller Settings")
+    }
+}

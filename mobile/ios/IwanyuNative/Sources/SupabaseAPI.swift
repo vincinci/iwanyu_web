@@ -63,8 +63,43 @@ final class SupabaseAPI {
     }
 
     func fetchVendors(limit: Int) async throws -> [Vendor] {
-        let path = "/rest/v1/vendors?select=id,name,location,verified,status&deleted_at=is.null&order=created_at.desc&limit=\(limit)"
+        let path = "/rest/v1/vendors?select=id,name,location,verified,status,owner_user_id&deleted_at=is.null&order=created_at.desc&limit=\(limit)"
         return try await get(path: path, token: anonKey)
+    }
+
+    func fetchProfileRole(userId: String, token: String) async throws -> String {
+        let path = "/rest/v1/profiles?select=role&id=eq.\(userId)&limit=1"
+        let rows: [ProfileRoleRow] = try await get(path: path, token: token)
+        return rows.first?.role ?? "buyer"
+    }
+
+    func fetchVendorsForOwner(userId: String, token: String) async throws -> [Vendor] {
+        let path = "/rest/v1/vendors?select=id,name,location,verified,status,owner_user_id&owner_user_id=eq.\(userId)&deleted_at=is.null&limit=50"
+        return try await get(path: path, token: token)
+    }
+
+    func fetchSellerOrderItems(vendorIds: [String], token: String, limit: Int = 100) async throws -> [SellerOrderItem] {
+        guard !vendorIds.isEmpty else { return [] }
+        let inList = vendorIds.joined(separator: ",")
+        let path = "/rest/v1/order_items?select=order_id,product_id,vendor_id,title,quantity,status&vendor_id=in.(\(inList))&order=created_at.desc&limit=\(limit)"
+        return try await get(path: path, token: token)
+    }
+
+    func fetchSellerPayouts(vendorIds: [String], token: String, limit: Int = 100) async throws -> [VendorPayout] {
+        guard !vendorIds.isEmpty else { return [] }
+        let inList = vendorIds.joined(separator: ",")
+        let path = "/rest/v1/vendor_payouts?select=id,vendor_id,order_id,amount_rwf,status&vendor_id=in.(\(inList))&order=created_at.desc&limit=\(limit)"
+        return try await get(path: path, token: token)
+    }
+
+    func fetchAdminVendorApplications(token: String, limit: Int = 100) async throws -> [VendorApplication] {
+        let path = "/rest/v1/vendor_applications?select=id,store_name,status,owner_user_id,created_at&order=created_at.desc&limit=\(limit)"
+        return try await get(path: path, token: token)
+    }
+
+    func fetchAdminDiscountCodes(token: String, limit: Int = 100) async throws -> [DiscountCode] {
+        let path = "/rest/v1/discount_codes?select=id,code,discount_type,active,redeemed_count&order=created_at.desc&limit=\(limit)"
+        return try await get(path: path, token: token)
     }
 
     func fetchOrders(userId: String, token: String, limit: Int = 50) async throws -> [Order] {
