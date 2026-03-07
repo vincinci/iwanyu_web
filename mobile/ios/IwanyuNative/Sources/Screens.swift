@@ -1,131 +1,81 @@
 import SwiftUI
 
 enum AppRoute: String, CaseIterable, Identifiable {
-    // Core storefront
-    case home, search, category, product, deals, cart, checkout, paymentCallback, wishlist
-    // Auth/account/static
-    case login, signup, logout, account, orders, sell, sellerOnboarding, vendorApplication
-    case privacyPolicy, termsOfService, staticPage, notFound
-    // Admin
-    case adminDashboard, adminVendors, adminProducts, adminDiscounts, adminApplications
-    // Seller
-    case sellerDashboard, sellerProducts, sellerNewProduct, sellerOrders, sellerPayouts, sellerSettings
+    case home, search, cart, checkout, account
+    case sellerHub, adminHub
 
     var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .home: return "Home"
-        case .search: return "Search"
-        case .category: return "Category"
-        case .product: return "Product"
-        case .deals: return "Deals"
-        case .cart: return "Cart"
-        case .checkout: return "Checkout"
-        case .paymentCallback: return "Payment Callback"
-        case .wishlist: return "Wishlist"
-        case .login: return "Login"
-        case .signup: return "Signup"
-        case .logout: return "Logout"
-        case .account: return "Account"
-        case .orders: return "Orders"
-        case .sell: return "Sell"
-        case .sellerOnboarding: return "Seller Onboarding"
-        case .vendorApplication: return "Vendor Application"
-        case .privacyPolicy: return "Privacy Policy"
-        case .termsOfService: return "Terms of Service"
-        case .staticPage: return "Static Page"
-        case .notFound: return "Not Found"
-        case .adminDashboard: return "Admin Dashboard"
-        case .adminVendors: return "Admin Vendors"
-        case .adminProducts: return "Admin Products"
-        case .adminDiscounts: return "Admin Discounts"
-        case .adminApplications: return "Admin Applications"
-        case .sellerDashboard: return "Seller Dashboard"
-        case .sellerProducts: return "Seller Products"
-        case .sellerNewProduct: return "Seller New Product"
-        case .sellerOrders: return "Seller Orders"
-        case .sellerPayouts: return "Seller Payouts"
-        case .sellerSettings: return "Seller Settings"
-        }
-    }
 }
 
 struct RootView: View {
     @EnvironmentObject private var store: AppStore
+    @State private var selected: AppRoute = .home
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Brand") {
-                    HStack(spacing: 12) {
-                        Image("logo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 36, height: 36)
-                        Text("iwanyu Native")
-                            .font(.headline)
-                    }
-                    Text("Role: \(store.userRole)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Storefront") {
-                    NavigationLink("Home") { HomeScreen() }
-                    NavigationLink("Search") { SearchScreen() }
-                    NavigationLink("Category") { CategoryScreen() }
-                    NavigationLink("Product") { ProductScreen() }
-                    NavigationLink("Deals") { DealsScreen() }
-                    NavigationLink("Cart") { CartScreen() }
-                    NavigationLink("Checkout") { CheckoutScreen() }
-                    NavigationLink("Payment Callback") { PaymentCallbackScreen() }
-                    NavigationLink("Wishlist") { WishlistScreen() }
-                }
-
-                Section("Auth / Account") {
-                    NavigationLink("Login") { LoginScreen() }
-                    NavigationLink("Signup") { SignupScreen() }
-                    NavigationLink("Logout") { LogoutScreen() }
-                    NavigationLink("Account") { AccountScreen() }
-                    NavigationLink("Orders") { OrdersScreen() }
-                    if store.isLoggedIn && store.userRole == "buyer" {
-                        NavigationLink("Sell") { SellScreen() }
-                        NavigationLink("Seller Onboarding") { SellerOnboardingScreen() }
-                        NavigationLink("Vendor Application") { VendorApplicationScreen() }
-                    }
-                    NavigationLink("Privacy Policy") { PrivacyPolicyScreen() }
-                    NavigationLink("Terms Of Service") { TermsOfServiceScreen() }
-                    NavigationLink("Static Page") { StaticPageScreen() }
-                    NavigationLink("Not Found") { NotFoundScreen() }
-                }
-
-                if store.isLoggedIn && (store.userRole == "seller" || store.userRole == "admin") {
-                    Section("Seller") {
-                        NavigationLink("Seller Dashboard") { SellerDashboardScreen() }
-                        NavigationLink("Seller Products") { SellerProductsScreen() }
-                        NavigationLink("Seller New Product") { SellerNewProductScreen() }
-                        NavigationLink("Seller Orders") { SellerOrdersScreen() }
-                        NavigationLink("Seller Payouts") { SellerPayoutsScreen() }
-                        NavigationLink("Seller Settings") { SellerSettingsScreen() }
-                    }
-                }
-
-                if store.isLoggedIn && store.userRole == "admin" {
-                    Section("Admin") {
-                        NavigationLink("Admin Dashboard") { AdminDashboardScreen() }
-                        NavigationLink("Admin Vendors") { AdminVendorsScreen() }
-                        NavigationLink("Admin Products") { AdminProductsScreen() }
-                        NavigationLink("Admin Discounts") { AdminDiscountsScreen() }
-                        NavigationLink("Admin Applications") { AdminApplicationsScreen() }
-                    }
-                }
+        TabView(selection: $selected) {
+            NavigationStack {
+                HomeScreen()
             }
-            .navigationTitle("iwanyu")
-            .task {
-                if store.products.isEmpty {
-                    await store.loadMarketplace()
+            .tabItem {
+                Label("Home", systemImage: "house")
+            }
+            .tag(AppRoute.home)
+
+            NavigationStack {
+                SearchScreen()
+            }
+            .tabItem {
+                Label("Search", systemImage: "magnifyingglass")
+            }
+            .tag(AppRoute.search)
+
+            NavigationStack {
+                CartScreen()
+            }
+            .tabItem {
+                Label("Cart", systemImage: "cart")
+            }
+            .tag(AppRoute.cart)
+
+            NavigationStack {
+                CheckoutScreen()
+            }
+            .tabItem {
+                Label("Checkout", systemImage: "creditcard")
+            }
+            .tag(AppRoute.checkout)
+
+            NavigationStack {
+                AccountHubScreen()
+            }
+            .tabItem {
+                Label("Account", systemImage: "person")
+            }
+            .tag(AppRoute.account)
+
+            if store.isLoggedIn && (store.userRole == "seller" || store.userRole == "admin") {
+                NavigationStack {
+                    SellerHubScreen()
                 }
+                .tabItem {
+                    Label("Seller", systemImage: "bag")
+                }
+                .tag(AppRoute.sellerHub)
+            }
+
+            if store.isLoggedIn && store.userRole == "admin" {
+                NavigationStack {
+                    AdminHubScreen()
+                }
+                .tabItem {
+                    Label("Admin", systemImage: "shield")
+                }
+                .tag(AppRoute.adminHub)
+            }
+        }
+        .task {
+            if store.products.isEmpty {
+                await store.loadMarketplace()
             }
         }
     }
@@ -136,11 +86,27 @@ struct HomeScreen: View {
 
     var body: some View {
         List {
-            Section("Quick Actions") {
-                NavigationLink("Login") { LoginScreen() }
+            Section("Brand") {
+                HStack(spacing: 12) {
+                    Image("logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 32, height: 32)
+                    VStack(alignment: .leading) {
+                        Text("iwanyu")
+                            .font(.headline)
+                        Text("Role: \(store.userRole)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Quick Routes") {
                 NavigationLink("Search") { SearchScreen() }
                 NavigationLink("Cart (\(store.cart.count))") { CartScreen() }
                 NavigationLink("Checkout") { CheckoutScreen() }
+                NavigationLink("Orders") { OrdersScreen() }
             }
 
             if let error = store.errorMessage {
@@ -177,3 +143,61 @@ struct HomeScreen: View {
     }
 }
 
+struct AccountHubScreen: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List {
+            Section("Authentication") {
+                NavigationLink("Login") { LoginScreen() }
+                NavigationLink("Signup") { SignupScreen() }
+                NavigationLink("Logout") { LogoutScreen() }
+            }
+
+            Section("Buyer") {
+                NavigationLink("Orders") { OrdersScreen() }
+                NavigationLink("Wishlist") { WishlistScreen() }
+                if store.isLoggedIn && store.userRole == "buyer" {
+                    NavigationLink("Sell") { SellScreen() }
+                    NavigationLink("Seller Onboarding") { SellerOnboardingScreen() }
+                    NavigationLink("Vendor Application") { VendorApplicationScreen() }
+                }
+            }
+
+            Section("Static") {
+                NavigationLink("Privacy Policy") { PrivacyPolicyScreen() }
+                NavigationLink("Terms Of Service") { TermsOfServiceScreen() }
+                NavigationLink("Static Page") { StaticPageScreen() }
+                NavigationLink("Not Found") { NotFoundScreen() }
+            }
+        }
+        .navigationTitle("Account")
+    }
+}
+
+struct SellerHubScreen: View {
+    var body: some View {
+        List {
+            NavigationLink("Seller Dashboard") { SellerDashboardScreen() }
+            NavigationLink("Seller Products") { SellerProductsScreen() }
+            NavigationLink("Seller New Product") { SellerNewProductScreen() }
+            NavigationLink("Seller Orders") { SellerOrdersScreen() }
+            NavigationLink("Seller Payouts") { SellerPayoutsScreen() }
+            NavigationLink("Seller Settings") { SellerSettingsScreen() }
+        }
+        .navigationTitle("Seller")
+    }
+}
+
+struct AdminHubScreen: View {
+    var body: some View {
+        List {
+            NavigationLink("Admin Dashboard") { AdminDashboardScreen() }
+            NavigationLink("Admin Vendors") { AdminVendorsScreen() }
+            NavigationLink("Admin Products") { AdminProductsScreen() }
+            NavigationLink("Admin Discounts") { AdminDiscountsScreen() }
+            NavigationLink("Admin Applications") { AdminApplicationsScreen() }
+        }
+        .navigationTitle("Admin")
+    }
+}
