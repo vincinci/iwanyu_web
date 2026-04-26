@@ -10,6 +10,7 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getE2ELocalUserByCredentials, isE2EMode, writeE2ELocalUser } from "@/lib/e2e";
+import { getOAuthRedirectUrl } from "@/lib/authRedirect";
 
 export default function LoginPage() {
   const { user } = useAuth();
@@ -87,10 +88,9 @@ export default function LoginPage() {
 
     setError(null);
 
-    const redirectNext = nextParam ? `?next=${encodeURIComponent(nextParam)}` : "";
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback${redirectNext}` },
+      options: { redirectTo: getOAuthRedirectUrl(nextParam ?? undefined) },
     });
 
     if (e) setError(e.message);
