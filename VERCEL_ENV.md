@@ -15,13 +15,15 @@ SUPABASE_URL=<your-supabase-url>
 SUPABASE_ANON_KEY=<your-supabase-anon-key>
 VITE_SUPABASE_URL=<your-supabase-url>
 VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-VITE_WEB_APP_URL=https://iwanyuweb.vercel.app
+VITE_WEB_APP_URL=https://iwanyu.store
 ```
 
 ## OAuth redirect hardening
 - Set `VITE_WEB_APP_URL` to your canonical production domain so Google OAuth callbacks never fall back to localhost in mobile/webview contexts.
 - In Supabase Dashboard -> Authentication -> URL Configuration:
-	- Site URL: your production web URL (for example `https://iwanyuweb.vercel.app`)
-	- Additional Redirect URLs must include `https://iwanyuweb.vercel.app/auth/callback`
+	- Site URL: `https://iwanyu.store`
+	- Additional Redirect URLs must include:
+		- `https://iwanyu.store/auth/callback`
+		- `https://www.iwanyu.store/auth/callback` (if `www` is active)
 
 After adding these, redeploy the project for uploads to work on www.iwanyu.store.
