@@ -9,6 +9,7 @@ import StorefrontPage from "@/components/StorefrontPage";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { getE2ELocalUserByCredentials, isE2EMode, writeE2ELocalUser } from "@/lib/e2e";
 
 export default function LoginPage() {
   const { user } = useAuth();
@@ -34,8 +35,28 @@ export default function LoginPage() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const form = e.currentTarget as HTMLFormElement;
+    const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+    const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+    const emailValue = (emailInput?.value ?? email).trim();
+    const passwordValue = passwordInput?.value ?? password;
+
+    const localUser = getE2ELocalUserByCredentials(emailValue, passwordValue);
+    if (localUser && (isE2EMode() || import.meta.env.DEV)) {
+      writeE2ELocalUser(localUser);
+      window.location.assign(nextPath);
+      return;
+    }
+
     if (!supabase) {
-      setError(t("auth.supabaseNotConfigured"));
+      if (isE2EMode()) {
+        setError("Invalid e2e credentials. Use seller@test.com or buyer@test.com with testpass123.");
+      } else if (import.meta.env.DEV) {
+        setError("Sign in failed. For local testing, use seller@test.com or buyer@test.com with testpass123.");
+      } else {
+        setError(t("auth.supabaseNotConfigured"));
+      }
       return;
     }
 
@@ -44,8 +65,8 @@ export default function LoginPage() {
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+        email: emailValue,
+        password: passwordValue,
       });
 
       if (signInError) throw signInError;
@@ -69,7 +90,7 @@ export default function LoginPage() {
     const redirectNext = nextParam ? `?next=${encodeURIComponent(nextParam)}` : "";
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/login${redirectNext}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback${redirectNext}` },
     });
 
     if (e) setError(e.message);
@@ -86,7 +107,7 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">{t("auth.signinSubtitle")}</p>
 
-              {supabase ? (
+              {supabase || isE2EMode() ? (
                 <>
                   <form onSubmit={handleEmailLogin} className="space-y-3">
                     <div>

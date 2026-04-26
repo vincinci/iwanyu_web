@@ -9,6 +9,7 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { E2E_SELLER_ID, isE2EMode } from "@/lib/e2e";
 
 export default function SellerProductsPage() {
   const { user } = useAuth();
@@ -17,6 +18,8 @@ export default function SellerProductsPage() {
   const { products, vendors, deleteProduct, getVendorsForOwner } = useMarketplace();
   const supabase = getSupabaseClient();
 
+  const isLocalE2E = isE2EMode() || import.meta.env.DEV;
+  const effectiveUserId = user?.id ?? (isLocalE2E ? E2E_SELLER_ID : undefined);
   const isAdmin = user?.role === "admin";
   const [ownedVendorIdList, setOwnedVendorIdList] = useState<string[]>([]);
 
@@ -24,22 +27,27 @@ export default function SellerProductsPage() {
     let cancelled = false;
 
     async function loadOwnedVendorIds() {
-      if (!supabase || !user || isAdmin) {
+      if (!effectiveUserId || isAdmin) {
         setOwnedVendorIdList([]);
+        return;
+      }
+
+      if (!supabase) {
+        setOwnedVendorIdList(getVendorsForOwner(effectiveUserId).map((v) => v.id));
         return;
       }
 
       const { data, error } = await supabase
         .from("vendors")
         .select("id")
-        .eq("owner_user_id", user.id)
+        .eq("owner_user_id", effectiveUserId)
         .eq("status", "approved")
         .limit(200);
 
       if (cancelled) return;
       if (error) {
         // Fallback to marketplace-derived list if available
-        setOwnedVendorIdList(getVendorsForOwner(user.id).map((v) => v.id));
+        setOwnedVendorIdList(getVendorsForOwner(effectiveUserId).map((v) => v.id));
         return;
       }
 
@@ -50,9 +58,9 @@ export default function SellerProductsPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, user, isAdmin, getVendorsForOwner]);
+  }, [supabase, effectiveUserId, isAdmin, getVendorsForOwner]);
 
-  const ownedVendorIds = new Set(user && !isAdmin ? ownedVendorIdList : []);
+  const ownedVendorIds = new Set(effectiveUserId && !isAdmin ? ownedVendorIdList : []);
 
   const visibleProducts = isAdmin ? products : products.filter((p) => ownedVendorIds.has(p.vendorId));
 

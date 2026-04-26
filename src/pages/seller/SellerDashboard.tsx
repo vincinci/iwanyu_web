@@ -303,7 +303,7 @@ export default function SellerDashboardPage() {
                       <h3 className="text-base font-semibold">{t("seller.quickActions")}</h3>
                     </div>
                     <div className="grid gap-3">
-                       <Link to="/sell" className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors bg-red-50/40">
+                       <Link to="/seller/live-studio" className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors bg-red-50/40">
                          <div>
                            <div className="font-medium text-sm flex items-center gap-2">
                              <Radio size={14} className="text-red-600" />

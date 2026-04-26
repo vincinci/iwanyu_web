@@ -176,7 +176,7 @@ const translations: Record<Language, Record<string, string>> = {
     "auth.signupFailed": "Sign up failed",
 
     // Cart
-    "cart.title": "Shopping Cart",
+    "cart.title": "Your Shopping Cart",
     "cart.items": "item",
     "cart.itemsPlural": "items",
     "cart.continue": "Continue shopping",
@@ -228,7 +228,7 @@ const translations: Record<Language, Record<string, string>> = {
     "checkout.discount": "Discount",
     "checkout.free": "Free",
     "checkout.processing": "Processing...",
-    "checkout.pay": "Pay",
+    "checkout.pay": "Place order",
     "checkout.sslSecured": "SSL Secured",
     "checkout.buyerProtection": "Buyer Protection",
     "checkout.checkoutFailed": "Checkout failed",
@@ -1301,7 +1301,7 @@ const translations: Record<Language, Record<string, string>> = {
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem("iwanyu_language");
-    return (saved as Language) || "rw"; // Default to Kinyarwanda
+    return (saved as Language) || "en";
   });
 
   const setLanguage = (lang: Language) => {

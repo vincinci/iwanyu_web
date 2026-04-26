@@ -13,11 +13,37 @@ import { Link } from "react-router-dom";
 import type { Product } from "@/types/product";
 import { useLanguage } from "@/context/languageContext";
 import { ArrowLeftRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { fetchActiveLiveSessions, summarizeLiveForHome, type LiveSession } from "@/lib/liveSessions";
+import { formatMoney } from "@/lib/money";
 
 const Index = () => {
   const { products, loading, error } = useMarketplace();
+  const { vendors } = useMarketplace();
   const { productIds: recentlyViewedIds, clear: clearRecentlyViewed } = useRecentlyViewed();
   const { t } = useLanguage();
+  const [activeLiveSessions, setActiveLiveSessions] = useState<LiveSession[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      const sessions = await fetchActiveLiveSessions();
+      if (!cancelled) setActiveLiveSessions(sessions);
+    };
+
+    void refresh();
+    const id = window.setInterval(() => {
+      void refresh();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  const liveSummary = summarizeLiveForHome(vendors, products, activeLiveSessions);
 
   // Get recently viewed products
   const recentlyViewedProducts = recentlyViewedIds
@@ -88,6 +114,69 @@ const Index = () => {
 
         {/* Featured categories */}
         <div className="container py-12">
+          <section className="mb-12 rounded-3xl border border-red-100 bg-red-50/60 p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Live On Home</h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Join active live sellers and auctions right from the home page.
+                </p>
+              </div>
+              <Link to="/live">
+                <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">Open Live</Button>
+              </Link>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                <div className="mb-2 text-sm font-semibold text-gray-900">People live now</div>
+                {liveSummary.liveSellers.length === 0 ? (
+                  <p className="text-sm text-gray-500">No sellers are live now. Check back soon.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {liveSummary.liveSellers.slice(0, 4).map((seller) => (
+                      <div key={seller.vendorId} className="flex items-center justify-between rounded-xl border border-gray-100 p-3">
+                        <div>
+                          <div className="font-medium text-gray-900">{seller.vendorName}</div>
+                          <div className="text-xs text-gray-500">{seller.watchers} viewers</div>
+                        </div>
+                        <Link to="/live">
+                          <Button size="sm" variant="outline" className="rounded-full">Watch</Button>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                <div className="mb-2 text-sm font-semibold text-gray-900">Live auctions available</div>
+                {liveSummary.liveAuctions.length === 0 ? (
+                  <p className="text-sm text-gray-500">No live auctions are running now.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {liveSummary.liveAuctions.slice(0, 4).map((auction) => (
+                      <div key={auction.id} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
+                        <img src={auction.productImage} alt={auction.productTitle} className="h-12 w-12 rounded-lg object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-gray-900">{auction.productTitle}</div>
+                          <div className="text-xs text-gray-500">Bid now: {formatMoney(auction.currentBidRwf)}</div>
+                        </div>
+                        <Link to={`/product/${auction.productId}`}>
+                          <Button size="sm" className="rounded-full">Bid</Button>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {activeLiveSessions.length > 0 ? (
+              <p className="mt-3 text-xs text-gray-500">{activeLiveSessions.length} total live sessions are active.</p>
+            ) : null}
+          </section>
+
           {loading ? (
             <div className="space-y-12">
               {[1, 2, 3].map((i) => (

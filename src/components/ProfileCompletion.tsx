@@ -102,7 +102,7 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
       toast({
         title: "Missing information",
         description: "Please enter your full name.",
-        variant: "warning" as any,
+        variant: "warning" as const,
       });
       return;
     }
@@ -125,7 +125,7 @@ export function ProfileCompletion({ onComplete, onSkip }: ProfileCompletionProps
       toast({
         title: "✓ Profile completed",
         description: "Your profile has been saved successfully.",
-        variant: "success" as any,
+        variant: "success" as const,
       });
 
       // Clear draft from localStorage

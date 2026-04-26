@@ -5,6 +5,7 @@ import type { Product } from "@/types/product";
 import { createId } from "@/lib/ids";
 import { getPublicSupabaseClient, getSupabaseClient } from "@/lib/supabaseClient";
 import { normalizeCategoryName } from "@/lib/categories";
+import { isE2EMode, getE2EFallbackVendors, getE2EFallbackProducts } from "@/lib/e2e";
 
 export type MarketplaceProduct = Product & {
   vendorId: string;
@@ -55,6 +56,7 @@ type DbProductRow = {
 
 const CACHE_KEY = "iwanyu:marketplace:v1";
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const E2E_LOCAL_PRODUCTS_KEY = "iwanyu:e2e-local-products";
 
 type MarketplaceCache = {
   fetchedAt: number;
@@ -149,7 +151,25 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         vendorRows = data.vendors || [];
         productRows = data.products || [];
       } catch {
-        if (!publicSupabase) throw new Error("Supabase is not configured");
+        if (!publicSupabase) {
+          if (isE2EMode()) {
+            const fallbackVendors = getE2EFallbackVendors();
+            const fallbackProducts = getE2EFallbackProducts(fallbackVendors[0]?.id);
+            let localProducts: MarketplaceProduct[] = [];
+            try {
+              const raw = window.localStorage.getItem(E2E_LOCAL_PRODUCTS_KEY);
+              localProducts = raw ? JSON.parse(raw) : [];
+            } catch { /* ignore */ }
+            setVendors(fallbackVendors);
+            const merged = [...localProducts];
+            for (const p of fallbackProducts) {
+              if (!merged.some((m) => m.id === p.id)) merged.push(p);
+            }
+            setProducts(merged);
+            return;
+          }
+          throw new Error("Supabase is not configured");
+        }
 
         let vendorsRes = await withTimeout(
           publicSupabase
@@ -320,10 +340,26 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         return vendor;
       },
       upsertProduct: async (input) => {
-        if (!supabase) throw new Error("Supabase is not configured");
-
         const id = input.id ?? createId("p");
         const product: MarketplaceProduct = { ...input, id } as MarketplaceProduct;
+
+        if (!supabase) {
+          if (isE2EMode()) {
+            setProducts((prev) => {
+              const exists = prev.some((p) => p.id === id);
+              if (!exists) return [product, ...prev];
+              return prev.map((p) => (p.id === id ? product : p));
+            });
+            try {
+              const raw = window.localStorage.getItem(E2E_LOCAL_PRODUCTS_KEY);
+              const existing: MarketplaceProduct[] = raw ? JSON.parse(raw) : [];
+              const next = existing.filter((p) => p.id !== id);
+              window.localStorage.setItem(E2E_LOCAL_PRODUCTS_KEY, JSON.stringify([product, ...next]));
+            } catch { /* ignore */ }
+            return product;
+          }
+          throw new Error("Supabase is not configured");
+        }
 
         const { error } = await supabase.from("products").upsert({
           id,

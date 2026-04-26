@@ -227,6 +227,7 @@ export default function CheckoutPage() {
 
         <div className="container py-8 lg:py-12">
           <div className="max-w-5xl mx-auto">
+            <h1 className="mb-6 text-3xl font-semibold text-gray-900">Checkout</h1>
             <div className="grid gap-8 lg:grid-cols-5">
               {/* Left Column - Form */}
               <div className="lg:col-span-3 space-y-6">
@@ -250,7 +251,7 @@ export default function CheckoutPage() {
                         type="tel"
                         value={phone} 
                         onChange={(e) => setPhone(e.target.value)} 
-                        placeholder="0788 123 456" 
+                        placeholder="07xxxxxxxx" 
                         className="h-12 rounded-xl border-gray-200 focus:border-amber-500 focus:ring-amber-500"
                       />
                       <p className="mt-1.5 text-xs text-gray-500">{t("checkout.phoneHint")}</p>
@@ -272,7 +273,7 @@ export default function CheckoutPage() {
                       <Input 
                         value={address} 
                         onChange={(e) => setAddress(e.target.value)} 
-                        placeholder="KG 123 Street, Kigali" 
+                        placeholder="Street, City, State" 
                         className="h-12 rounded-xl border-gray-200 focus:border-amber-500 focus:ring-amber-500"
                       />
                     </div>
@@ -295,7 +296,7 @@ export default function CheckoutPage() {
                       <Shield className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900">{t("checkout.paymentMethod")}</h2>
+                      <h2 className="text-lg font-semibold text-gray-900">Payment</h2>
                       <p className="text-sm text-gray-500">{t("checkout.paymentSubtitle")}</p>
                     </div>
                   </div>

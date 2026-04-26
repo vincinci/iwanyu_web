@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { 
   ShoppingCart, Star, Clock, Share, Heart, ChevronRight, ChevronLeft, 
   Package, Truck, ShieldCheck, X, MapPin, CheckCircle2
@@ -7,6 +7,7 @@ import {
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useCart } from "@/context/cart";
 import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
@@ -16,6 +17,7 @@ import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary";
 import { ProductCard } from "@/components/ProductCard";
+import { fetchActiveLiveSessions, placeBidOnLiveAuction, type LiveSession } from "@/lib/liveSessions";
 
 type ProductMedia = {
   id: string;
@@ -37,6 +39,12 @@ export default function ProductPage() {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [liveAuctionSession, setLiveAuctionSession] = useState<LiveSession | null>(null);
+  const [bidAmount, setBidAmount] = useState(0);
+  const [placingBid, setPlacingBid] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const product = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const vendor = product?.vendorId ? getVendorById(product.vendorId) : undefined;
@@ -75,6 +83,21 @@ export default function ProductPage() {
     void load();
     return () => { cancelled = true; };
   }, [supabase, productId]);
+
+  // Poll for live auction on this product
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    const check = async () => {
+      const sessions = await fetchActiveLiveSessions();
+      if (cancelled) return;
+      const match = sessions.find((s) => s.productId === productId) ?? null;
+      setLiveAuctionSession(match);
+    };
+    void check();
+    const id = setInterval(() => { void check(); }, 4000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [productId]);
 
   // Keyboard navigation for photo modal
   useEffect(() => {
@@ -132,7 +155,25 @@ export default function ProductPage() {
     for (let i = 0; i < quantity; i++) {
       addItem({ productId: product.id, title: product.title, price: product.price, image: product.image });
     }
-    toast({ title: "Added to cart", description: `${quantity}× ${product.title} added to your cart` });
+    toast({
+      title: "Added to cart",
+      description: `${quantity}× ${product.title} added to your cart`,
+      action: <ToastAction altText="View cart" onClick={() => navigate("/cart")}>View cart</ToastAction>,
+    });
+  };
+
+  const handlePlaceBid = async () => {
+    if (!liveAuctionSession) return;
+    setPlacingBid(true);
+    try {
+      await placeBidOnLiveAuction(liveAuctionSession.id, bidAmount);
+      toast({ title: "Bid placed!", description: `You bid ${formatMoney(bidAmount)}` });
+      setBidAmount(0);
+    } catch (e) {
+      toast({ title: "Bid failed", description: e instanceof Error ? e.message : "Try again", variant: "destructive" });
+    } finally {
+      setPlacingBid(false);
+    }
   };
 
   return (
@@ -360,6 +401,66 @@ export default function ProductPage() {
                 <div className="text-sm text-gray-500 mb-4">No reviews yet</div>
               )}
 
+              {/* Live Auction */}
+              {liveAuctionSession && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-red-700">Live auction running</div>
+                  <div className="mt-1 text-sm text-gray-700">Current bid: <span className="font-semibold text-gray-900">{formatMoney(liveAuctionSession.currentBidRwf)}</span></div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={Math.max(100, liveAuctionSession.currentBidRwf + 100)}
+                      step={100}
+                      value={bidAmount || ""}
+                      onChange={(e) => setBidAmount(Math.max(0, Math.round(Number(e.target.value || 0))))}
+                      className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                    />
+                    <Button type="button" onClick={handlePlaceBid} disabled={placingBid} className="h-10 rounded-lg">
+                      {placingBid ? "Placing..." : "Place bid"}
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-600">Minimum next bid: {formatMoney(Math.max(100, liveAuctionSession.currentBidRwf + 100))}</p>
+                </div>
+              )}
+
+              {/* Color Variants */}
+              {product.variants?.colors && product.variants.colors.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">Color</div>
+                  <div className="flex flex-wrap gap-2">
+                    {product.variants.colors.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => setSelectedColor(c.name)}
+                        className={`px-3 py-1 rounded-full border text-sm font-medium transition ${selectedColor === c.name ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 hover:border-gray-400"}`}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Size Variants */}
+              {product.variants?.sizes && product.variants.sizes.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">Size</div>
+                  <div className="flex flex-wrap gap-2">
+                    {product.variants.sizes.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSelectedSize(s)}
+                        className={`px-3 py-1 rounded-full border text-sm font-medium transition ${selectedSize === s ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 hover:border-gray-400"}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Quantity Selector */}
               <div className="border rounded-lg mb-4">
                 <div className="p-3 flex items-center justify-between">
@@ -412,7 +513,7 @@ export default function ProductPage() {
 
         {/* Related Products */}
         <div className="mt-16 pt-8 border-t">
-          <h2 className="text-xl font-semibold mb-6">You might also like</h2>
+          <h2 className="text-xl font-semibold mb-6">Recommended products</h2>
           {products.filter((p) => p.category === product.category && p.id !== product.id).length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 12).map((p) => (

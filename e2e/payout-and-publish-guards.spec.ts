@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 type SeedContext = {
@@ -20,7 +20,7 @@ function requireEnv(value: string | undefined, name: string): string {
   return value;
 }
 
-async function clearStorageAndSetEnglish(page: any) {
+async function clearStorageAndSetEnglish(page: Page) {
   await page.goto("/");
   await page.evaluate(() => {
     try {
@@ -34,7 +34,7 @@ async function clearStorageAndSetEnglish(page: any) {
   await page.reload();
 }
 
-async function login(page: any, userEmail: string, userPassword: string) {
+async function login(page: Page, userEmail: string, userPassword: string) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(userEmail);
   await page.getByLabel(/password/i).fill(userPassword);

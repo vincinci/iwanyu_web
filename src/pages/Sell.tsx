@@ -72,7 +72,7 @@ export default function SellPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, user?.id]);
+  }, [supabase, user]);
 
   const myVendors = useMemo(() => ownedVendors, [ownedVendors]);
 
@@ -156,7 +156,7 @@ export default function SellPage() {
                     <Link to="/seller/products/new">
                       <Button variant="outline" className="rounded-full">Add a product</Button>
                     </Link>
-                    <Link to="/sell">
+                    <Link to="/seller/live-studio">
                       <Button variant="outline" className="rounded-full border-red-200 text-red-700 hover:bg-red-50">
                         Go Live Studio
                       </Button>

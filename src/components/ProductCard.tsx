@@ -105,7 +105,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             type="button"
             onClick={handleToggleFavorite}
             className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-gray-700 shadow-sm transition-all duration-200 hover:scale-105"
-            aria-label={isFavorite ? t("product.removeWishlist") : t("product.addWishlist")}
+            aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart size={16} className={isFavorite ? "fill-current text-red-500" : ""} />
           </button>
@@ -125,6 +125,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
           <p className="mt-1 text-sm text-gray-500">
             {t("product.soldBy")} {vendorName ?? "iwanyu"}
+          </p>
+          <p className={`mt-1 text-xs ${inStock ? "text-green-700" : "text-red-500"}`}>
+            {inStock ? "✓ In Stock" : t("product.outOfStock")}
           </p>
           
           <div className="mt-2 flex items-center justify-between gap-2">

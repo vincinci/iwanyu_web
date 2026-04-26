@@ -19,7 +19,6 @@ const PaymentCallbackPage = lazy(() => import("./pages/PaymentCallback"));
 const AccountPage = lazy(() => import("./pages/Account"));
 const OrdersPage = lazy(() => import("./pages/Orders"));
 const WishlistPage = lazy(() => import("./pages/Wishlist"));
-const SellPage = lazy(() => import("./pages/Sell"));
 const SellerOnboardingPage = lazy(() => import("./pages/SellerOnboarding"));
 const SellerDashboardPage = lazy(() => import("./pages/seller/SellerDashboard"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -33,6 +32,9 @@ const SellerNewProductPage = lazy(() => import("./pages/seller/SellerNewProduct"
 const SellerOrdersPage = lazy(() => import("./pages/seller/SellerOrders"));
 const SellerPayoutsPage = lazy(() => import("./pages/seller/SellerPayouts"));
 const SellerSettingsPage = lazy(() => import("./pages/seller/SellerSettings"));
+const SellerLiveStudioPage = lazy(() => import("./pages/seller/SellerLiveStudio"));
+const LivePage = lazy(() => import("./pages/Live"));
+const AuthCallbackPage = lazy(() => import("./pages/AuthCallback"));
 import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
 import { AuthProvider } from "./context/auth";
@@ -120,7 +122,9 @@ const AppContent = () => {
         <Route path="/orders" element={withSuspense(<OrdersPage />)} />
         <Route path="/wishlist" element={withSuspense(<WishlistPage />)} />
         <Route path="/sell" element={withSuspense(<SellerOnboardingPage />)} />
-        <Route path="/sell-info" element={withSuspense(<SellPage />)} />
+        <Route path="/sell-info" element={withSuspense(<SellerOnboardingPage />)} />
+        <Route path="/live" element={withSuspense(<LivePage />)} />
+        <Route path="/auth/callback" element={withSuspense(<AuthCallbackPage />)} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/vendor-application" element={withSuspense(<VendorApplicationPage />)} />
@@ -172,6 +176,14 @@ const AppContent = () => {
           element={
             <RequireAuth roles={["seller", "admin"]}>
               {withSuspense(<SellerSettingsPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/seller/live-studio"
+          element={
+            <RequireAuth roles={["seller", "admin"]}>
+              {withSuspense(<SellerLiveStudioPage />)}
             </RequireAuth>
           }
         />

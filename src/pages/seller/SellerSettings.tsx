@@ -121,7 +121,7 @@ export default function SellerSettingsPage() {
         return () => {
             cancelled = true;
         };
-    }, [supabase, toast, user?.email, user?.id]);
+    }, [supabase, t, toast, user?.email, user?.id]);
 
     async function saveSettings() {
         if (!supabase || !user?.id) return;

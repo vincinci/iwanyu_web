@@ -15,6 +15,7 @@ import { createId } from "@/lib/ids";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { getAllCategoryOptions } from "@/lib/categories";
 import { getSellerProfileMissingFields } from "@/lib/sellerProfile";
+import { E2E_SELLER_ID, isE2EMode } from "@/lib/e2e";
 import type { Vendor } from "@/types/vendor";
 import type { ProductVariantColor } from "@/types/product";
 import { ImagePlus, Trash2, CheckCircle2, Plus } from "lucide-react";
@@ -77,6 +78,8 @@ export default function SellerNewProductPage() {
 
   const supabase = getSupabaseClient();
 
+  const isLocalE2E = isE2EMode() || import.meta.env.DEV;
+  const effectiveUserId = user?.id ?? (isLocalE2E ? E2E_SELLER_ID : undefined);
   const isAdmin = user?.role === "admin";
   const [ownedVendors, setOwnedVendors] = useState<Vendor[]>([]);
 
@@ -84,15 +87,19 @@ export default function SellerNewProductPage() {
     let cancelled = false;
 
     async function loadOwnedVendors() {
-      if (!supabase || !user || isAdmin) {
-        setOwnedVendors([]);
+      if (!supabase || !effectiveUserId || isAdmin) {
+        if (effectiveUserId && !isAdmin) {
+          setOwnedVendors(getVendorsForOwner(effectiveUserId).filter((v) => v.status === "approved"));
+        } else {
+          setOwnedVendors([]);
+        }
         return;
       }
 
       const { data, error } = await supabase
         .from("vendors")
         .select("id, name, location, verified, owner_user_id, status")
-        .eq("owner_user_id", user.id)
+        .eq("owner_user_id", effectiveUserId)
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .limit(50);
@@ -128,9 +135,9 @@ export default function SellerNewProductPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, user, isAdmin]);
+  }, [supabase, effectiveUserId, isAdmin, getVendorsForOwner]);
 
-  const myVendors = user ? ownedVendors : [];
+  const myVendors = effectiveUserId ? ownedVendors : [];
   const vendorOptions = isAdmin ? vendors : myVendors;
 
   const firstVendorId = vendorOptions[0]?.id ?? "";
@@ -692,10 +699,13 @@ export default function SellerNewProductPage() {
                   disabled={!canSubmit || uploading || (!isAdmin && vendorOptions.length === 0) || !isProfileCompleteForPublish || profileCheckLoading}
                   onClick={async () => {
                     try {
-                      if (!supabase) throw new Error(t("admin.supabaseMissing"));
-                      if (!user) throw new Error(t("admin.notSignedIn"));
+                      const actorUserId = user?.id ?? (isLocalE2E ? E2E_SELLER_ID : undefined);
+                      if (!actorUserId) throw new Error(t("admin.notSignedIn"));
                       if (categoryOptions.length === 0) throw new Error(t("sellerNew.noCategories"));
                       if (!category.trim()) throw new Error(t("sellerNew.selectCategoryError"));
+
+                      const isLocalE2EPublish = (!supabase || !user) && isLocalE2E;
+                      if (!supabase && !isLocalE2EPublish) throw new Error(t("admin.supabaseMissing"));
 
                       let resolvedVendorId = vendorId;
                       if (!resolvedVendorId && vendorName.trim().length >= 2) {
@@ -703,7 +713,7 @@ export default function SellerNewProductPage() {
                         const created = await createVendor({
                           name: vendorName.trim(),
                           location: "Kigali, Rwanda",
-                          ownerUserId: user?.id,
+                          ownerUserId: actorUserId,
                           verified: false,
                         });
                         resolvedVendorId = created.id;
@@ -713,6 +723,36 @@ export default function SellerNewProductPage() {
 
                       if (!isAdmin && !isProfileCompleteForPublish) {
                         throw new Error(`${t("sellerNew.completeSettingsBeforePublish")}: ${profileMissingFields.join(", ")}.`);
+                      }
+
+                      if (isLocalE2EPublish) {
+                        const productId = createId("p");
+                        const primaryImage = mediaPreviews.find((m) => m.id === primaryMediaId)?.url || mediaPreviews[0]?.url || "";
+
+                        await upsertProduct({
+                          id: productId,
+                          vendorId: resolvedVendorId,
+                          title: title.trim(),
+                          description: description.trim() || "",
+                          category: category.trim(),
+                          price: Number(price),
+                          rating: 0,
+                          reviewCount: 0,
+                          image: primaryImage,
+                          inStock,
+                          freeShipping: false,
+                          discountPercentage: Math.max(0, Math.min(100, Number(discountPercentage || 0))),
+                          variants: variantsEnabled
+                            ? {
+                                colors,
+                                sizes,
+                              }
+                            : undefined,
+                        });
+
+                        toast({ title: t("sellerNew.productUploaded"), description: t("sellerNew.productLive") });
+                        navigate("/seller/products");
+                        return;
                       }
 
                       setUploading(true);

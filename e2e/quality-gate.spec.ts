@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 function isSameOrigin(url: string, baseURL: string) {
   try {
@@ -8,14 +8,14 @@ function isSameOrigin(url: string, baseURL: string) {
   }
 }
 
-function attachQualityGateGuards(page: any, baseURL: string) {
+function attachQualityGateGuards(page: Page, baseURL: string) {
   const severe: { type: string; text: string }[] = [];
 
   page.on("pageerror", (err: Error) => {
     severe.push({ type: "pageerror", text: err?.message ?? String(err) });
   });
 
-  page.on("requestfailed", (request: any) => {
+  page.on("requestfailed", (request: Parameters<Parameters<Page["on"]>[1]>[0]) => {
     const url = request.url?.() ?? "";
     const resourceType = request.resourceType?.() ?? "other";
     const failure = request.failure?.()?.errorText ?? "request failed";
@@ -27,7 +27,7 @@ function attachQualityGateGuards(page: any, baseURL: string) {
     severe.push({ type: `requestfailed:${resourceType}`, text: `${failure} ${url}` });
   });
 
-  page.on("console", (msg: any) => {
+  page.on("console", (msg: Parameters<Parameters<Page["on"]>[1]>[0]) => {
     const type = msg.type?.() ?? "log";
     if (type !== "error") return;
     const text = msg.text?.() ?? "";
@@ -117,7 +117,7 @@ test("quality gate: core navigation + no runtime crashes", async ({ page }) => {
 
   // Wishlist page should load (even if empty).
   await page.goto("/wishlist", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /wishlist/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your Wishlist", exact: true })).toBeVisible();
   await guard.assertNoSevereErrors();
 
   // Static/info pages should not 404.

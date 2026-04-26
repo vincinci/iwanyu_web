@@ -1,10 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 function hasRequiredCreds() {
   return Boolean(process.env.E2E_TEST_EMAIL && process.env.E2E_TEST_PASSWORD);
 }
 
-async function clearStorage(page: any) {
+async function clearStorage(page: Page) {
   await page.goto("/");
   await page.evaluate(() => {
     try {
@@ -17,7 +17,7 @@ async function clearStorage(page: any) {
   await page.reload();
 }
 
-async function login(page: any, email: string, password: string) {
+async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);

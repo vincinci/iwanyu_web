@@ -73,7 +73,7 @@ export default function SignupPage() {
     const redirectNext = nextParam ? `?next=${encodeURIComponent(nextParam)}` : "";
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/signup${redirectNext}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback${redirectNext}` },
     });
 
     if (e) setError(e.message);

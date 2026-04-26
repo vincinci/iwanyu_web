@@ -142,7 +142,7 @@ export default function SellerPayoutsPage() {
         return () => {
             cancelled = true;
         };
-    }, [supabase, toast, user?.id]);
+    }, [supabase, t, toast, user?.id]);
 
     const payoutMetrics = useMemo(() => {
         const completed = payouts

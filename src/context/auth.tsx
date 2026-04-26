@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { AuthRole } from "@/types/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
+import { clearE2ELocalUser, isE2EMode, readE2ELocalUser } from "@/lib/e2e";
 
 type CachedProfile = {
   name?: string;
@@ -270,7 +271,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const loadUser = useCallback(async () => {
     if (!supabase) {
-      setUser(null);
+      if (isE2EMode() || import.meta.env.DEV) {
+        const localUser = readE2ELocalUser();
+        setUser(
+          localUser
+            ? {
+                id: localUser.id,
+                email: localUser.email,
+                name: localUser.name,
+                role: localUser.role,
+                emailConfirmed: true,
+              }
+            : null
+        );
+      } else {
+        setUser(null);
+      }
       setIsReady(true);
       return;
     }
@@ -280,8 +296,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (session?.user) {
       setUserFromAuth(session.user);
     } else {
-      activeUserIdRef.current = null;
-      setUser(null);
+      const localUser = isE2EMode() || import.meta.env.DEV ? readE2ELocalUser() : null;
+      if (localUser) {
+        setUser({
+          id: localUser.id,
+          email: localUser.email,
+          name: localUser.name,
+          role: localUser.role,
+          emailConfirmed: true,
+        });
+      } else {
+        activeUserIdRef.current = null;
+        setUser(null);
+      }
     }
     
     setIsReady(true);
@@ -325,10 +352,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (supabase) {
           await supabase.auth.signOut();
         }
+        if (isE2EMode() || import.meta.env.DEV) {
+          clearE2ELocalUser();
+        }
         setUser(null);
       },
       setRole: async (role: AuthRole) => {
-        if (!supabase) throw new Error("Supabase is not configured");
+        if (!supabase) {
+          if (isE2EMode()) {
+            setUser((prev) => (prev ? { ...prev, role } : prev));
+            return;
+          }
+          throw new Error("Supabase is not configured");
+        }
         if (!user) throw new Error("Not signed in");
         
         // Update role in database
