@@ -222,8 +222,6 @@ const AppContent = () => {
         <Route path="/corporate" element={withSuspense(<StaticPage title="Corporate Information" />)} />
         <Route path="/science" element={withSuspense(<StaticPage title="iwanyu Science" />)} />
         <Route path="/affiliate" element={withSuspense(<StaticPage title="Affiliate Program" />)} />
-        <Route path="/about" element={withSuspense(<StaticPage title="About Us" />)} />
-        <Route path="/affiliate" element={withSuspense(<StaticPage title="Become an Affiliate" />)} />
         <Route path="/advertise" element={withSuspense(<StaticPage title="Advertise Your Products" />)} />
         <Route path="/publish" element={withSuspense(<StaticPage title="Self-Publish" />)} />
         <Route path="/business-card" element={withSuspense(<StaticPage title="iwanyu Business Card" />)} />

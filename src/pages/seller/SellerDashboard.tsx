@@ -1,4 +1,4 @@
-import { BarChart3, Package, ShoppingBag, Store, Wallet, Bell, ArrowRight } from "lucide-react";
+import { BarChart3, Package, ShoppingBag, Store, Wallet, Bell, ArrowRight, Radio } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -303,6 +303,17 @@ export default function SellerDashboardPage() {
                       <h3 className="text-base font-semibold">{t("seller.quickActions")}</h3>
                     </div>
                     <div className="grid gap-3">
+                       <Link to="/sell" className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors bg-red-50/40">
+                         <div>
+                           <div className="font-medium text-sm flex items-center gap-2">
+                             <Radio size={14} className="text-red-600" />
+                             Live studio
+                           </div>
+                           <div className="text-gray-500 text-xs">Start a live selling or auction session on the website.</div>
+                         </div>
+                         <ArrowRight size={16} className="text-gray-400" />
+                       </Link>
+
                        <Link to="/seller/products/new" className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
                          <div>
                            <div className="font-medium text-sm">{t("seller.addProduct")}</div>

@@ -76,23 +76,25 @@ export default function CategoryPage() {
             <p className="text-gray-600 text-base">Try browsing other categories or check back later.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {filtered.slice(0, visibleCount).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          {visibleCount < filtered.length && (
-            <div className="text-center mt-8">
-              <Button
-                variant="outline"
-                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                className="rounded-full px-8"
-              >
-                <ChevronDown size={16} className="mr-2" />
-                Show more ({filtered.length - visibleCount} remaining)
-              </Button>
+          <>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {filtered.slice(0, visibleCount).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
-          )}
+            {visibleCount < filtered.length && (
+              <div className="text-center mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="rounded-full px-8"
+                >
+                  <ChevronDown size={16} className="mr-2" />
+                  Show more ({filtered.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {categoryId !== "all" ? (

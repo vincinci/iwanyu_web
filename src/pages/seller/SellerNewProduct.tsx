@@ -14,6 +14,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { getAllCategoryOptions } from "@/lib/categories";
+import { getSellerProfileMissingFields } from "@/lib/sellerProfile";
 import type { Vendor } from "@/types/vendor";
 import type { ProductVariantColor } from "@/types/product";
 import { ImagePlus, Trash2, CheckCircle2, Plus } from "lucide-react";
@@ -27,6 +28,17 @@ type MediaPreview = {
   kind: "image" | "video";
   url: string;
   file: File;
+};
+
+type VendorProfileRow = {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  description: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
+  profile_completed: boolean | null;
 };
 
 function fileKey(file: File): string {
@@ -142,6 +154,8 @@ export default function SellerNewProductPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [profileCheckLoading, setProfileCheckLoading] = useState(false);
+  const [profileMissingFields, setProfileMissingFields] = useState<string[]>([]);
 
   const [variantsEnabled, setVariantsEnabled] = useState(true);
   const [colors, setColors] = useState<ProductVariantColor[]>([
@@ -168,6 +182,44 @@ export default function SellerNewProductPage() {
       (vendorId || vendorName.trim().length >= 2)
     );
   }, [title, price, vendorId, vendorName, category, categoryOptions.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVendorCompleteness() {
+      if (!supabase || isAdmin || !vendorId) {
+        setProfileMissingFields([]);
+        setProfileCheckLoading(false);
+        return;
+      }
+
+      setProfileCheckLoading(true);
+      const { data, error } = await supabase
+        .from("vendors")
+        .select("name, email, phone, location, description, logo_url, banner_url, profile_completed")
+        .eq("id", vendorId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error || !data) {
+        setProfileMissingFields(["store profile"]);
+        setProfileCheckLoading(false);
+        return;
+      }
+
+      const profile = data as VendorProfileRow;
+      const missing = getSellerProfileMissingFields(profile);
+      setProfileMissingFields(profile.profile_completed ? [] : missing);
+      setProfileCheckLoading(false);
+    }
+
+    void loadVendorCompleteness();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, supabase, vendorId]);
+
+  const isProfileCompleteForPublish = isAdmin || profileMissingFields.length === 0;
 
   const addFiles = (incoming: File[]) => {
     const accepted: File[] = [];
@@ -607,6 +659,23 @@ export default function SellerNewProductPage() {
                   )}
                 </div>
 
+                {!isAdmin && vendorId ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {profileCheckLoading
+                      ? t("sellerNew.checkingProfileCompleteness")
+                      : isProfileCompleteForPublish
+                      ? t("sellerNew.profileCompletePublishEnabled")
+                      : `${t("sellerNew.completeSettingsBeforePublish")}: ${profileMissingFields.join(", ")}.`}
+                    {!profileCheckLoading && !isProfileCompleteForPublish ? (
+                      <div className="mt-2">
+                        <Link to="/seller/settings" className="font-semibold underline underline-offset-2">
+                          {t("sellerNew.openStoreSettings")}
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">{t("sellerNew.media")}</span>
@@ -620,7 +689,7 @@ export default function SellerNewProductPage() {
 
                 <Button
                   className="w-full rounded-md"
-                  disabled={!canSubmit || uploading || (!isAdmin && vendorOptions.length === 0)}
+                  disabled={!canSubmit || uploading || (!isAdmin && vendorOptions.length === 0) || !isProfileCompleteForPublish || profileCheckLoading}
                   onClick={async () => {
                     try {
                       if (!supabase) throw new Error(t("admin.supabaseMissing"));
@@ -641,6 +710,10 @@ export default function SellerNewProductPage() {
                       }
 
                       if (!resolvedVendorId) throw new Error(t("sellerNew.missingVendor"));
+
+                      if (!isAdmin && !isProfileCompleteForPublish) {
+                        throw new Error(`${t("sellerNew.completeSettingsBeforePublish")}: ${profileMissingFields.join(", ")}.`);
+                      }
 
                       setUploading(true);
                       setUploadProgress({});

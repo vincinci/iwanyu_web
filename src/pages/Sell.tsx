@@ -156,6 +156,11 @@ export default function SellPage() {
                     <Link to="/seller/products/new">
                       <Button variant="outline" className="rounded-full">Add a product</Button>
                     </Link>
+                    <Link to="/sell">
+                      <Button variant="outline" className="rounded-full border-red-200 text-red-700 hover:bg-red-50">
+                        Go Live Studio
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               ) : (
