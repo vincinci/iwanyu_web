@@ -328,9 +328,9 @@ export default function LiveSessionPage() {
       {/* ── Main area: camera + desktop sidebar ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ── Camera column — portrait 9:16 centred in black ── */}
+        {/* ── Camera column — full-width on mobile, portrait 9:16 centred on desktop ── */}
         <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
-          <div className="relative h-full" style={{ aspectRatio: "9/16" }}>
+          <div className="relative h-full w-full lg:w-auto lg:aspect-[9/16]">
 
           {/* Video / paused state */}
           {cameraEnabled ? (

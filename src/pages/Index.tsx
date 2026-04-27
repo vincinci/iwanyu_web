@@ -124,12 +124,16 @@ const Index = () => {
               <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {activeLiveSessions.map((session) => (
                   <Link key={session.id} to={`/live/view/${session.id}`} className="group block rounded-2xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition-shadow">
-                    <div className="relative aspect-[3/4] bg-gray-100">
+                    <div className="relative aspect-[3/4] bg-gray-900">
                       {session.productImage ? (
                         <img src={session.productImage} alt={session.productTitle} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center">
-                          <Store className="h-10 w-10 text-gray-300" />
+                        <div className="h-full w-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-gray-800 to-gray-900">
+                          <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 border border-red-500/40">
+                            <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
+                            <span className="h-4 w-4 rounded-full bg-red-500" />
+                          </div>
+                          <span className="text-white/60 text-xs">{session.vendorName}</span>
                         </div>
                       )}
                       <div className="absolute top-2 left-2 flex gap-1">

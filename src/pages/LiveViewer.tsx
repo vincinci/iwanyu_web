@@ -630,9 +630,9 @@ function StreamView({
 
       {/* ── DESKTOP: two-column ── */}
       <div className="hidden md:flex min-h-screen bg-gray-950 text-white overflow-hidden">
-        {/* Left: Video — portrait 9:16 box centred in black letterbox */}
+        {/* Left: Video — portrait 9:16 box centred in black letterbox (desktop only) */}
         <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
-          <div className="relative h-full" style={{ aspectRatio: "9/16" }}>
+          <div className="relative h-full w-full lg:w-auto lg:aspect-[9/16]">
             <video ref={desktopVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
             <StreamStateBadge state={streamState} />
             <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-6 pt-6 pb-8 bg-gradient-to-b from-black/70 to-transparent z-20">
