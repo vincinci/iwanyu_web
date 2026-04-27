@@ -45,8 +45,17 @@ export default function SellerOnboardingPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Callback ref: fires the instant the <video> element is added to / removed from the DOM
+  const videoCallbackRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && streamRef.current) {
+      node.srcObject = streamRef.current;
+      node.play().catch(console.error);
+    }
+  }, []);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -102,21 +111,17 @@ export default function SellerOnboardingPage() {
         audio: false,
       });
       streamRef.current = stream;
-      // Set active first so the <video> element is rendered, then useEffect attaches the stream
+      // If the video element is already mounted (e.g. retake), attach immediately
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(console.error);
+      }
       setCameraActive(true);
     } catch (err) {
       console.error("Camera error:", err);
       setCameraError("Hatwashoboye gufungura camera. Reba niba wemeye camera muri settings.");
     }
   }, []);
-
-  // Attach stream once the <video> element is in the DOM
-  useEffect(() => {
-    if (cameraActive && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(console.error);
-    }
-  }, [cameraActive]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -519,15 +524,11 @@ export default function SellerOnboardingPage() {
                       <div className="border-2 border-amber-400 rounded-xl overflow-hidden bg-black">
                         <div className="relative w-full aspect-[4/3] bg-gray-900">
                           <video
-                            ref={videoRef}
+                            ref={videoCallbackRef}
                             autoPlay
                             playsInline
                             muted
-                            onLoadedMetadata={() => {
-                              // Ensure video plays when metadata is loaded
-                              videoRef.current?.play().catch(console.error);
-                              setCameraReady(true);
-                            }}
+                            onLoadedMetadata={() => setCameraReady(true)}
                             onPlay={() => setCameraReady(true)}
                             className="absolute inset-0 w-full h-full object-cover"
                             style={{ transform: "scaleX(-1)" }}
