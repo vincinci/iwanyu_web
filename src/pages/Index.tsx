@@ -8,13 +8,13 @@ import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { CATEGORIES, normalizeCategoryName } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, Gavel, Radio, Store } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Product } from "@/types/product";
 import { useLanguage } from "@/context/languageContext";
 import { ArrowLeftRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { fetchActiveLiveSessions, summarizeLiveForHome, type LiveSession } from "@/lib/liveSessions";
+import { fetchActiveLiveSessions, type LiveSession } from "@/lib/liveSessions";
 import { formatMoney } from "@/lib/money";
 
 const Index = () => {
@@ -42,8 +42,6 @@ const Index = () => {
       window.clearInterval(id);
     };
   }, []);
-
-  const liveSummary = summarizeLiveForHome(vendors, products, activeLiveSessions);
 
   // Get recently viewed products
   const recentlyViewedProducts = recentlyViewedIds
@@ -114,68 +112,58 @@ const Index = () => {
 
         {/* Featured categories */}
         <div className="container py-12">
-          <section className="mb-12 rounded-3xl border border-red-100 bg-red-50/60 p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Live On Home</h2>
-                <p className="mt-1 text-sm text-gray-600">
-                  Join active live sellers and auctions right from the home page.
-                </p>
+          {activeLiveSessions.length > 0 && (
+            <section className="mb-12" id="live">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                  LIVE NOW
+                </span>
+                <h2 className="text-xl font-bold text-gray-900">Live on iwanyu</h2>
+                <span className="ml-auto text-xs text-gray-400">{activeLiveSessions.length} session{activeLiveSessions.length !== 1 ? 's' : ''}</span>
               </div>
-              <Link to="/live">
-                <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800">Open Live</Button>
-              </Link>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                <div className="mb-2 text-sm font-semibold text-gray-900">People live now</div>
-                {liveSummary.liveSellers.length === 0 ? (
-                  <p className="text-sm text-gray-500">No sellers are live now. Check back soon.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {liveSummary.liveSellers.slice(0, 4).map((seller) => (
-                      <div key={seller.vendorId} className="flex items-center justify-between rounded-xl border border-gray-100 p-3">
-                        <div>
-                          <div className="font-medium text-gray-900">{seller.vendorName}</div>
-                          <div className="text-xs text-gray-500">{seller.watchers} viewers</div>
+              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {activeLiveSessions.map((session) => (
+                  <Link key={session.id} to={`/live/view/${session.id}`} className="group block rounded-2xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition-shadow">
+                    <div className="relative aspect-[3/4] bg-gray-100">
+                      {session.productImage ? (
+                        <img src={session.productImage} alt={session.productTitle} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center">
+                          <Store className="h-10 w-10 text-gray-300" />
                         </div>
-                        <Link to="/live">
-                          <Button size="sm" variant="outline" className="rounded-full">Watch</Button>
-                        </Link>
+                      )}
+                      <div className="absolute top-2 left-2 flex gap-1">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                          <span className="h-1 w-1 rounded-full bg-white animate-pulse" /> LIVE
+                        </span>
+                        {session.auctionEnabled && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-purple-600/90 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                            <Gavel className="h-2.5 w-2.5" /> Auction
+                          </span>
+                        )}
+                        {!session.auctionEnabled && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-600/90 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                            <Radio className="h-2.5 w-2.5" /> Stream
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                <div className="mb-2 text-sm font-semibold text-gray-900">Live auctions available</div>
-                {liveSummary.liveAuctions.length === 0 ? (
-                  <p className="text-sm text-gray-500">No live auctions are running now.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {liveSummary.liveAuctions.slice(0, 4).map((auction) => (
-                      <div key={auction.id} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
-                        <img src={auction.productImage} alt={auction.productTitle} className="h-12 w-12 rounded-lg object-cover" />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-gray-900">{auction.productTitle}</div>
-                          <div className="text-xs text-gray-500">Bid now: {formatMoney(auction.currentBidRwf)}</div>
-                        </div>
-                        <Link to={`/product/${auction.productId}`}>
-                          <Button size="sm" className="rounded-full">Bid</Button>
-                        </Link>
+                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur">
+                        <Eye className="h-3 w-3" /> {session.watchers}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs text-gray-500 truncate">{session.vendorName}</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{session.productTitle}</p>
+                      {session.auctionEnabled && (
+                        <p className="text-xs text-purple-700 font-medium mt-1">{formatMoney(session.currentBidRwf)} current bid</p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </div>
-
-            {activeLiveSessions.length > 0 ? (
-              <p className="mt-3 text-xs text-gray-500">{activeLiveSessions.length} total live sessions are active.</p>
-            ) : null}
-          </section>
+            </section>
+          )}
 
           {loading ? (
             <div className="space-y-12">

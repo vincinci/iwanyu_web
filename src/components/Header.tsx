@@ -159,7 +159,7 @@ export const Header = () => {
               </Link>
 
               <Link
-                to="/live"
+                to="/#live"
                 className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
               >
                 Live

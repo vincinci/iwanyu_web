@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HelmetProvider } from 'react-helmet-async';
 import { useAuth } from "@/context/auth";
@@ -35,7 +35,6 @@ const SellerSettingsPage = lazy(() => import("./pages/seller/SellerSettings"));
 const SellerLiveStudioPage = lazy(() => import("./pages/seller/SellerLiveStudio"));
 const LiveSessionPage = lazy(() => import("./pages/LiveSession"));
 const LiveViewerPage = lazy(() => import("./pages/LiveViewer"));
-const LivePage = lazy(() => import("./pages/Live"));
 const AuthCallbackPage = lazy(() => import("./pages/AuthCallback"));
 import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
@@ -125,7 +124,7 @@ const AppContent = () => {
         <Route path="/wishlist" element={withSuspense(<WishlistPage />)} />
         <Route path="/sell" element={withSuspense(<SellerOnboardingPage />)} />
         <Route path="/sell-info" element={withSuspense(<SellerOnboardingPage />)} />
-        <Route path="/live" element={withSuspense(<LivePage />)} />
+        <Route path="/live" element={<Navigate to="/" replace />} />
         <Route path="/live/view/:sessionId" element={withSuspense(<LiveViewerPage />)} />
         <Route 
           path="/live/:sessionId" 
