@@ -195,161 +195,172 @@ function AuctionView({
     walletAvailable !== null && bidAmount !== "" && Number(bidAmount) > walletAvailable;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-100 px-4 pb-3 flex items-center gap-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <Link to="/live" className="text-gray-500 hover:text-gray-800">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-gray-900 truncate">{session.productTitle}</h1>
-          <p className="text-xs text-gray-500">{session.vendorName}</p>
-        </div>
-        <span className="flex items-center gap-1 text-xs text-gray-500">
-          <Eye className="h-3.5 w-3.5" /> {viewerCount}
-        </span>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {/* Product image */}
+    <div className="min-h-screen bg-gray-950 flex flex-col text-white">
+      {/* Hero image — full bleed with dark overlay */}
+      <div className="relative w-full" style={{ minHeight: 320 }}>
         {session.productImage ? (
-          <div className="w-full aspect-square max-h-80 overflow-hidden bg-gray-100">
-            <img src={session.productImage} alt={session.productTitle} className="w-full h-full object-cover" />
-          </div>
+          <img src={session.productImage} alt={session.productTitle} className="w-full object-cover" style={{ height: 320 }} />
         ) : (
-          <div className="w-full aspect-square max-h-80 bg-gray-100 flex items-center justify-center">
-            <ShoppingBag className="h-16 w-16 text-gray-300" />
+          <div className="w-full flex items-center justify-center bg-gray-900" style={{ height: 320 }}>
+            <ShoppingBag className="h-20 w-20 text-gray-700" />
           </div>
         )}
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-950/70 to-transparent" style={{ height: 80 }} />
 
-        {/* Badges */}
-        <div className="px-4 pt-4 flex items-center gap-2 flex-wrap">
-          <Badge className="bg-red-500 text-white rounded-full text-xs px-2 py-0.5 flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
-          </Badge>
-          <Badge variant="outline" className="rounded-full text-xs border-purple-300 text-purple-700">
-            <Gavel className="h-3 w-3 mr-1" /> Auction
-          </Badge>
-          {session.auctionDurationHours && (
-            <span className="text-xs text-gray-500 flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" /> {session.auctionDurationHours}h
-            </span>
-          )}
+        {/* Top nav */}
+        <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+          <Link to="/live" className="h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white hover:bg-black/60 shrink-0">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex-1" />
+          <div className="flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur px-3 py-1.5 text-xs text-white/80">
+            <Eye className="h-3.5 w-3.5" /> {viewerCount}
+          </div>
         </div>
 
+        {/* Bottom of image: title + badges */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-0.5 text-[11px] font-bold text-white">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-600/90 backdrop-blur px-2.5 py-0.5 text-[11px] font-bold text-white">
+              <Gavel className="h-3 w-3" /> Auction
+            </span>
+            {session.auctionDurationHours && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 backdrop-blur px-2.5 py-0.5 text-[11px] text-white/80">
+                <Clock className="h-3 w-3" /> {session.auctionDurationHours}h
+              </span>
+            )}
+          </div>
+          <h1 className="text-2xl font-extrabold text-white leading-tight drop-shadow">{session.productTitle}</h1>
+          <p className="text-sm text-white/60 mt-0.5">{session.vendorName}</p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-4 pt-4">
         {/* Description */}
         {session.description && (
-          <div className="mx-4 mt-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{session.description}</p>
+          <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+            <p className="text-sm text-white/70 leading-relaxed whitespace-pre-line">{session.description}</p>
           </div>
         )}
 
         {/* Bid panel */}
-        <div className="mx-4 mt-4 rounded-2xl bg-purple-50 border border-purple-200 p-4 space-y-3">
-          <div>
-            <div className="text-xs text-purple-600 font-medium uppercase tracking-wide mb-0.5">Current Bid</div>
-            <div className="text-2xl font-bold text-purple-900">{formatMoney(session.currentBidRwf)}</div>
+        <div className="rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #a855f7 100%)' }}>
+          <div className="px-5 pt-5 pb-4">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-purple-200 mb-1">Current Bid</div>
+            <div className="text-4xl font-black text-white tracking-tight">{formatMoney(session.currentBidRwf)}</div>
           </div>
 
-          {user ? (
-            <>
-              {walletAvailable !== null && (
-                <div className="rounded-lg bg-white border border-purple-100 px-3 py-2 flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1 text-gray-600">
-                    <Wallet className="h-3.5 w-3.5 text-purple-500" /> Wallet available
-                  </span>
-                  <span className="font-semibold text-gray-900">{formatMoney(walletAvailable)}</span>
+          <div className="bg-black/20 backdrop-blur px-5 py-4 space-y-3">
+            {user ? (
+              <>
+                {walletAvailable !== null && (
+                  <div className="rounded-xl bg-white/10 px-3 py-2 flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-purple-100">
+                      <Wallet className="h-3.5 w-3.5" /> Wallet available
+                    </span>
+                    <span className="font-bold text-white">{formatMoney(walletAvailable)}</span>
+                  </div>
+                )}
+                {myLockedBid > 0 && (
+                  <div className="rounded-xl bg-amber-400/20 border border-amber-400/30 px-3 py-2 flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-amber-300">
+                      <Lock className="h-3.5 w-3.5" /> Your bid (locked)
+                    </span>
+                    <span className="font-bold text-amber-200">{formatMoney(myLockedBid)}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder={`Beat ${formatMoney(session.currentBidRwf)}`}
+                    value={bidAmount}
+                    onChange={(e) => { setBidAmount(e.target.value); setBidMsg(null); }}
+                    className={`rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/60 focus:ring-0 flex-1 ${overBudget ? "border-red-400" : ""}`}
+                    min={session.currentBidRwf + 1}
+                  />
+                  <Button
+                    onClick={handleBid}
+                    disabled={bidding || overBudget || !bidAmount}
+                    className="rounded-xl bg-white text-purple-700 hover:bg-purple-50 font-bold shrink-0 px-5 disabled:opacity-50"
+                  >
+                    <TrendingUp className="h-4 w-4 mr-1.5" />
+                    {bidding ? "…" : "Bid"}
+                  </Button>
                 </div>
-              )}
-              {myLockedBid > 0 && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1 text-amber-700">
-                    <Lock className="h-3.5 w-3.5" /> Your current bid (locked)
-                  </span>
-                  <span className="font-semibold text-amber-800">{formatMoney(myLockedBid)}</span>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder={`More than ${formatMoney(session.currentBidRwf)}`}
-                  value={bidAmount}
-                  onChange={(e) => { setBidAmount(e.target.value); setBidMsg(null); }}
-                  className={`rounded-lg ${overBudget ? "border-red-400" : ""}`}
-                  min={session.currentBidRwf + 1}
-                />
-                <Button
-                  onClick={handleBid}
-                  disabled={bidding || overBudget || !bidAmount}
-                  className="rounded-lg bg-purple-600 hover:bg-purple-700 text-white shrink-0"
-                >
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                  {bidding ? "Placing…" : "Bid"}
-                </Button>
+                {overBudget && (
+                  <p className="text-xs text-red-300 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
+                    Exceeds balance ({formatMoney(walletAvailable!)})
+                  </p>
+                )}
+                {walletAvailable === 0 && !overBudget && (
+                  <p className="text-xs text-amber-300 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                    Wallet empty — top up to bid
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-3">
+                <p className="text-sm text-purple-200 mb-3">Sign in to place a bid</p>
+                <Link to="/login">
+                  <Button className="rounded-full bg-white text-purple-700 hover:bg-purple-50 font-bold px-8">
+                    Log In to Bid
+                  </Button>
+                </Link>
               </div>
-              {overBudget && (
-                <p className="text-xs text-red-600">
-                  Bid exceeds your available balance ({formatMoney(walletAvailable!)}).
-                </p>
-              )}
-              {walletAvailable === 0 && (
-                <p className="text-xs text-amber-600">Your wallet is empty. Top up to place bids.</p>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-2">
-              <p className="text-sm text-purple-700 mb-2">Log in to place a bid</p>
-              <Link to="/login">
-                <Button size="sm" className="rounded-full bg-purple-600 hover:bg-purple-700 text-white">
-                  Log In to Bid
-                </Button>
-              </Link>
-            </div>
-          )}
+            )}
 
-          {bidMsg && (
-            <p className={`text-sm font-medium ${bidMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
-              {bidMsg.text}
-            </p>
-          )}
+            {bidMsg && (
+              <p className={`text-sm font-semibold flex items-center gap-1.5 ${bidMsg.type === "ok" ? "text-green-300" : "text-red-300"}`}>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${bidMsg.type === "ok" ? "bg-green-400" : "bg-red-400"}`} />
+                {bidMsg.text}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Chat */}
-        <div className="mx-4 mt-4 mb-4 rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-            <MessageCircle className="h-4 w-4 text-gray-500" />
-            <span className="font-semibold text-sm text-gray-900">Live Chat</span>
-            <span className="text-xs text-gray-400 ml-auto">{comments.length} messages</span>
+        <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+            <MessageCircle className="h-4 w-4 text-purple-400" />
+            <span className="font-semibold text-sm text-white">Live Chat</span>
+            <span className="text-xs text-white/30 ml-auto">{comments.length}</span>
           </div>
           <div className="h-52 overflow-y-auto p-3 space-y-2.5">
             {comments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <MessageCircle className="h-7 w-7 mb-1 opacity-40" />
+              <div className="flex flex-col items-center justify-center h-full text-white/20">
+                <MessageCircle className="h-7 w-7 mb-1" />
                 <p className="text-xs">No messages yet</p>
               </div>
             ) : (
               comments.map((c) => (
                 <div key={c.id} className="flex gap-2">
-                  <div className="h-6 w-6 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700 shrink-0">
+                  <div className="h-6 w-6 rounded-full bg-purple-500/40 border border-purple-400/30 flex items-center justify-center text-[10px] font-bold text-purple-200 shrink-0">
                     {c.userName.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs font-semibold text-gray-800 mr-1">{c.userName}</span>
-                    <span className="text-[10px] text-gray-400">{timeAgo(c.createdAt)}</span>
-                    <p className="text-sm text-gray-700 break-words">{c.text}</p>
+                    <span className="text-xs font-semibold text-white/80 mr-1">{c.userName}</span>
+                    <span className="text-[10px] text-white/30">{timeAgo(c.createdAt)}</span>
+                    <p className="text-sm text-white/70 break-words">{c.text}</p>
                   </div>
                 </div>
               ))
             )}
             <div ref={commentsEndRef} />
           </div>
-          <div className="border-t border-gray-100 p-3 space-y-2">
+          <div className="border-t border-white/10 p-3 space-y-2">
             {!user && (
               <Input
                 placeholder="Your name (optional)"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="rounded-lg text-sm h-8"
+                className="rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 text-sm h-8"
                 maxLength={60}
               />
             )}
@@ -358,11 +369,11 @@ function AuctionView({
                 placeholder={user ? "Say something…" : "Comment as guest…"}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                className="rounded-lg"
+                className="rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 flex-1"
                 maxLength={500}
                 disabled={posting}
               />
-              <Button type="submit" size="sm" disabled={posting || !commentText.trim()} className="rounded-lg shrink-0">
+              <Button type="submit" size="icon" disabled={posting || !commentText.trim()} className="rounded-xl bg-purple-600 hover:bg-purple-500 text-white shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
             </form>
