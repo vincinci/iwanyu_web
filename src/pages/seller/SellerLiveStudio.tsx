@@ -55,12 +55,25 @@ export default function SellerLiveStudioPage() {
   }, [ownedProducts, selectedProductId]);
 
   const handleGoLive = async () => {
-    if (!selectedProduct || !primaryVendor) return;
+    if (!primaryVendor) return;
+    
+    // If no product selected, use a placeholder/generic product for the session
+    const productToUse = selectedProduct || {
+      id: `live-session-${Date.now()}`,
+      title: mode === "auction" ? "Live Auction Session" : "Live Showcase",
+      price: 0,
+      image: "",
+      vendorId: primaryVendor.id,
+      description: "",
+      category: "",
+      variants: [],
+    };
+    
     await createLiveSession({
       vendorId: primaryVendor.id,
       vendorName: primaryVendor.name,
       sellerUserId: user?.id,
-      product: selectedProduct,
+      product: productToUse as any,
       auctionEnabled: mode === "auction",
     });
     await refreshSessions();
@@ -93,14 +106,15 @@ export default function SellerLiveStudioPage() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <div>
-                  <Label htmlFor="product">Product</Label>
+                  <Label htmlFor="product">Product (Optional)</Label>
+                  <p className="text-xs text-gray-500 mt-1">Select a product or go live to showcase multiple items</p>
                   <select
                     id="product"
                     className="mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
                   >
-                    <option value="">Select product</option>
+                    <option value="">No product selected - you can add items during stream</option>
                     {ownedProducts.map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.title}
@@ -138,14 +152,24 @@ export default function SellerLiveStudioPage() {
                 <div className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-600">
                   <div className="font-medium text-gray-900">Preview</div>
                   <div className="mt-2">Store: {primaryVendor.name}</div>
-                  <div>Product: {selectedProduct?.title || "Not selected"}</div>
-                  <div>Starting price: {selectedProduct ? formatMoney(selectedProduct.price) : "-"}</div>
+                  <div>Product: {selectedProduct?.title || "No product yet - add during stream"}</div>
+                  <div>Starting price: {selectedProduct ? formatMoney(selectedProduct.price) : "N/A - you'll set prices when showcasing"}</div>
                   <div>Session type: {mode === "auction" ? "Auction" : "Showcase"}</div>
                 </div>
 
-                <Button onClick={handleGoLive} disabled={!selectedProduct} className="rounded-full">
+                <Button onClick={handleGoLive} className="rounded-full">
                   <Radio className="mr-2 h-4 w-4" /> Go Live Now
                 </Button>
+
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-900">
+                  <div className="font-medium mb-1">How it works:</div>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Go live immediately - no need to pre-select a product</li>
+                    <li>Once live, showcase your products and create variants on-the-fly</li>
+                    <li>Set inventory count for each item you showcase</li>
+                    <li>Sold-out items are automatically hidden from buyers</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
 
