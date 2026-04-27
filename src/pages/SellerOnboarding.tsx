@@ -102,16 +102,21 @@ export default function SellerOnboardingPage() {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      // Set active first so the <video> element is rendered, then useEffect attaches the stream
       setCameraActive(true);
     } catch (err) {
       console.error("Camera error:", err);
       setCameraError("Hatwashoboye gufungura camera. Reba niba wemeye camera muri settings.");
     }
   }, []);
+
+  // Attach stream once the <video> element is in the DOM
+  useEffect(() => {
+    if (cameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(console.error);
+    }
+  }, [cameraActive]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {

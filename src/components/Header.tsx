@@ -151,12 +151,14 @@ export const Header = () => {
                 <span className="text-xs font-semibold text-gray-500">{t("lang.label")}</span>
                 <LanguageSwitcher />
               </div>
-              <Link
-                to={sellLink}
-                className="inline-flex items-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-black shadow-sm hover:bg-amber-600 transition-colors"
-              >
-                {t("header.sellOn")}
-              </Link>
+              {!(user?.role === 'seller' || user?.role === 'admin') && (
+                <Link
+                  to={sellLink}
+                  className="inline-flex items-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-black shadow-sm hover:bg-amber-600 transition-colors"
+                >
+                  {t("header.sellOn")}
+                </Link>
+              )}
 
               <Link
                 to="/#live"
@@ -283,12 +285,14 @@ export const Header = () => {
 
             {/* Mobile Menu Toggle */}
             <div className="ml-auto flex items-center gap-2 md:hidden">
-              <Link
-                to={sellLink}
-                className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-black"
-              >
-                {t("header.sell")}
-              </Link>
+              {!(user?.role === 'seller' || user?.role === 'admin') && (
+                <Link
+                  to={sellLink}
+                  className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-black"
+                >
+                  {t("header.sell")}
+                </Link>
+              )}
               <Link to="/cart" className="relative text-black">
                 <ShoppingBag size={24} strokeWidth={1.5} />
                 {itemCount > 0 && (
@@ -360,7 +364,9 @@ export const Header = () => {
 
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-muted-foreground mb-2">{t("footer.shop")}</div>
-                  <Link to={sellLink} onClick={toggleMobileMenu} className="block py-2 text-sm font-semibold text-amber-700">{t("header.sellOn")}</Link>
+                  {!(user?.role === 'seller' || user?.role === 'admin') && (
+                    <Link to={sellLink} onClick={toggleMobileMenu} className="block py-2 text-sm font-semibold text-amber-700">{t("header.sellOn")}</Link>
+                  )}
                   <Link to="/category/all" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.allCategories")}</Link>
                   <Link to="/deals" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.deals")}</Link>
                 </div>

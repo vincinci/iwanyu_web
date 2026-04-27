@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '@/context/languageContext';
+import { useAuth } from '@/context/auth';
 import { useEffect, useState } from 'react';
 import { getPublicSupabaseClient } from '@/lib/supabaseClient';
 
@@ -9,6 +10,8 @@ const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264
 
 export const HeroSection = () => {
     const { t } = useLanguage();
+    const { user } = useAuth();
+    const isSeller = user?.role === 'seller' || user?.role === 'admin';
     const [heroImageUrl, setHeroImageUrl] = useState(DEFAULT_HERO_IMAGE);
 
     useEffect(() => {
@@ -39,11 +42,7 @@ export const HeroSection = () => {
             <div className="container mx-auto px-4 py-10 md:py-14">
                 <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
                     <div className="lg:col-span-6">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600">
-                            <ShieldCheck size={14} className="text-emerald-600" />
-                            {t("hero.trusted")}
-                        </span>
-                        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-gray-900 md:text-5xl">
+                        <h1 className="text-4xl font-semibold tracking-tight text-gray-900 md:text-5xl">
                             {t("hero.title")}
                         </h1>
                         <p className="mt-4 text-lg text-gray-600">
@@ -59,17 +58,11 @@ export const HeroSection = () => {
                             <Button asChild variant="outline" className="rounded-full px-7">
                                 <Link to="/deals">{t("hero.viewDeals")}</Link>
                             </Button>
-                            <Button asChild className="rounded-full bg-amber-500 text-black hover:bg-amber-600 px-7">
-                                <Link to="/sell">{t("header.sellOn")}</Link>
-                            </Button>
-                        </div>
-                        <div className="mt-6 flex items-center gap-4 text-sm text-gray-500">
-                            <span className="inline-flex items-center gap-2">
-                                <Truck size={16} className="text-gray-600" /> {t("hero.sameWeek")}
-                            </span>
-                            <span className="inline-flex items-center gap-2">
-                                <ShieldCheck size={16} className="text-gray-600" /> {t("hero.secure")}
-                            </span>
+                            {!isSeller && (
+                                <Button asChild className="rounded-full bg-amber-500 text-black hover:bg-amber-600 px-7">
+                                    <Link to="/sell">{t("header.sellOn")}</Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                     <div className="lg:col-span-6">
