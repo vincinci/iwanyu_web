@@ -2,6 +2,16 @@ import type { Product } from "@/types/product";
 import type { Vendor } from "@/types/vendor";
 import { getPublicSupabaseClient, getSupabaseClient } from "@/lib/supabaseClient";
 
+export type StreamProduct = {
+  id: string;
+  title: string;
+  color: string;
+  size: string;
+  priceRwf: number;
+  quantityAvailable: number;
+  imageUrl?: string;
+};
+
 export type LiveSession = {
   id: string;
   vendorId: string;
@@ -15,6 +25,7 @@ export type LiveSession = {
   watchers: number;
   currentBidRwf: number;
   status: "live" | "ended";
+  streamProducts?: StreamProduct[];
 };
 
 const LIVE_SESSIONS_KEY = "iwanyu:live-sessions:v1";
@@ -31,6 +42,7 @@ type DbLiveAuctionRow = {
   is_live: boolean | null;
   live_room: string | null;
   stream_url: string | null;
+  stream_products: StreamProduct[] | null;
 };
 
 function parseAuctionDurationHours(value: string | null | undefined) {
@@ -112,7 +124,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
 
   const { data, error } = await supabase
     .from("auctions")
-    .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url")
+    .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url, stream_products")
     .eq("is_live", true)
     .order("created_at", { ascending: false })
     .limit(60);
@@ -170,6 +182,9 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
         watchers: bidCountByAuction.get(auctionId) ?? 0,
         currentBidRwf: liveBid,
         status: "live",
+        streamProducts: Array.isArray(row.stream_products)
+          ? (row.stream_products as StreamProduct[])
+          : [],
       };
     });
 
@@ -252,6 +267,25 @@ export async function createLiveSession(input: {
 
   writeRawSessions([next, ...existing.filter((session) => session.status === "live")]);
   return next;
+}
+
+/** Push the current product list to Supabase so viewers see it in real time. */
+export async function updateStreamProducts(
+  sessionId: string,
+  products: StreamProduct[]
+): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    await supabase
+      .from("auctions")
+      .update({ stream_products: products })
+      .eq("id", sessionId);
+  }
+  // Also keep local cache in sync
+  const next = getLiveSessions().map((s) =>
+    s.id === sessionId ? { ...s, streamProducts: products } : s
+  );
+  writeRawSessions(next);
 }
 
 export async function endLiveSession(sessionId: string) {

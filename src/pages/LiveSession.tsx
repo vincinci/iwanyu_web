@@ -5,20 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Mic, Plus, TrendingUp, Minus, MessageCircle, Send } from "lucide-react";
-import { getLiveSessions, endLiveSession, type LiveSession } from "@/lib/liveSessions";
+import { getLiveSessions, endLiveSession, updateStreamProducts, type LiveSession, type StreamProduct } from "@/lib/liveSessions";
 import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
+import { LiveBroadcaster } from "@/lib/liveWebRTC";
 import { useAuth } from "@/context/auth";
 import { formatMoney } from "@/lib/money";
 
-type PostedStreamProduct = {
-  id: string;
-  title: string;
-  color: string;
-  size: string;
-  priceRwf: number;
-  quantityAvailable: number;
-  soldCount: number;
-};
+type PostedStreamProduct = StreamProduct & { soldCount: number };
 
 function productsStorageKey(sessionId: string) {
   return `iwanyu:live-session-products:${sessionId}`;
@@ -31,6 +24,7 @@ export default function LiveSessionPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const broadcasterRef = useRef<LiveBroadcaster | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   
   const [session, setSession] = useState<LiveSession | null>(null);
@@ -139,20 +133,16 @@ export default function LiveSessionPage() {
     window.localStorage.setItem(productsStorageKey(sessionId), JSON.stringify(postedProducts));
   }, [postedProducts, sessionId]);
 
-  // Start camera stream
+  // Start camera stream + WebRTC broadcast
   useEffect(() => {
-    if (!cameraEnabled) return;
+    if (!cameraEnabled || !sessionId) return;
 
     const startCamera = async () => {
       setCameraStatus("starting");
       setError(null);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          },
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
           audio: true,
         });
 
@@ -160,14 +150,20 @@ export default function LiveSessionPage() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.muted = true;
-          try {
-            await videoRef.current.play();
-          } catch {
-            // Browser may block autoplay on some devices; user can use resume button.
-          }
+          try { await videoRef.current.play(); } catch { /* autoplay blocked */ }
         }
         setCameraStatus("live");
-      } catch (err) {
+
+        // Start (or update) WebRTC broadcast
+        if (!broadcasterRef.current) {
+          const bc = new LiveBroadcaster(sessionId);
+          bc.setStream(stream);
+          await bc.start();
+          broadcasterRef.current = bc;
+        } else {
+          broadcasterRef.current.setStream(stream);
+        }
+      } catch {
         setCameraStatus("error");
         setError("Camera or microphone could not start. Please allow permissions and click Resume Camera.");
       }
@@ -177,11 +173,11 @@ export default function LiveSessionPage() {
 
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
     };
-  }, [cameraEnabled]);
+  }, [cameraEnabled, sessionId]);
 
   const totals = useMemo(() => {
     const totalListed = postedProducts.reduce((sum, p) => sum + Math.max(0, p.quantityAvailable), 0);
@@ -197,35 +193,36 @@ export default function LiveSessionPage() {
     const priceRwf = Math.max(0, Math.round(Number(price || 0)));
     const quantityAvailable = Math.max(1, Math.round(Number(quantity || 0)));
 
-    if (!normalizedTitle) {
-      setError("Enter a product title before posting.");
-      return;
-    }
-    if (!priceRwf) {
-      setError("Enter a valid product price.");
-      return;
-    }
+    if (!normalizedTitle) { setError("Enter a product title before posting."); return; }
+    if (!priceRwf) { setError("Enter a valid product price."); return; }
 
     setError(null);
     setPostingProduct(true);
-    setPostedProducts((prev) => [
-      {
-        id: `posted_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-        title: normalizedTitle,
-        color: normalizedColor,
-        size: normalizedSize,
-        priceRwf,
-        quantityAvailable,
-        soldCount: 0,
-      },
-      ...prev,
-    ]);
+
+    const newProduct: PostedStreamProduct = {
+      id: `posted_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+      title: normalizedTitle,
+      color: normalizedColor,
+      size: normalizedSize,
+      priceRwf,
+      quantityAvailable,
+      soldCount: 0,
+    };
+
+    setPostedProducts((prev) => {
+      const next = [newProduct, ...prev];
+      // Sync to Supabase so viewers can see it
+      if (sessionId) {
+        void updateStreamProducts(
+          sessionId,
+          next.map(({ soldCount: _s, ...p }) => p)
+        );
+      }
+      return next;
+    });
+
     setPostingProduct(false);
-    setTitle("");
-    setColor("");
-    setSize("");
-    setPrice("");
-    setQuantity("");
+    setTitle(""); setColor(""); setSize(""); setPrice(""); setQuantity("");
   };
 
   const handleRecordSale = (productId: string, delta: 1 | -1) => {
@@ -240,16 +237,14 @@ export default function LiveSessionPage() {
 
   const handleEndSession = async () => {
     if (!sessionId) return;
-    
+    // Stop WebRTC broadcast
+    broadcasterRef.current?.stop();
+    broadcasterRef.current = null;
     // Stop camera
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((t) => t.stop());
     }
-    
-    // End session in database
     await endLiveSession(sessionId);
-    
-    // Redirect back to studio
     navigate("/seller/live-studio");
   };
 
