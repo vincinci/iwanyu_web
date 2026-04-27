@@ -170,7 +170,7 @@ const Index = () => {
               {[1, 2, 3].map((i) => (
                 <div key={i}>
                   <div className="h-8 bg-gray-200 rounded-xl w-48 mb-6 animate-pulse"></div>
-                  <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                     {[...Array(8)].map((_, j) => (
                       <div key={j} className="animate-pulse">
                         <div className="bg-gray-200 aspect-[3/4] rounded-2xl mb-2"></div>

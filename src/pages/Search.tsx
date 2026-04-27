@@ -242,7 +242,7 @@ const Search = () => {
           {query ? (
             sortedResults.length > 0 ? (
               <>
-                <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                   {sortedResults.slice(0, visibleCount).map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -308,7 +308,7 @@ const Search = () => {
               {/* Show all products when no search query */}
               <div className="text-left">
                 <h4 className="text-lg font-semibold text-gray-900 mb-6">All Products</h4>
-                <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                   {products.slice(0, visibleCount).map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}
