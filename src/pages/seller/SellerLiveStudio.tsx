@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Smartphone, Hammer, StopCircle, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Smartphone, Hammer, StopCircle, AlertCircle, CheckCircle2, Clock, ImagePlus, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,8 @@ import {
   getLiveSessionsForVendors,
   type LiveSession,
 } from "@/lib/liveSessions";
+import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/money";
-
 async function requestCameraAndMicPermissions(): Promise<boolean> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -42,19 +42,22 @@ export default function SellerLiveStudioPage() {
   );
 
   const ownedVendorIds = useMemo(() => ownedVendors.map((vendor) => vendor.id), [ownedVendors]);
-  const ownedProducts = useMemo(
-    () => products.filter((product) => ownedVendorIds.includes(product.vendorId)),
-    [products, ownedVendorIds]
-  );
 
-  const [selectedProductId, setSelectedProductId] = useState<string>(ownedProducts[0]?.id ?? "");
-  const [auctionDurationHours, setAuctionDurationHours] = useState<number>(5);
   const [activeSessions, setActiveSessions] = useState<LiveSession[]>([]);
   const [streamLoading, setStreamLoading] = useState(false);
   const [auctionLoading, setAuctionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedProduct = ownedProducts.find((product) => product.id === selectedProductId);
+  // ── Live Auction new-product form ────────────────────────────────────────
+  const [auctionProductName, setAuctionProductName] = useState("");
+  const [auctionStartingBid, setAuctionStartingBid] = useState("");
+  const [auctionDurationHours, setAuctionDurationHours] = useState<number>(5);
+  const [auctionSizesRaw, setAuctionSizesRaw] = useState(""); // comma-separated
+  const [auctionColors, setAuctionColors] = useState(""); // comma-separated
+  const [auctionImages, setAuctionImages] = useState<File[]>([]);
+  const [auctionImagePreviews, setAuctionImagePreviews] = useState<string[]>([]);
+  const [auctionUploadProgress, setAuctionUploadProgress] = useState(0);
+  const auctionFileInputRef = useRef<HTMLInputElement>(null);
   const primaryVendor = ownedVendors[0];
 
   const refreshSessions = useCallback(async () => {
@@ -68,12 +71,22 @@ export default function SellerLiveStudioPage() {
     return () => clearInterval(interval);
   }, [refreshSessions]);
 
-  useEffect(() => {
-    if (!selectedProductId && ownedProducts[0]?.id) {
-      setSelectedProductId(ownedProducts[0].id);
-    }
-  }, [ownedProducts, selectedProductId]);
+  // ── Image selection for auction product ──────────────────────────────────
+  const handleAuctionImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/")).slice(0, 5);
+    if (!files.length) return;
+    setAuctionImages((prev) => [...prev, ...files].slice(0, 5));
+    const previews = files.map((f) => URL.createObjectURL(f));
+    setAuctionImagePreviews((prev) => [...prev, ...previews].slice(0, 5));
+  };
 
+  const removeAuctionImage = (index: number) => {
+    setAuctionImages((prev) => prev.filter((_, i) => i !== index));
+    setAuctionImagePreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
   const handleStartLiveStream = async () => {
     setError(null);
     setStreamLoading(true);
@@ -122,37 +135,74 @@ export default function SellerLiveStudioPage() {
 
   const handleCreateLiveAuction = async () => {
     setError(null);
+
+    const productName = auctionProductName.trim();
+    const startingBid = Math.round(Number(auctionStartingBid || 0));
+
+    if (!productName) {
+      setError("Please enter a product name.");
+      return;
+    }
+    if (!startingBid || startingBid <= 0) {
+      setError("Please set a starting bid greater than 0.");
+      return;
+    }
+    if (!primaryVendor) {
+      setError("No approved seller store found.");
+      return;
+    }
+
+    const accessToken = (await (await import("@/lib/supabaseClient")).getSupabaseClient()?.auth.getSession())?.data.session?.access_token;
+
     setAuctionLoading(true);
-    
+
     try {
-      if (!selectedProduct || !primaryVendor) {
-        setError("Please select a product first");
-        setAuctionLoading(false);
-        return;
+      // Upload first image (if any)
+      let imageUrl = "";
+      if (auctionImages.length > 0 && accessToken) {
+        setAuctionUploadProgress(1);
+        const result = await uploadMediaToCloudinary(auctionImages[0], {
+          kind: "image",
+          folder: "live-auctions",
+          accessToken,
+          onProgress: (p) => setAuctionUploadProgress(Math.round(p * 0.9)),
+        });
+        imageUrl = result.url;
+        setAuctionUploadProgress(100);
       }
 
-      const normalizedHours = Math.min(24, Math.max(1, Math.round(Number(auctionDurationHours || 0))));
-      if (!Number.isFinite(normalizedHours)) {
-        setError("Please set a valid auction duration");
-        setAuctionLoading(false);
-        return;
-      }
-      
-      await createLiveSession({
+      const normalizedHours = Math.min(24, Math.max(1, Math.round(auctionDurationHours)));
+      const sizes = auctionSizesRaw.split(",").map((s) => s.trim()).filter(Boolean);
+      const colors = auctionColors.split(",").map((s) => s.trim()).filter(Boolean);
+
+      const syntheticProduct = {
+        id: `auction-new-${Date.now()}`,
+        title: productName,
+        price: startingBid,
+        image: imageUrl,
+        vendorId: primaryVendor.id,
+        description: "",
+        category: "",
+        variants: [],
+      };
+
+      const session = await createLiveSession({
         vendorId: primaryVendor.id,
         vendorName: primaryVendor.name,
         sellerUserId: user?.id,
-        product: selectedProduct,
+        product: syntheticProduct as any,
         auctionEnabled: true,
         auctionDurationHours: normalizedHours,
+        productVariants: { sizes, colors },
       });
 
       await refreshSessions();
-      navigate(`/product/${selectedProduct.id}`);
+      navigate(`/live/view/${session.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create auction");
     } finally {
       setAuctionLoading(false);
+      setAuctionUploadProgress(0);
     }
   };
 
@@ -250,73 +300,156 @@ export default function SellerLiveStudioPage() {
                       <CardTitle className="flex items-center gap-2 text-purple-900 text-xl">
                         <Hammer className="h-6 w-6" /> Live Auction
                       </CardTitle>
-                      <p className="text-sm text-purple-700 mt-2">Run a real-time bidding auction on a single product</p>
+                      <p className="text-sm text-purple-700 mt-2">
+                        Got one item you want to sell fast? Set it up right here — no listing needed.
+                      </p>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="auction-product" className="text-sm font-semibold">Select Product</Label>
-                    <select
-                      id="auction-product"
-                      className="mt-2 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      value={selectedProductId}
-                      onChange={(e) => setSelectedProductId(e.target.value)}
-                    >
-                      <option value="">Choose a product...</option>
-                      {ownedProducts.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
 
+                  {/* Product Name */}
                   <div>
-                    <Label htmlFor="auction-duration" className="text-sm font-semibold">Auction Duration (hours)</Label>
+                    <Label htmlFor="auction-name" className="text-sm font-semibold">
+                      Product Name <span className="text-red-500">*</span>
+                    </Label>
                     <Input
-                      id="auction-duration"
-                      type="number"
-                      min={1}
-                      max={24}
-                      value={auctionDurationHours}
-                      onChange={(e) => setAuctionDurationHours(Math.min(24, Math.max(1, Number(e.target.value || 1))))}
+                      id="auction-name"
                       className="mt-2"
+                      placeholder="e.g. Vintage leather jacket"
+                      value={auctionProductName}
+                      onChange={(e) => setAuctionProductName(e.target.value)}
                     />
                   </div>
 
-                  {selectedProduct && (
-                    <div className="rounded-lg bg-white border border-purple-200 p-3 flex gap-3">
-                      {selectedProduct.image && (
-                        <img src={selectedProduct.image} alt={selectedProduct.title} className="h-14 w-14 rounded object-cover" />
+                  {/* Images */}
+                  <div>
+                    <Label className="text-sm font-semibold">Photos (up to 5)</Label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {auctionImagePreviews.map((src, i) => (
+                        <div key={i} className="relative h-20 w-20 rounded-lg overflow-hidden border border-gray-200">
+                          <img src={src} alt="" className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeAuctionImage(i)}
+                            className="absolute top-0.5 right-0.5 rounded-full bg-black/60 p-0.5 text-white hover:bg-black"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {auctionImagePreviews.length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => auctionFileInputRef.current?.click()}
+                          className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-purple-300 text-purple-500 hover:border-purple-500 hover:bg-purple-50 transition-colors"
+                        >
+                          <ImagePlus className="h-5 w-5" />
+                          <span className="text-[10px]">Add photo</span>
+                        </button>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 line-clamp-2">{selectedProduct.title}</div>
-                        <div className="text-xs text-purple-600 font-semibold mt-1">Starting bid: {formatMoney(selectedProduct.price)}</div>
+                    </div>
+                    <input
+                      ref={auctionFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleAuctionImageSelect}
+                    />
+                  </div>
+
+                  {/* Variants row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="auction-sizes" className="text-sm font-semibold">Sizes</Label>
+                      <Input
+                        id="auction-sizes"
+                        className="mt-2"
+                        placeholder="S, M, L, XL"
+                        value={auctionSizesRaw}
+                        onChange={(e) => setAuctionSizesRaw(e.target.value)}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">Comma-separated</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="auction-colors" className="text-sm font-semibold">Colors</Label>
+                      <Input
+                        id="auction-colors"
+                        className="mt-2"
+                        placeholder="Black, Red"
+                        value={auctionColors}
+                        onChange={(e) => setAuctionColors(e.target.value)}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">Comma-separated</p>
+                    </div>
+                  </div>
+
+                  {/* Starting bid + duration */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="auction-bid" className="text-sm font-semibold">
+                        Starting Bid (RWF) <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="auction-bid"
+                        type="number"
+                        min={1}
+                        className="mt-2"
+                        placeholder="e.g. 15000"
+                        value={auctionStartingBid}
+                        onChange={(e) => setAuctionStartingBid(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="auction-duration" className="text-sm font-semibold">Duration (hours)</Label>
+                      <Input
+                        id="auction-duration"
+                        type="number"
+                        min={1}
+                        max={24}
+                        value={auctionDurationHours}
+                        onChange={(e) => setAuctionDurationHours(Math.min(24, Math.max(1, Number(e.target.value || 1))))}
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-purple-50 p-4 space-y-1.5">
+                    <div className="text-sm font-semibold text-gray-900">How it works:</div>
+                    <ul className="space-y-1 text-xs text-gray-700">
+                      <li>✓ Buyers' bid amounts are <strong>locked</strong> from their wallet instantly</li>
+                      <li>✓ When outbid, the previous bidder's funds are <strong>released</strong> automatically</li>
+                      <li>✓ Highest bidder at the end wins — their locked funds are charged</li>
+                      <li>✓ Auction runs for the selected hours then closes automatically</li>
+                    </ul>
+                  </div>
+
+                  {auctionLoading && auctionUploadProgress > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-gray-500">Uploading image… {auctionUploadProgress}%</div>
+                      <div className="h-1.5 w-full rounded-full bg-gray-200">
+                        <div
+                          className="h-1.5 rounded-full bg-purple-500 transition-all"
+                          style={{ width: `${auctionUploadProgress}%` }}
+                        />
                       </div>
                     </div>
                   )}
 
-                  <div className="rounded-lg bg-purple-50 p-4 space-y-2">
-                    <div className="text-sm font-semibold text-gray-900">What happens:</div>
-                    <ul className="space-y-1 text-xs text-gray-700">
-                      <li>✓ Buyers place real-time bids</li>
-                      <li>✓ Single item auction (1 winner)</li>
-                      <li>✓ Starting bid = product price</li>
-                      <li>✓ Highest bidder wins</li>
-                      <li>✓ Auction auto-runs for the selected hours</li>
-                    </ul>
-                  </div>
-
-                  <Button 
+                  <Button
                     onClick={handleCreateLiveAuction}
-                    disabled={auctionLoading || !selectedProduct}
-                    size="lg" 
+                    disabled={auctionLoading || !auctionProductName.trim() || !auctionStartingBid}
+                    size="lg"
                     className="w-full rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold disabled:opacity-50"
                   >
-                    {auctionLoading ? "Creating..." : "Create Timed Auction"}
+                    {auctionLoading ? (
+                      <><span className="animate-spin mr-2">⏳</span> {auctionUploadProgress > 0 ? "Uploading…" : "Creating…"}</>
+                    ) : (
+                      <><Plus className="h-4 w-4 mr-2" /> Go Live with Auction</>
+                    )}
                   </Button>
-                  <p className="text-xs text-gray-500 text-center">No camera needed for auction creation</p>
+                  <p className="text-xs text-gray-500 text-center">No camera needed — buyers bid directly on your product</p>
                 </CardContent>
               </Card>
             </div>

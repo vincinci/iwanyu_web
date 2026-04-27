@@ -184,6 +184,7 @@ export async function createLiveSession(input: {
   product: Product;
   auctionEnabled: boolean;
   auctionDurationHours?: number;
+  productVariants?: { sizes: string[]; colors: string[] };
 }): Promise<LiveSession> {
   const supabase = getSupabaseClient();
   const basePrice = Math.max(0, Math.round(Number(input.product.price || 0)));
@@ -204,6 +205,7 @@ export async function createLiveSession(input: {
         is_live: true,
         live_room: `product:${input.product.id}`,
         stream_url: input.auctionEnabled ? "mode:auction" : "mode:showcase",
+        product_variants: input.productVariants ? JSON.stringify(input.productVariants) : null,
       })
       .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url")
       .single();
@@ -283,6 +285,7 @@ export async function placeBidOnLiveAuction(input: {
 
   const supabase = getSupabaseClient();
   if (!supabase) {
+    // Local/offline fallback — no wallet locking available
     const next = getLiveSessions().map((session) => {
       if (session.id !== input.auctionId) return session;
       return {
@@ -295,31 +298,79 @@ export async function placeBidOnLiveAuction(input: {
     return { ok: true, message: "Bid placed in local mode." };
   }
 
-  const { error: bidError } = await supabase.from("bids").insert({
-    auction_id: input.auctionId,
-    user_id: input.userId,
-    amount,
-    status: "active",
+  // Call the lock_bid DB function — atomically validates, locks wallet balance,
+  // releases previously outbid users, and records the new bid.
+  const { data, error } = await supabase.rpc("lock_bid", {
+    p_auction_id: input.auctionId,
+    p_user_id: input.userId,
+    p_amount: amount,
   });
 
-  if (bidError) {
-    return { ok: false, message: bidError.message || "Failed to place bid." };
+  if (error) {
+    return { ok: false, message: error.message || "Failed to place bid." };
   }
 
-  // Best-effort sync of the auction headline value; insert above is the source of truth.
-  await supabase.from("auctions").update({ current_bid: amount }).eq("id", input.auctionId).lte("current_bid", amount);
+  const result = data as { ok: boolean; message: string } | null;
+  if (!result?.ok) {
+    return { ok: false, message: result?.message || "Failed to place bid." };
+  }
 
+  // Update local session cache
   const next = getLiveSessions().map((session) => {
     if (session.id !== input.auctionId) return session;
     return {
       ...session,
       currentBidRwf: Math.max(session.currentBidRwf, amount),
-      watchers: Math.max(1, session.watchers + 1),
     };
   });
   writeRawSessions(next);
 
-  return { ok: true, message: "Bid placed successfully." };
+  return { ok: true, message: result.message };
+}
+
+/** Fetch the wallet balance and locked amount for a user. */
+export async function getUserWalletBalance(userId: string): Promise<{
+  walletBalanceRwf: number;
+  lockedBalanceRwf: number;
+  availableRwf: number;
+} | null> {
+  const supabase = getSupabaseClient() ?? getPublicSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("wallet_balance_rwf, locked_balance_rwf")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data) return null;
+
+  const wallet = Number((data as { wallet_balance_rwf: number }).wallet_balance_rwf ?? 0);
+  const locked = Number((data as { locked_balance_rwf: number }).locked_balance_rwf ?? 0);
+  return {
+    walletBalanceRwf: wallet,
+    lockedBalanceRwf: locked,
+    availableRwf: Math.max(0, wallet - locked),
+  };
+}
+
+/** Get the user's current locked bid (if any) on a specific auction. */
+export async function getUserLockedBid(auctionId: string, userId: string): Promise<number> {
+  const supabase = getSupabaseClient() ?? getPublicSupabaseClient();
+  if (!supabase) return 0;
+
+  const { data, error } = await supabase
+    .from("bids")
+    .select("amount")
+    .eq("auction_id", auctionId)
+    .eq("user_id", userId)
+    .eq("status", "locked")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return 0;
+  return Number((data as { amount: number }).amount ?? 0);
 }
 
 export function summarizeLiveForHome(vendors: Vendor[], products: Product[], activeSessions?: LiveSession[]): {

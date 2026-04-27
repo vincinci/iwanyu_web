@@ -16,10 +16,14 @@ import {
   ArrowLeft,
   Clock,
   TrendingUp,
+  Wallet,
+  Lock,
 } from "lucide-react";
 import {
   fetchActiveLiveSessions,
   placeBidOnLiveAuction,
+  getUserWalletBalance,
+  getUserLockedBid,
   type LiveSession,
 } from "@/lib/liveSessions";
 import {
@@ -54,6 +58,11 @@ export default function LiveViewerPage() {
   const [bidding, setBidding] = useState(false);
   const [bidMsg, setBidMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
+  // Wallet state
+  const [walletAvailable, setWalletAvailable] = useState<number | null>(null);
+  const [walletLocked, setWalletLocked] = useState<number | null>(null);
+  const [myLockedBid, setMyLockedBid] = useState<number>(0);
+
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // ─── Load session (poll every 5 s) ───────────────────────────────────────
@@ -70,6 +79,24 @@ export default function LiveViewerPage() {
     const id = window.setInterval(() => void loadSession(), 5000);
     return () => window.clearInterval(id);
   }, [loadSession]);
+
+  // ─── Load wallet balance + locked bid ────────────────────────────────────
+  const refreshWallet = useCallback(async () => {
+    if (!user?.id || !sessionId) return;
+    const [bal, locked] = await Promise.all([
+      getUserWalletBalance(user.id),
+      getUserLockedBid(sessionId, user.id),
+    ]);
+    if (bal) {
+      setWalletAvailable(bal.availableRwf);
+      setWalletLocked(bal.lockedBalanceRwf);
+    }
+    setMyLockedBid(locked);
+  }, [user?.id, sessionId]);
+
+  useEffect(() => {
+    void refreshWallet();
+  }, [refreshWallet]);
 
   // ─── Load recent comments + subscribe to new ones ────────────────────────
   useEffect(() => {
@@ -89,7 +116,6 @@ export default function LiveViewerPage() {
   // ─── Track viewer presence (real-time viewer count) ───────────────────────
   useEffect(() => {
     if (!sessionId) return;
-    // Use a stable key: logged-in user ID or a session-scoped guest ID stored in sessionStorage
     let presenceKey = user?.id;
     if (!presenceKey) {
       const storageKey = `iwanyu:guest-presence:${sessionId}`;
@@ -129,7 +155,8 @@ export default function LiveViewerPage() {
     setBidMsg({ type: result.ok ? "ok" : "error", text: result.message });
     if (result.ok) {
       setBidAmount("");
-      void loadSession(); // refresh bid amount immediately
+      void loadSession();
+      void refreshWallet(); // refresh wallet display
     }
     setBidding(false);
   };
@@ -281,27 +308,53 @@ export default function LiveViewerPage() {
                 </div>
 
                 {user ? (
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder={`More than ${formatMoney(session.currentBidRwf)}`}
-                      value={bidAmount}
-                      onChange={(e) => {
-                        setBidAmount(e.target.value);
-                        setBidMsg(null);
-                      }}
-                      className="rounded-lg"
-                      min={session.currentBidRwf + 1}
-                    />
-                    <Button
-                      onClick={handleBid}
-                      disabled={bidding}
-                      className="rounded-lg bg-purple-600 hover:bg-purple-700 text-white shrink-0"
-                    >
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      {bidding ? "Placing…" : "Bid"}
-                    </Button>
-                  </div>
+                  <>
+                    {/* Wallet balance row */}
+                    {walletAvailable !== null && (
+                      <div className="rounded-lg bg-white border border-purple-100 px-3 py-2 flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1 text-gray-600">
+                          <Wallet className="h-3.5 w-3.5 text-purple-500" />
+                          Wallet available
+                        </span>
+                        <span className="font-semibold text-gray-900">{formatMoney(walletAvailable)}</span>
+                      </div>
+                    )}
+                    {myLockedBid > 0 && (
+                      <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1 text-amber-700">
+                          <Lock className="h-3.5 w-3.5" />
+                          Your current bid (locked)
+                        </span>
+                        <span className="font-semibold text-amber-800">{formatMoney(myLockedBid)}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder={`More than ${formatMoney(session.currentBidRwf)}`}
+                        value={bidAmount}
+                        onChange={(e) => {
+                          setBidAmount(e.target.value);
+                          setBidMsg(null);
+                        }}
+                        className="rounded-lg"
+                        min={session.currentBidRwf + 1}
+                      />
+                      <Button
+                        onClick={handleBid}
+                        disabled={bidding}
+                        className="rounded-lg bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+                      >
+                        <TrendingUp className="h-4 w-4 mr-1" />
+                        {bidding ? "Placing…" : "Bid"}
+                      </Button>
+                    </div>
+                    {walletAvailable !== null && walletAvailable === 0 && (
+                      <p className="text-xs text-amber-600">
+                        Your wallet is empty. Top up your balance to place bids.
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <div className="text-center">
                     <p className="text-sm text-purple-700 mb-2">
