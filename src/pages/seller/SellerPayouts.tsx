@@ -257,10 +257,7 @@ export default function SellerPayoutsPage() {
     }
 
     function handlePayoutSettings() {
-        toast({
-            title: t("sellerPayouts.settingsTitle"),
-            description: t("sellerPayouts.settingsDesc"),
-        });
+        window.location.href = "/seller/settings";
     }
 
   return (

@@ -193,10 +193,11 @@ export default function SellerSettingsPage() {
                     description: `${t("sellerSettings.savedIncompletePrefix")} ${missing.join(", ")}.`,
                 });
             }
-        } catch {
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
             toast({
                 title: t("sellerSettings.saveFailedTitle"),
-                description: t("sellerSettings.saveFailedDesc"),
+                description: msg || t("sellerSettings.saveFailedDesc"),
                 variant: "destructive",
             });
         } finally {
