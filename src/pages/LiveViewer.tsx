@@ -546,7 +546,7 @@ function StreamView({
                   className="rounded-full bg-white/20 backdrop-blur border border-white/40 text-white hover:bg-white/30 gap-1.5"
                 >
                   <ShoppingBag className="h-4 w-4" />
-                  Products{products.length > 0 ? ` (${products.length})` : ""}
+                  Products{localProducts.length > 0 ? ` (${localProducts.length})` : ""}
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="max-h-[70vh] rounded-t-2xl overflow-y-auto">
@@ -641,7 +641,7 @@ function StreamView({
           <div className="border-b border-gray-100 px-4 py-3 flex items-center gap-2 shrink-0">
             <ShoppingBag className="h-4 w-4 text-amber-500" />
             <span className="font-semibold text-sm">Products</span>
-            {products.length > 0 && <span className="ml-auto text-xs text-gray-400">{products.length} items</span>}
+            {localProducts.length > 0 && <span className="ml-auto text-xs text-gray-400">{localProducts.length} items</span>}
           </div>
           <div className="overflow-y-auto p-3 space-y-3" style={{ flex: "1 1 0", minHeight: 0 }}>
             {ProductsList}
