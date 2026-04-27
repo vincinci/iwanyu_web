@@ -34,6 +34,7 @@ const SellerPayoutsPage = lazy(() => import("./pages/seller/SellerPayouts"));
 const SellerSettingsPage = lazy(() => import("./pages/seller/SellerSettings"));
 const SellerLiveStudioPage = lazy(() => import("./pages/seller/SellerLiveStudio"));
 const LiveSessionPage = lazy(() => import("./pages/LiveSession"));
+const LiveViewerPage = lazy(() => import("./pages/LiveViewer"));
 const LivePage = lazy(() => import("./pages/Live"));
 const AuthCallbackPage = lazy(() => import("./pages/AuthCallback"));
 import { CartProvider } from "./context/cart";
@@ -125,6 +126,7 @@ const AppContent = () => {
         <Route path="/sell" element={withSuspense(<SellerOnboardingPage />)} />
         <Route path="/sell-info" element={withSuspense(<SellerOnboardingPage />)} />
         <Route path="/live" element={withSuspense(<LivePage />)} />
+        <Route path="/live/view/:sessionId" element={withSuspense(<LiveViewerPage />)} />
         <Route 
           path="/live/:sessionId" 
           element={

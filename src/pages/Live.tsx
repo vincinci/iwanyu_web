@@ -91,7 +91,7 @@ export default function LivePage() {
                       Current bid: {formatMoney(session.currentBidRwf)}
                     </p>
                     <div className="mt-3">
-                      <Link to={`/product/${session.productId}`}>
+                      <Link to={`/live/view/${session.id}`}>
                         <Button className="w-full rounded-full">View & Bid</Button>
                       </Link>
                     </div>
@@ -124,7 +124,7 @@ export default function LivePage() {
                       <div className="font-medium text-gray-900">{seller.vendorName}</div>
                       <div className="text-xs text-gray-500">{seller.watchers} viewers watching</div>
                     </div>
-                    <Link to="/live">
+                    <Link to={`/live/view/${seller.sessionId ?? ''}`}>
                       <Button size="sm" variant="outline" className="rounded-full">Watch</Button>
                     </Link>
                   </CardContent>

@@ -167,7 +167,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
         auctionEnabled,
         auctionDurationHours: parseAuctionDurationHours(row.ends_in),
         startedAt: row.created_at || new Date().toISOString(),
-        watchers: Math.max(1, bidCountByAuction.get(auctionId) ?? 1),
+        watchers: bidCountByAuction.get(auctionId) ?? 0,
         currentBidRwf: liveBid,
         status: "live",
       };
@@ -352,11 +352,15 @@ export function summarizeLiveForHome(vendors: Vendor[], products: Product[], act
   });
 
   const liveSellers = Array.from(watchersByVendor.entries())
-    .map(([vendorId, watchers]) => ({
-      vendorId,
-      vendorName: vendorById.get(vendorId)?.name || normalized.find((s) => s.vendorId === vendorId)?.vendorName || "Seller",
-      watchers,
-    }))
+    .map(([vendorId, watchers]) => {
+      const session = normalized.find((s) => s.vendorId === vendorId);
+      return {
+        vendorId,
+        vendorName: vendorById.get(vendorId)?.name || session?.vendorName || "Seller",
+        watchers,
+        sessionId: session?.id ?? null,
+      };
+    })
     .sort((a, b) => b.watchers - a.watchers);
 
   return {

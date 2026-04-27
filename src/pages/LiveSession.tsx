@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Mic, Plus, TrendingUp, SunMoon, Minus } from "lucide-react";
+import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Mic, Plus, TrendingUp, SunMoon, Minus, MessageCircle, Send } from "lucide-react";
 import { getLiveSessions, endLiveSession, type LiveSession } from "@/lib/liveSessions";
+import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
+import { useAuth } from "@/context/auth";
 import { formatMoney } from "@/lib/money";
 
 type PostedStreamProduct = {
@@ -25,15 +27,21 @@ function productsStorageKey(sessionId: string) {
 export default function LiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
   
   const [session, setSession] = useState<LiveSession | null>(null);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cameraStatus, setCameraStatus] = useState<"idle" | "starting" | "live" | "error">("idle");
+  const [viewerCount, setViewerCount] = useState(1);
+  const [comments, setComments] = useState<LiveComment[]>([]);
+  const [sellerComment, setSellerComment] = useState("");
+  const [sellerPosting, setSellerPosting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [color, setColor] = useState("");
@@ -65,6 +73,40 @@ export default function LiveSessionPage() {
     const interval = setInterval(loadSession, 2000);
     return () => clearInterval(interval);
   }, [sessionId]);
+
+  // Subscribe to live comments
+  useEffect(() => {
+    if (!sessionId) return;
+    void fetchRecentComments(sessionId).then(setComments);
+    const unsub = subscribeToComments(sessionId, (comment) => {
+      setComments((prev) => [...prev.slice(-99), comment]);
+    });
+    return unsub;
+  }, [sessionId]);
+
+  // Auto-scroll comments
+  useEffect(() => {
+    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [comments]);
+
+  // Track seller as a viewer in presence channel (contributes to viewer count)
+  useEffect(() => {
+    if (!sessionId) return;
+    const key = user?.id ?? `seller-${Math.random().toString(36).slice(2, 10)}`;
+    const unsub = trackViewerPresence(sessionId, key, setViewerCount);
+    return unsub;
+  }, [sessionId, user?.id]);
+
+  // Post a comment as the seller
+  const handleSellerComment = useCallback(async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!sellerComment.trim() || !sessionId) return;
+    setSellerPosting(true);
+    const name = session?.vendorName ?? user?.name ?? "Seller";
+    await postComment(sessionId, user?.id ?? null, name, sellerComment);
+    setSellerComment("");
+    setSellerPosting(false);
+  }, [sellerComment, sessionId, session?.vendorName, user]);
 
   // Load previously posted stream products for this session.
   useEffect(() => {
@@ -295,7 +337,7 @@ export default function LiveSessionPage() {
               {/* Viewers count */}
               <div className="absolute top-4 right-4 flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-full text-white">
                 <Users className="h-4 w-4" />
-                <span className="text-sm font-semibold">{session.watchers}</span>
+                <span className="text-sm font-semibold">{viewerCount}</span>
               </div>
 
               <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-black/45 p-3 text-white backdrop-blur">
@@ -495,6 +537,56 @@ export default function LiveSessionPage() {
                     })}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Live Chat (seller view) */}
+            <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm inline-flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" /> Live Chat
+                  <span className="ml-auto text-xs text-slate-400 font-normal">{comments.length} msgs</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {/* Comment list */}
+                <div className="h-48 overflow-y-auto px-3 pb-2 space-y-2">
+                  {comments.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center pt-4">No messages yet.</p>
+                  ) : (
+                    comments.map((c) => (
+                      <div key={c.id} className="flex gap-1.5">
+                        <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700 shrink-0 mt-0.5">
+                          {c.userName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-200">{c.userName} </span>
+                          <span className="text-xs text-slate-600 dark:text-slate-300 break-words">{c.text}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={commentsEndRef} />
+                </div>
+                {/* Seller can reply */}
+                <form onSubmit={handleSellerComment} className="flex gap-1.5 border-t border-slate-100 dark:border-slate-800 px-3 py-2">
+                  <Input
+                    placeholder="Reply to viewers…"
+                    value={sellerComment}
+                    onChange={(e) => setSellerComment(e.target.value)}
+                    className="h-8 text-xs rounded-lg"
+                    maxLength={500}
+                    disabled={sellerPosting}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="h-8 px-2 rounded-lg shrink-0"
+                    disabled={sellerPosting || !sellerComment.trim()}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </div>

@@ -12,6 +12,7 @@ import { useCart } from "@/context/cart";
 import { useMarketplace } from "@/context/marketplace";
 import { useRecentlyViewed } from "@/context/recentlyViewed";
 import { useWishlist } from "@/context/wishlist";
+import { useAuth } from "@/context/auth";
 import { formatMoney } from "@/lib/money";
 import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { getSupabaseClient } from "@/lib/supabaseClient";
@@ -32,6 +33,7 @@ export default function ProductPage() {
   const { products, getVendorById } = useMarketplace();
   const { add: addToRecentlyViewed, productIds: recentlyViewedIds } = useRecentlyViewed();
   const { toggle: toggleWishlist, contains: isInWishlist } = useWishlist();
+  const { user } = useAuth();
   const supabase = getSupabaseClient();
 
   const [media, setMedia] = useState<ProductMedia[]>([]);
@@ -163,12 +165,23 @@ export default function ProductPage() {
   };
 
   const handlePlaceBid = async () => {
-    if (!liveAuctionSession) return;
+    if (!liveAuctionSession || !user) {
+      toast({ title: "Log in to bid", description: "You need to be logged in to place a bid.", variant: "destructive" });
+      return;
+    }
     setPlacingBid(true);
     try {
-      await placeBidOnLiveAuction(liveAuctionSession.id, bidAmount);
-      toast({ title: "Bid placed!", description: `You bid ${formatMoney(bidAmount)}` });
-      setBidAmount(0);
+      const result = await placeBidOnLiveAuction({
+        auctionId: liveAuctionSession.id,
+        userId: user.id,
+        amountRwf: bidAmount,
+      });
+      if (result.ok) {
+        toast({ title: "Bid placed!", description: `You bid ${formatMoney(bidAmount)}` });
+        setBidAmount(0);
+      } else {
+        toast({ title: "Bid failed", description: result.message, variant: "destructive" });
+      }
     } catch (e) {
       toast({ title: "Bid failed", description: e instanceof Error ? e.message : "Try again", variant: "destructive" });
     } finally {
