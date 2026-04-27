@@ -172,6 +172,13 @@ function AuctionView({
           )}
         </div>
 
+        {/* Description */}
+        {session.description && (
+          <div className="mx-4 mt-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{session.description}</p>
+          </div>
+        )}
+
         {/* Bid panel */}
         <div className="mx-4 mt-4 rounded-2xl bg-purple-50 border border-purple-200 p-4 space-y-3">
           <div>

@@ -19,6 +19,7 @@ export type LiveSession = {
   productId: string;
   productTitle: string;
   productImage: string;
+  description: string;
   auctionEnabled: boolean;
   auctionDurationHours?: number;
   startedAt: string;
@@ -36,6 +37,7 @@ type DbLiveAuctionRow = {
   vendor: string | null;
   title: string | null;
   image_url: string | null;
+  description: string | null;
   current_bid: number | null;
   ends_in: string | null;
   created_at: string | null;
@@ -124,7 +126,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
 
   const { data, error } = await supabase
     .from("auctions")
-    .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url, stream_products")
+    .select("id, seller_user_id, vendor, title, image_url, description, current_bid, ends_in, created_at, is_live, live_room, stream_url, stream_products")
     .eq("is_live", true)
     .order("created_at", { ascending: false })
     .limit(60);
@@ -176,6 +178,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
         productId: parseProductIdFromLiveRoom(row.live_room, auctionId),
         productTitle: row.title || "Live product",
         productImage: row.image_url || "",
+        description: row.description || "",
         auctionEnabled,
         auctionDurationHours: parseAuctionDurationHours(row.ends_in),
         startedAt: row.created_at || new Date().toISOString(),
@@ -200,6 +203,7 @@ export async function createLiveSession(input: {
   auctionEnabled: boolean;
   auctionDurationHours?: number;
   productVariants?: { sizes: string[]; colors: string[] };
+  description?: string;
 }): Promise<LiveSession> {
   const supabase = getSupabaseClient();
   const basePrice = Math.max(0, Math.round(Number(input.product.price || 0)));
@@ -213,6 +217,7 @@ export async function createLiveSession(input: {
       .insert({
         seller_user_id: input.sellerUserId ?? null,
         title: input.product.title,
+        description: input.description ?? "",
         current_bid: input.auctionEnabled ? basePrice : 0,
         ends_in: input.auctionEnabled ? `${normalizedAuctionHours}h` : "live-showcase",
         vendor: input.vendorName,
@@ -222,7 +227,7 @@ export async function createLiveSession(input: {
         stream_url: input.auctionEnabled ? "mode:auction" : "mode:showcase",
         product_variants: input.productVariants ? JSON.stringify(input.productVariants) : null,
       })
-      .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url")
+      .select("id, seller_user_id, vendor, title, image_url, description, current_bid, ends_in, created_at, is_live, live_room, stream_url")
       .single();
 
     if (!error && data) {
@@ -234,6 +239,7 @@ export async function createLiveSession(input: {
         productId: parseProductIdFromLiveRoom(row.live_room, input.product.id),
         productTitle: row.title || input.product.title,
         productImage: row.image_url || input.product.image || "",
+        description: row.description || input.description || "",
         auctionEnabled: isAuctionFromStreamUrl(row.stream_url),
         auctionDurationHours: parseAuctionDurationHours(row.ends_in),
         startedAt: row.created_at || new Date().toISOString(),
@@ -257,6 +263,7 @@ export async function createLiveSession(input: {
     productId: input.product.id,
     productTitle: input.product.title,
     productImage: input.product.image,
+    description: input.description ?? "",
     auctionEnabled: input.auctionEnabled,
     auctionDurationHours: normalizedAuctionHours,
     startedAt: new Date().toISOString(),

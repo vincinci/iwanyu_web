@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
 import {
@@ -54,6 +55,7 @@ export default function SellerLiveStudioPage() {
   const [auctionDurationHours, setAuctionDurationHours] = useState<number>(5);
   const [auctionSizesRaw, setAuctionSizesRaw] = useState(""); // comma-separated
   const [auctionColors, setAuctionColors] = useState(""); // comma-separated
+  const [auctionDescription, setAuctionDescription] = useState("");
   const [auctionImages, setAuctionImages] = useState<File[]>([]);
   const [auctionImagePreviews, setAuctionImagePreviews] = useState<string[]>([]);
   const [auctionUploadProgress, setAuctionUploadProgress] = useState(0);
@@ -194,6 +196,7 @@ export default function SellerLiveStudioPage() {
         auctionEnabled: true,
         auctionDurationHours: normalizedHours,
         productVariants: { sizes, colors },
+        description: auctionDescription.trim(),
       });
 
       await refreshSessions();
@@ -319,6 +322,19 @@ export default function SellerLiveStudioPage() {
                       placeholder="e.g. Vintage leather jacket"
                       value={auctionProductName}
                       onChange={(e) => setAuctionProductName(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <Label htmlFor="auction-description" className="text-sm font-semibold">Description</Label>
+                    <Textarea
+                      id="auction-description"
+                      className="mt-2 resize-none"
+                      rows={3}
+                      placeholder="Describe what you're auctioning — condition, material, size details…"
+                      value={auctionDescription}
+                      onChange={(e) => setAuctionDescription(e.target.value)}
                     />
                   </div>
 
