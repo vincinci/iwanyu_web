@@ -376,6 +376,9 @@ export const Header = () => {
                     {(user?.role === 'seller' || user?.role === 'admin') && (
                       <Link to="/seller" onClick={toggleMobileMenu} className="block py-2 text-sm font-medium text-foreground border-b border-border mb-2 pb-3">{t("header.sellerDashboard")}</Link>
                     )}
+                    {user?.role === 'admin' && (
+                      <Link to="/admin" onClick={toggleMobileMenu} className="block py-2 text-sm font-medium text-foreground border-b border-border mb-2 pb-3">{t("header.adminDashboard")}</Link>
+                    )}
                     <Link to="/orders" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.orders")}</Link>
                     <Link to="/wishlist" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.wishlist")}</Link>
                     <Link to="/account" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.profile")}</Link>
