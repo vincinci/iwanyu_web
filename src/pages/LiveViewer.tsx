@@ -299,10 +299,18 @@ function AuctionView({
                   </p>
                 )}
                 {walletAvailable === 0 && !overBudget && (
-                  <p className="text-xs text-amber-300 flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                    Wallet empty — top up to bid
-                  </p>
+                  <div className="flex items-center justify-between text-xs text-amber-300">
+                    <span className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                      Wallet empty
+                    </span>
+                    <Link
+                      to="/wallet"
+                      className="rounded-full bg-amber-400/20 border border-amber-400/40 px-3 py-1 text-amber-200 font-semibold hover:bg-amber-400/30 transition-colors"
+                    >
+                      Top Up
+                    </Link>
+                  </div>
                 )}
               </>
             ) : (
@@ -622,28 +630,30 @@ function StreamView({
 
       {/* ── DESKTOP: two-column ── */}
       <div className="hidden md:flex min-h-screen bg-gray-950 text-white overflow-hidden">
-        {/* Left: Video */}
-        <div className="flex-1 relative">
-          <video ref={desktopVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-          <StreamStateBadge state={streamState} />
-          <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-6 pt-6 pb-8 bg-gradient-to-b from-black/70 to-transparent z-20">
-            <Link to="/live" className="text-white hover:text-gray-300"><ArrowLeft className="h-5 w-5" /></Link>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold truncate">{session.productTitle}</h1>
-              <p className="text-sm text-white/70">{session.vendorName}</p>
+        {/* Left: Video — portrait 9:16 box centred in black letterbox */}
+        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
+          <div className="relative h-full" style={{ aspectRatio: "9/16" }}>
+            <video ref={desktopVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+            <StreamStateBadge state={streamState} />
+            <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-6 pt-6 pb-8 bg-gradient-to-b from-black/70 to-transparent z-20">
+              <Link to="/live" className="text-white hover:text-gray-300"><ArrowLeft className="h-5 w-5" /></Link>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-bold truncate">{session.productTitle}</h1>
+                <p className="text-sm text-white/70">{session.vendorName}</p>
+              </div>
+              <Badge className="bg-red-500 text-white rounded-full text-xs px-2 py-1 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
+              </Badge>
+              <Badge variant="outline" className="rounded-full text-xs border-blue-300 text-blue-300">
+                <Radio className="h-3 w-3 mr-1" /> Stream
+              </Badge>
+              <span className="text-white/70 text-xs flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" /> {viewerCount}
+              </span>
+              {streamState === "connected"
+                ? <Wifi className="h-4 w-4 text-green-400" />
+                : <WifiOff className="h-4 w-4 text-red-400" />}
             </div>
-            <Badge className="bg-red-500 text-white rounded-full text-xs px-2 py-1 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
-            </Badge>
-            <Badge variant="outline" className="rounded-full text-xs border-blue-300 text-blue-300">
-              <Radio className="h-3 w-3 mr-1" /> Stream
-            </Badge>
-            <span className="text-white/70 text-xs flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" /> {viewerCount}
-            </span>
-            {streamState === "connected"
-              ? <Wifi className="h-4 w-4 text-green-400" />
-              : <WifiOff className="h-4 w-4 text-red-400" />}
           </div>
         </div>
 

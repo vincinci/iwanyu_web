@@ -328,8 +328,9 @@ export default function LiveSessionPage() {
       {/* ── Main area: camera + desktop sidebar ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ── Camera column ── */}
-        <div className="relative flex-1 bg-black overflow-hidden">
+        {/* ── Camera column — portrait 9:16 centred in black ── */}
+        <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
+          <div className="relative h-full" style={{ aspectRatio: "9/16" }}>
 
           {/* Video / paused state */}
           {cameraEnabled ? (
@@ -433,6 +434,7 @@ export default function LiveSessionPage() {
               Revenue: {formatMoney(totals.totalRevenue)}
             </span>
           </div>
+          </div>{/* end aspect-ratio wrapper */}
         </div>
 
         {/* ── DESKTOP RIGHT SIDEBAR ── */}
