@@ -95,7 +95,7 @@ const Index = () => {
             </div>
 
             <div className="mt-6">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                 {recentlyViewedProducts.map((product, idx) => (
                   <div
                     key={product!.id}
@@ -121,7 +121,7 @@ const Index = () => {
                 <h2 className="text-xl font-bold text-gray-900">Live on iwanyu</h2>
                 <span className="ml-auto text-xs text-gray-400">{activeLiveSessions.length} session{activeLiveSessions.length !== 1 ? 's' : ''}</span>
               </div>
-              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {activeLiveSessions.map((session) => (
                   <Link key={session.id} to={`/live/view/${session.id}`} className="group block rounded-2xl overflow-hidden border border-gray-200 bg-white hover:shadow-md transition-shadow">
                     <div className="relative aspect-[3/4] bg-gray-100">
@@ -169,7 +169,7 @@ const Index = () => {
               {[1, 2, 3].map((i) => (
                 <div key={i}>
                   <div className="h-8 bg-gray-200 rounded-xl w-48 mb-6 animate-pulse"></div>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7">
                     {[...Array(8)].map((_, j) => (
                       <div key={j} className="animate-pulse">
                         <div className="bg-gray-200 aspect-[3/4] rounded-2xl mb-2"></div>
@@ -265,7 +265,7 @@ const CategorySection = ({ category, products, categoryId }: CategorySectionProp
       </div>
 
       <div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {products.slice(0, 10).map((product) => (
             <div
               key={product.id}
