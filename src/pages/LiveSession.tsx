@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send, ImagePlus, X } from "lucide-react";
+import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send, ImagePlus, X, Trash2 } from "lucide-react";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { getLiveSessions, endLiveSession, updateStreamProducts, type LiveSession, type StreamProduct } from "@/lib/liveSessions";
 import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
@@ -264,6 +264,19 @@ export default function LiveSessionPage() {
         return { ...product, soldCount: nextSold };
       })
     );
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    setPostedProducts((prev) => {
+      const next = prev.filter((p) => p.id !== productId);
+      if (sessionId) {
+        void updateStreamProducts(
+          sessionId,
+          next.map(({ soldCount: _s, ...p }) => p)
+        );
+      }
+      return next;
+    });
   };
 
   const handleEndSession = async () => {
@@ -552,6 +565,9 @@ export default function LiveSessionPage() {
                           Sold: {product.soldCount}/{product.quantityAvailable} · {formatMoney(revenue)}
                         </div>
                         <div className="mt-1.5 flex items-center justify-end gap-1">
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-red-500 hover:text-red-600 hover:border-red-300" onClick={() => handleDeleteProduct(product.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                           <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRecordSale(product.id, -1)} disabled={product.soldCount === 0}>
                             <Minus className="h-3.5 w-3.5" />
                           </Button>
@@ -704,6 +720,9 @@ export default function LiveSessionPage() {
                         Sold: {product.soldCount}/{product.quantityAvailable} · {formatMoney(revenue)}
                       </div>
                       <div className="mt-1.5 flex items-center justify-end gap-1">
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-red-500 hover:text-red-600 hover:border-red-300" onClick={() => handleDeleteProduct(product.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                         <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRecordSale(product.id, -1)} disabled={product.soldCount === 0}>
                           <Minus className="h-3.5 w-3.5" />
                         </Button>
