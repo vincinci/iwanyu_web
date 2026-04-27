@@ -26,12 +26,15 @@ import {
   Wifi,
   WifiOff,
   Loader2,
+  ShoppingCart,
+  CheckCircle2,
 } from "lucide-react";
 import {
   fetchActiveLiveSessions,
   placeBidOnLiveAuction,
   getUserWalletBalance,
   getUserLockedBid,
+  purchaseLiveStreamProduct,
   type LiveSession,
   type StreamProduct,
 } from "@/lib/liveSessions";
@@ -53,7 +56,40 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-function StreamProductCard({ p }: { p: StreamProduct }) {
+function StreamProductCard({
+  p,
+  sessionId,
+  session,
+  user,
+  onPurchased,
+}: {
+  p: StreamProduct;
+  sessionId: string;
+  session: LiveSession;
+  user: { id: string; name?: string } | null;
+  onPurchased?: () => void;
+}) {
+  const [buying, setBuying] = useState(false);
+  const [msg, setMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  const handleBuy = async () => {
+    if (!user) { setMsg({ type: "error", text: "Log in to purchase." }); return; }
+    if (p.quantityAvailable <= 0) { setMsg({ type: "error", text: "Sold out." }); return; }
+    setBuying(true);
+    setMsg(null);
+    const result = await purchaseLiveStreamProduct({
+      sessionId,
+      product: p,
+      sellerUserId: session.vendorId,
+      vendorName: session.vendorName,
+    });
+    setBuying(false);
+    setMsg({ type: result.ok ? "ok" : "error", text: result.message });
+    if (result.ok) onPurchased?.();
+  };
+
+  const soldOut = p.quantityAvailable <= 0;
+
   return (
     <div className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3">
       {p.imageUrl ? (
@@ -72,8 +108,37 @@ function StreamProductCard({ p }: { p: StreamProduct }) {
         <p className="text-xs text-gray-500 mt-0.5">
           {[p.color, p.size].filter(Boolean).join(" · ")}
         </p>
-        <p className="text-sm font-bold text-amber-600 mt-1">{formatMoney(p.priceRwf)}</p>
-        <p className="text-xs text-gray-400">Qty: {p.quantityAvailable}</p>
+        <div className="flex items-center justify-between mt-1 gap-2">
+          <p className="text-sm font-bold text-amber-600">{formatMoney(p.priceRwf)}</p>
+          <p className="text-xs text-gray-400">{soldOut ? "Sold out" : `Qty: ${p.quantityAvailable}`}</p>
+        </div>
+        {user ? (
+          <button
+            onClick={handleBuy}
+            disabled={buying || soldOut || msg?.type === "ok"}
+            className={`mt-2 w-full rounded-full py-1.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors
+              ${
+                msg?.type === "ok"
+                  ? "bg-green-100 text-green-700 cursor-default"
+                  : soldOut
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-amber-500 hover:bg-amber-600 text-white"
+              }`}
+          >
+            {buying ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : msg?.type === "ok" ? (
+              <><CheckCircle2 className="h-3.5 w-3.5" /> Purchased!</>
+            ) : (
+              <><ShoppingCart className="h-3.5 w-3.5" /> Buy Now · {formatMoney(p.priceRwf)}</>
+            )}
+          </button>
+        ) : (
+          <p className="mt-2 text-[11px] text-center text-gray-400">Log in to buy</p>
+        )}
+        {msg && msg.type === "error" && (
+          <p className="mt-1 text-[11px] text-red-600">{msg.text}</p>
+        )}
       </div>
     </div>
   );
@@ -355,17 +420,41 @@ function StreamView({
     return () => { viewer.disconnect(); viewerRef.current = null; };
   }, [sessionId, viewerId]);
 
-  const products: StreamProduct[] = session.streamProducts ?? [];
+  const [localProducts, setLocalProducts] = useState<StreamProduct[]>([]);
+
+  // Sync local products when session updates
+  useEffect(() => {
+    setLocalProducts(session.streamProducts ?? []);
+  }, [session.streamProducts]);
+
+  const handlePurchased = (productId: string) => {
+    setLocalProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? { ...p, quantityAvailable: Math.max(0, p.quantityAvailable - 1) }
+          : p
+      )
+    );
+  };
 
   const ProductsList = (
     <div className="space-y-3">
-      {products.length === 0 ? (
+      {localProducts.length === 0 ? (
         <div className="text-center py-8 text-gray-400">
           <ShoppingBag className="h-10 w-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No products posted yet</p>
         </div>
       ) : (
-        products.map((p) => <StreamProductCard key={p.id} p={p} />)
+        localProducts.map((p) => (
+          <StreamProductCard
+            key={p.id}
+            p={p}
+            sessionId={sessionId}
+            session={session}
+            user={user}
+            onPurchased={() => handlePurchased(p.id)}
+          />
+        ))
       )}
     </div>
   );

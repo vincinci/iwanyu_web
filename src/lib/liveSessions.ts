@@ -460,3 +460,33 @@ export function summarizeLiveForHome(vendors: Vendor[], products: Product[], act
     liveAuctions: normalized.filter((session) => session.auctionEnabled),
   };
 }
+
+/** Purchase a product from a live stream, deducting the buyer's wallet immediately. */
+export async function purchaseLiveStreamProduct(input: {
+  sessionId: string;
+  product: StreamProduct;
+  sellerUserId: string;
+  vendorName: string;
+}): Promise<{ ok: boolean; message: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, message: "Not connected. Please log in and try again." };
+
+  const { data, error } = await supabase.rpc("purchase_live_stream_product", {
+    p_session_id:        input.sessionId,
+    p_product_id:        input.product.id,
+    p_product_title:     input.product.title,
+    p_product_image_url: input.product.imageUrl ?? "",
+    p_color:             input.product.color ?? "",
+    p_size:              input.product.size ?? "",
+    p_price_rwf:         input.product.priceRwf,
+    p_seller_user_id:    input.sellerUserId,
+    p_vendor_name:       input.vendorName,
+  });
+
+  if (error) return { ok: false, message: error.message || "Purchase failed." };
+
+  const result = data as { ok: boolean; message: string } | null;
+  if (!result?.ok) return { ok: false, message: result?.message || "Purchase failed." };
+  return { ok: true, message: result.message };
+}
+

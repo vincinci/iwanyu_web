@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send } from "lucide-react";
+import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send, ImagePlus, X } from "lucide-react";
+import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { getLiveSessions, endLiveSession, updateStreamProducts, type LiveSession, type StreamProduct } from "@/lib/liveSessions";
 import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
 import { LiveBroadcaster } from "@/lib/liveWebRTC";
@@ -41,6 +42,11 @@ export default function LiveSessionPage() {
   const [size, setSize] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
+  const [productImageUrl, setProductImageUrl] = useState<string>("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const productImageInputRef = useRef<HTMLInputElement>(null);
   const [postedProducts, setPostedProducts] = useState<PostedStreamProduct[]>([]);
   const [postingProduct, setPostingProduct] = useState(false);
 
@@ -185,7 +191,30 @@ export default function LiveSessionPage() {
     return { totalListed, totalSold, totalRevenue };
   }, [postedProducts]);
 
-  const handlePostProduct = () => {
+  const handleProductImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProductImageFile(file);
+    setProductImagePreview(URL.createObjectURL(file));
+    setProductImageUrl("");
+    // Upload immediately in background
+    setImageUploading(true);
+    try {
+      const accessToken = (await (await import("@/lib/supabaseClient")).getSupabaseClient()?.auth.getSession())?.data.session?.access_token;
+      const result = await uploadMediaToCloudinary(file, {
+        kind: "image",
+        folder: "live-stream-products",
+        accessToken: accessToken ?? "",
+      });
+      setProductImageUrl(result.url);
+    } catch {
+      setError("Image upload failed. You can still post without an image.");
+    } finally {
+      setImageUploading(false);
+    }
+  }, []);
+
+  const handlePostProduct = async () => {
     const normalizedTitle = title.trim();
     const normalizedColor = color.trim();
     const normalizedSize = size.trim();
@@ -194,6 +223,7 @@ export default function LiveSessionPage() {
 
     if (!normalizedTitle) { setError("Enter a product title before posting."); return; }
     if (!priceRwf) { setError("Enter a valid product price."); return; }
+    if (imageUploading) { setError("Image is still uploading, please wait."); return; }
 
     setError(null);
     setPostingProduct(true);
@@ -205,12 +235,12 @@ export default function LiveSessionPage() {
       size: normalizedSize,
       priceRwf,
       quantityAvailable,
+      imageUrl: productImageUrl || undefined,
       soldCount: 0,
     };
 
     setPostedProducts((prev) => {
       const next = [newProduct, ...prev];
-      // Sync to Supabase so viewers can see it
       if (sessionId) {
         void updateStreamProducts(
           sessionId,
@@ -222,6 +252,8 @@ export default function LiveSessionPage() {
 
     setPostingProduct(false);
     setTitle(""); setColor(""); setSize(""); setPrice(""); setQuantity("");
+    setProductImageFile(null); setProductImagePreview(null); setProductImageUrl("");
+    if (productImageInputRef.current) productImageInputRef.current.value = "";
   };
 
   const handleRecordSale = (productId: string, delta: 1 | -1) => {
@@ -408,6 +440,38 @@ export default function LiveSessionPage() {
                 <Package className="h-4 w-4" /> Product Details
               </h3>
               <div className="space-y-3">
+                {/* Photo */}
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Product Photo</Label>
+                  <div className="flex items-center gap-2">
+                    {productImagePreview ? (
+                      <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                        <img src={productImagePreview} alt="" className="h-full w-full object-cover" />
+                        {imageUploading && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-[10px] text-white">↑</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setProductImageFile(null); setProductImagePreview(null); setProductImageUrl(""); if (productImageInputRef.current) productImageInputRef.current.value = ""; }}
+                          className="absolute top-0.5 right-0.5 rounded-full bg-black/60 p-0.5 text-white"
+                        ><X className="h-2.5 w-2.5" /></button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => productImageInputRef.current?.click()}
+                        className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:bg-slate-50 shrink-0"
+                      >
+                        <ImagePlus className="h-5 w-5" />
+                        <span className="text-[9px] mt-0.5">Add</span>
+                      </button>
+                    )}
+                    <p className="text-[11px] text-slate-400">{imageUploading ? "Uploading…" : productImageUrl ? "✓ Ready" : "Optional product image shown to viewers"}</p>
+                  </div>
+                  <input ref={productImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleProductImageSelect} />
+                </div>
                 <div>
                   <Label className="text-xs text-slate-500 mb-1 block">Product Title</Label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg" placeholder="Product name" />
@@ -432,7 +496,7 @@ export default function LiveSessionPage() {
                     <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg" placeholder="0" />
                   </div>
                 </div>
-                <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct}>
+                <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct || imageUploading}>
                   <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting…" : "Post Product"}
                 </Button>
                 <p className="text-[11px] text-slate-400 text-center">Posted products appear below with live sales tracking.</p>
@@ -543,6 +607,37 @@ export default function LiveSessionPage() {
               <Package className="h-4 w-4" /> Product Details
             </h3>
             <div className="space-y-3">
+              {/* Photo */}
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Product Photo</Label>
+                <div className="flex items-center gap-2">
+                  {productImagePreview ? (
+                    <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                      <img src={productImagePreview} alt="" className="h-full w-full object-cover" />
+                      {imageUploading && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-[10px] text-white">↑</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setProductImageFile(null); setProductImagePreview(null); setProductImageUrl(""); if (productImageInputRef.current) productImageInputRef.current.value = ""; }}
+                        className="absolute top-0.5 right-0.5 rounded-full bg-black/60 p-0.5 text-white"
+                      ><X className="h-2.5 w-2.5" /></button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => productImageInputRef.current?.click()}
+                      className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:bg-slate-50 shrink-0"
+                    >
+                      <ImagePlus className="h-5 w-5" />
+                      <span className="text-[9px] mt-0.5">Add</span>
+                    </button>
+                  )}
+                  <p className="text-[11px] text-slate-400">{imageUploading ? "Uploading…" : productImageUrl ? "✓ Ready" : "Optional product image"}</p>
+                </div>
+              </div>
               <div>
                 <Label className="text-xs text-slate-500 mb-1 block">Product Title</Label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg" placeholder="Product name" />
@@ -567,7 +662,7 @@ export default function LiveSessionPage() {
                   <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg" placeholder="0" />
                 </div>
               </div>
-              <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct}>
+              <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct || imageUploading}>
                 <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting…" : "Post Product"}
               </Button>
             </div>
