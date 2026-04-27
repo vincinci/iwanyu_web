@@ -8,7 +8,7 @@ import { useLanguage } from "@/context/languageContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/money";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 type VendorPayoutRow = {
     id: string;
@@ -39,21 +39,33 @@ type WithdrawalRequestRow = {
     reviewed_at: string | null;
 };
 
+type PayoutSettingsRow = {
+    bank_name: string | null;
+    bank_account_number: string | null;
+    bank_account_holder: string | null;
+    bank_set_at: string | null;
+    mobile_provider: string | null;
+    mobile_number: string | null;
+    mobile_account_name: string | null;
+};
+
 export default function SellerPayoutsPage() {
     const { user } = useAuth();
     const { t } = useLanguage();
     const { toast } = useToast();
     const supabase = getSupabaseClient();
 
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [ownedVendorIds, setOwnedVendorIds] = useState<string[]>([]);
     const [payouts, setPayouts] = useState<VendorPayoutRow[]>([]);
     const [requests, setRequests] = useState<WithdrawalRequestRow[]>([]);
     const [grossSalesRwf, setGrossSalesRwf] = useState(0);
     const [requestAmount, setRequestAmount] = useState("");
-    const [requestDestination, setRequestDestination] = useState("");
     const [requestNote, setRequestNote] = useState("");
     const [submittingRequest, setSubmittingRequest] = useState(false);
+    const [payoutSettings, setPayoutSettings] = useState<PayoutSettingsRow | null>(null);
+    const [payoutMethodChoice, setPayoutMethodChoice] = useState<"bank" | "mobile">("bank");
 
     useEffect(() => {
         let cancelled = false;
@@ -84,7 +96,7 @@ export default function SellerPayoutsPage() {
                     return;
                 }
 
-                const [payoutsResult, salesResult, requestsResult] = await Promise.all([
+                const [payoutsResult, salesResult, requestsResult, settingsResult] = await Promise.all([
                     supabase
                         .from("vendor_payouts")
                         .select("id, order_id, amount_rwf, status, provider, provider_reference, created_at, completed_at")
@@ -102,11 +114,17 @@ export default function SellerPayoutsPage() {
                         .in("vendor_id", vendorIds)
                         .order("created_at", { ascending: false })
                         .limit(100),
+                    supabase
+                        .from("vendor_payout_settings")
+                        .select("bank_name, bank_account_number, bank_account_holder, bank_set_at, mobile_provider, mobile_number, mobile_account_name")
+                        .eq("vendor_id", vendorIds[0])
+                        .maybeSingle(),
                 ]);
 
                 if (payoutsResult.error) throw payoutsResult.error;
                 if (salesResult.error) throw salesResult.error;
                 if (requestsResult.error) throw requestsResult.error;
+                // settingsResult failure is non-fatal — ignore error
 
                 if (cancelled) return;
 
@@ -116,6 +134,11 @@ export default function SellerPayoutsPage() {
 
                 setPayouts(payoutRows);
                 setRequests(requestRows);
+                const ps = (settingsResult.data as PayoutSettingsRow | null) ?? null;
+                setPayoutSettings(ps);
+                if (ps?.mobile_number && !ps?.bank_account_number) {
+                    setPayoutMethodChoice("mobile");
+                }
                 setGrossSalesRwf(
                     salesRows.reduce(
                         (sum, row) => sum + Number(row.price_rwf ?? 0) * Number(row.quantity ?? 0),
@@ -210,10 +233,18 @@ export default function SellerPayoutsPage() {
             return;
         }
 
-        if (!requestDestination.trim()) {
+        const derivedDestination =
+            payoutMethodChoice === "mobile" && payoutSettings?.mobile_number
+                ? `${payoutSettings.mobile_provider}: ${payoutSettings.mobile_number} (${payoutSettings.mobile_account_name})`
+                : payoutSettings?.bank_account_number
+                ? `${payoutSettings.bank_name}: ${payoutSettings.bank_account_number} (${payoutSettings.bank_account_holder})`
+                : "";
+        const derivedMethod = payoutMethodChoice === "mobile" && payoutSettings?.mobile_number ? "mobile_money" : "bank_transfer";
+
+        if (!derivedDestination) {
             toast({
-                title: t("sellerPayouts.destinationRequiredTitle"),
-                description: t("sellerPayouts.destinationRequiredDesc"),
+                title: "No payout method set",
+                description: "Go to Payout Settings to add a bank account or mobile money number.",
                 variant: "destructive",
             });
             return;
@@ -227,8 +258,8 @@ export default function SellerPayoutsPage() {
                     vendor_id: ownedVendorIds[0],
                     requested_by: user.id,
                     amount_rwf: amount,
-                    payout_method: "bank_transfer",
-                    payout_destination: requestDestination.trim(),
+                    payout_method: derivedMethod,
+                    payout_destination: derivedDestination,
                     note: requestNote.trim() || null,
                 })
                 .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, created_at, reviewed_at")
@@ -239,7 +270,6 @@ export default function SellerPayoutsPage() {
             const inserted = data as WithdrawalRequestRow;
             setRequests((prev) => [inserted, ...prev]);
             setRequestAmount("");
-            setRequestDestination("");
             setRequestNote("");
             toast({
                 title: t("sellerPayouts.requestSubmittedTitle"),
@@ -257,7 +287,7 @@ export default function SellerPayoutsPage() {
     }
 
     function handlePayoutSettings() {
-        window.location.href = "/seller/settings";
+        navigate("/seller/payout-settings");
     }
 
   return (
@@ -348,13 +378,49 @@ export default function SellerPayoutsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t("sellerPayouts.destinationLabel")}</label>
-                    <input
-                        value={requestDestination}
-                        onChange={(e) => setRequestDestination(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
-                        placeholder={t("sellerPayouts.destinationPlaceholder")}
-                    />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Payout destination</label>
+                    {!payoutSettings?.bank_account_number && !payoutSettings?.mobile_number ? (
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                            No payout method set.{" "}
+                            <Link to="/seller/payout-settings" className="underline font-medium">Add one →</Link>
+                        </p>
+                    ) : (
+                        <div className="space-y-2">
+                            {payoutSettings.bank_account_number && payoutSettings.mobile_number && (
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPayoutMethodChoice("bank")}
+                                        className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition ${
+                                            payoutMethodChoice === "bank" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 hover:border-gray-400"
+                                        }`}
+                                    >
+                                        Bank
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPayoutMethodChoice("mobile")}
+                                        className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition ${
+                                            payoutMethodChoice === "mobile" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 hover:border-gray-400"
+                                        }`}
+                                    >
+                                        Mobile Money
+                                    </button>
+                                </div>
+                            )}
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                                {payoutMethodChoice === "mobile" && payoutSettings.mobile_number
+                                    ? `${payoutSettings.mobile_provider}: ${payoutSettings.mobile_number} · ${payoutSettings.mobile_account_name}`
+                                    : payoutSettings.bank_account_number
+                                    ? `${payoutSettings.bank_name} · ${payoutSettings.bank_account_number} · ${payoutSettings.bank_account_holder}`
+                                    : ""}
+                            </div>
+                            <p className="text-xs text-gray-400">
+                                Change in{" "}
+                                <Link to="/seller/payout-settings" className="underline">Payout Settings</Link>.
+                            </p>
+                        </div>
+                    )}
                 </div>
                 <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">{t("sellerPayouts.noteOptionalLabel")}</label>
