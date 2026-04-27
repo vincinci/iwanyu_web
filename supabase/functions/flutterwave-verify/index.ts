@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { TEMPLATES } from "../_shared/email-templates.ts";
 
 // V3 API - uses secret key directly
 const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY") || "";
@@ -220,6 +221,8 @@ Deno.serve(async (req: Request) => {
     // ── Send order confirmation email via Resend ──
     if (RESEND_API_KEY && existingOrder.buyer_email) {
       try {
+        const tmpl = TEMPLATES["order_confirmation"];
+        const ctx = { orderId, amount: txData.amount, currency: txData.currency || "RWF" };
         await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -227,37 +230,22 @@ Deno.serve(async (req: Request) => {
             Authorization: `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: "iwanyu <orders@iwanyu.store>",
+            from: "iwanyu <hello@iwanyu.store>",
             to: [existingOrder.buyer_email],
-            subject: `Order confirmed – ${orderId.slice(0, 8)}`,
-            html: `
-              <h2>Thank you for your order!</h2>
-              <p>Your payment of <strong>${txData.amount} ${txData.currency || "RWF"}</strong> has been confirmed.</p>
-              <p><strong>Order ID:</strong> ${orderId}</p>
-              <p>We'll notify you when your items ship.</p>
-              <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-            `,
+            subject: tmpl.subject(ctx),
+            html: tmpl.html(ctx),
           }),
         });
 
-        // Log the email
         await supabase.from("email_log").insert({
           recipient: existingOrder.buyer_email,
-          subject: `Order confirmed – ${orderId.slice(0, 8)}`,
+          subject: tmpl.subject(ctx),
           template: "order_confirmation",
-          payload: { orderId, amount: txData.amount, currency: txData.currency },
+          payload: ctx,
           status: "sent",
-        });
+        }).catch(() => {});
       } catch (emailErr) {
         console.warn("Failed to send order confirmation email:", emailErr);
-        await supabase.from("email_log").insert({
-          recipient: existingOrder.buyer_email,
-          subject: `Order confirmed – ${orderId.slice(0, 8)}`,
-          template: "order_confirmation",
-          payload: { orderId },
-          status: "failed",
-          error: emailErr instanceof Error ? emailErr.message : "Unknown",
-        }).catch(() => {});
       }
     }
 

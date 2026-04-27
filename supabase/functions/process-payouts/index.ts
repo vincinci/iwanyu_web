@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { TEMPLATES } from "../_shared/email-templates.ts";
 
 /**
  * Process pending vendor payouts.
@@ -162,6 +163,8 @@ Deno.serve(async (req: Request) => {
         // Notify vendor via email
         if (RESEND_API_KEY && vendor.email) {
           try {
+            const tmpl = TEMPLATES["payout_completed"];
+            const ctx = { amount: payout.amount_rwf, orderId: payout.order_id };
             await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: {
@@ -169,16 +172,10 @@ Deno.serve(async (req: Request) => {
                 Authorization: `Bearer ${RESEND_API_KEY}`,
               },
               body: JSON.stringify({
-                from: "iwanyu <payouts@iwanyu.store>",
+                from: "iwanyu <hello@iwanyu.store>",
                 to: [vendor.email],
-                subject: `Payout processed – ${payout.amount_rwf} RWF`,
-                html: `
-                  <h2>Your payout has been processed!</h2>
-                  <p><strong>Amount:</strong> ${payout.amount_rwf} RWF</p>
-                  <p><strong>Order:</strong> ${payout.order_id.slice(0, 8)}</p>
-                  <p>The funds should arrive in your account shortly.</p>
-                  <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-                `,
+                subject: tmpl.subject(ctx),
+                html: tmpl.html(ctx),
               }),
             });
           } catch {

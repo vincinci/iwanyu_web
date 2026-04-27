@@ -43,7 +43,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -54,6 +54,13 @@ export default function SignupPage() {
       });
 
       if (signUpError) throw signUpError;
+
+      // Send welcome email (fire-and-forget, never blocks sign-up)
+      if (signUpData?.session) {
+        supabase.functions.invoke("send-welcome-email", {
+          body: { name: fullName.trim() || undefined },
+        }).catch(() => {});
+      }
 
       navigate(nextPath);
     } catch (e) {

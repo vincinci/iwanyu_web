@@ -1,69 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { TEMPLATES } from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
-interface SendEmailRequest {
-  template: string;
-  orderId: string;
-  /** Optional override recipient (defaults to buyer email) */
-  to?: string;
-  /** Extra template variables */
-  data?: Record<string, unknown>;
-}
-
-const TEMPLATES: Record<string, { subject: (ctx: Record<string, unknown>) => string; html: (ctx: Record<string, unknown>) => string }> = {
-  order_shipped: {
-    subject: (ctx) => `Your order ${(ctx.orderId as string).slice(0, 8)} has shipped!`,
-    html: (ctx) => `
-      <h2>Your order is on its way!</h2>
-      <p><strong>Order ID:</strong> ${ctx.orderId}</p>
-      <p>Your order has been shipped and is on its way to you.</p>
-      ${ctx.trackingNumber ? `<p><strong>Tracking:</strong> ${ctx.trackingNumber}</p>` : ""}
-      <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-    `,
-  },
-  order_delivered: {
-    subject: (ctx) => `Order ${(ctx.orderId as string).slice(0, 8)} delivered`,
-    html: (ctx) => `
-      <h2>Your order has been delivered!</h2>
-      <p><strong>Order ID:</strong> ${ctx.orderId}</p>
-      <p>We hope you enjoy your purchase. If you have any issues, please contact our support team.</p>
-      <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-    `,
-  },
-  order_cancelled: {
-    subject: (ctx) => `Order ${(ctx.orderId as string).slice(0, 8)} cancelled`,
-    html: (ctx) => `
-      <h2>Your order has been cancelled</h2>
-      <p><strong>Order ID:</strong> ${ctx.orderId}</p>
-      <p>Your order has been cancelled. If you were charged, a refund will be processed.</p>
-      <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-    `,
-  },
-  vendor_new_order: {
-    subject: (ctx) => `New order received – ${(ctx.orderId as string).slice(0, 8)}`,
-    html: (ctx) => `
-      <h2>You have a new order!</h2>
-      <p><strong>Order ID:</strong> ${ctx.orderId}</p>
-      <p>A customer has placed an order for your products. Please log in to your seller dashboard to review and process it.</p>
-      <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-    `,
-  },
-  payout_completed: {
-    subject: (ctx) => `Payout processed – ${ctx.amount} RWF`,
-    html: (ctx) => `
-      <h2>Your payout has been processed!</h2>
-      <p><strong>Amount:</strong> ${ctx.amount} RWF</p>
-      <p><strong>Order:</strong> ${(ctx.orderId as string).slice(0, 8)}</p>
-      <p>The funds should arrive in your account shortly.</p>
-      <p style="margin-top:24px;color:#888;font-size:12px">iwanyu.store</p>
-    `,
-  },
-};
-
+/**
+ * Generic email sending function. Supports all transactional email templates.
+ *
+ * POST body:
+ *   {
+ *     template: string        — template key (e.g. "order_confirmation")
+ *     to?: string             — recipient email (required unless orderId is given)
+ *     orderId?: string        — used to resolve recipient from orders table
+ *     data?: Record<string, unknown>  — template variables
+ *   }
+ */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -85,12 +38,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const body: SendEmailRequest = await req.json();
-    const { template, orderId, to, data } = body;
+    const body = await req.json();
+    const { template, to, orderId, data = {} } = body as {
+      template: string;
+      to?: string;
+      orderId?: string;
+      data?: Record<string, unknown>;
+    };
 
-    if (!template || !orderId) {
+    if (!template) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: template, orderId" }),
+        JSON.stringify({ error: "Missing required field: template" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -98,7 +56,7 @@ Deno.serve(async (req: Request) => {
     const tmpl = TEMPLATES[template];
     if (!tmpl) {
       return new Response(
-        JSON.stringify({ error: `Unknown template: ${template}` }),
+        JSON.stringify({ error: `Unknown template: ${template}`, available: Object.keys(TEMPLATES) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -107,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
     // Resolve recipient
     let recipient = to;
-    if (!recipient) {
+    if (!recipient && orderId) {
       const { data: order } = await supabase
         .from("orders")
         .select("buyer_email")
@@ -123,7 +81,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const ctx = { orderId, ...data };
+    const ctx: Record<string, unknown> = { orderId, ...data };
     const subject = tmpl.subject(ctx);
     const html = tmpl.html(ctx);
 
@@ -134,7 +92,7 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "iwanyu <orders@iwanyu.store>",
+        from: "iwanyu <hello@iwanyu.store>",
         to: [recipient],
         subject,
         html,
@@ -152,7 +110,7 @@ Deno.serve(async (req: Request) => {
       status,
       provider_id: emailData?.id ?? null,
       error: status === "failed" ? JSON.stringify(emailData) : null,
-    });
+    }).catch(() => {});
 
     return new Response(
       JSON.stringify({ success: emailRes.ok, messageId: emailData?.id }),
