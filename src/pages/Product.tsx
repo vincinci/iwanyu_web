@@ -311,63 +311,68 @@ export default function ProductPage() {
           {/* Left Column */}
           <div className="lg:col-span-2">
             {/* Category & Stock */}
-            <div className="flex items-start justify-between pb-6 border-b">
-              <div>
-                <h2 className="text-[20px] font-medium text-gray-900">{product.category}</h2>
-                <p className="text-gray-500 mt-1">{product.inStock ? "In stock · Ready to ship" : "Out of stock"}</p>
-              </div>
-              {vendor && (
-                <Link to={`/storefront/${vendor.id}`} className="shrink-0">
-                  <div className="h-14 w-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-white font-bold text-xl shadow-md">
-                    {vendor.name.charAt(0)}
-                  </div>
-                </Link>
-              )}
+            <div className="pb-6 border-b">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">{product.category}</p>
+              <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${product.inStock ? "text-green-600" : "text-red-500"}`}>
+                <span className={`h-2 w-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-400"}`} />
+                {product.inStock ? "In stock · Ready to ship" : "Out of stock"}
+              </span>
             </div>
 
             {/* Vendor Info */}
             {vendor && (
-              <div className="flex items-center gap-4 py-6 border-b">
-                <div className="h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center text-white font-medium">
-                  {vendor.name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-[15px]">Sold by {vendor.name}</div>
-                  <div className="text-sm text-gray-500 flex items-center gap-1">
-                    <CheckCircle2 size={14} className="text-green-500" /> Verified seller
+              <div className="py-6 border-b">
+                <Link to={`/storefront/${vendor.id}`} className="flex items-center gap-3 group rounded-xl hover:bg-gray-50 transition -mx-2 px-2 py-2">
+                  <div className="h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                    {vendor.name.charAt(0)}
                   </div>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-[15px] group-hover:underline underline-offset-2">Sold by {vendor.name}</div>
+                    <div className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                      <CheckCircle2 size={13} className="text-green-500 shrink-0" /> Verified seller
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-gray-400 shrink-0" />
+                </Link>
               </div>
             )}
 
             {/* Features */}
-            <div className="py-6 space-y-5 border-b">
-              <div className="flex gap-4">
-                <Package size={26} className="text-gray-600 shrink-0" />
+            <div className="py-6 space-y-4 border-b">
+              <div className="flex gap-3 items-start">
+                <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                  <Package size={19} className="text-amber-600" />
+                </div>
                 <div>
-                  <div className="font-medium">Quality guaranteed</div>
+                  <div className="font-medium text-[15px]">Quality guaranteed</div>
                   <div className="text-sm text-gray-500">Every product is verified for quality before shipping.</div>
                 </div>
               </div>
-              <div className="flex gap-4">
-                <Truck size={26} className="text-gray-600 shrink-0" />
+              <div className="flex gap-3 items-start">
+                <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                  <Truck size={19} className="text-blue-600" />
+                </div>
                 <div>
-                  <div className="font-medium">{product.freeShipping ? "Free shipping" : "Fast delivery"}</div>
+                  <div className="font-medium text-[15px]">{product.freeShipping ? "Free shipping" : "Fast delivery"}</div>
                   <div className="text-sm text-gray-500">{product.freeShipping ? "Ships free anywhere in Rwanda." : "Delivered to your doorstep quickly."}</div>
                 </div>
               </div>
-              <div className="flex gap-4">
-                <ShieldCheck size={26} className="text-gray-600 shrink-0" />
+              <div className="flex gap-3 items-start">
+                <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={19} className="text-green-600" />
+                </div>
                 <div>
-                  <div className="font-medium">Secure checkout</div>
+                  <div className="font-medium text-[15px]">Secure checkout</div>
                   <div className="text-sm text-gray-500">Your payment information is protected.</div>
                 </div>
               </div>
               {vendor?.location && (
-                <div className="flex gap-4">
-                  <MapPin size={26} className="text-gray-600 shrink-0" />
+                <div className="flex gap-3 items-start">
+                  <div className="h-10 w-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+                    <MapPin size={19} className="text-purple-600" />
+                  </div>
                   <div>
-                    <div className="font-medium">Ships from {vendor.location}</div>
+                    <div className="font-medium text-[15px]">Ships from {vendor.location}</div>
                     <div className="text-sm text-gray-500">Local seller, faster delivery times.</div>
                   </div>
                 </div>
@@ -554,6 +559,24 @@ export default function ProductPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Mobile Sticky Buy Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-100 px-4 py-3 md:hidden">
+        <div className="flex items-center gap-3 max-w-lg mx-auto">
+          <div className="shrink-0">
+            <div className="text-[17px] font-bold leading-tight">{formatMoney(product.price)}</div>
+            {product.freeShipping && <div className="text-[11px] text-green-600 font-semibold">Free shipping</div>}
+          </div>
+          <Button
+            className="flex-1 bg-gray-900 hover:bg-gray-800 text-white rounded-xl h-11 text-[15px] font-semibold"
+            disabled={!product.inStock || Boolean(liveAuctionSession)}
+            onClick={handleAddToCart}
+          >
+            <ShoppingCart size={17} className="mr-2" />
+            {!product.inStock ? "Out of stock" : liveAuctionSession ? "Auction only" : "Add to cart"}
+          </Button>
+        </div>
       </div>
     </StorefrontPage>
   );

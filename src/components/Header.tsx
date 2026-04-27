@@ -91,7 +91,7 @@ export const Header = () => {
               <img
                 src="/logo.png"
                 alt="iwanyu"
-                className="h-10 w-auto object-contain sm:h-14"
+                className="h-14 w-auto object-contain sm:h-18"
                 loading="eager"
               />
               <span className="sr-only">iwanyu</span>
@@ -373,6 +373,9 @@ export const Header = () => {
 
                 <div className="border-t border-border pt-4 space-y-1">
                     <div className="text-xs font-medium text-muted-foreground mb-2">{t("header.account")}</div>
+                    {(user?.role === 'seller' || user?.role === 'admin') && (
+                      <Link to="/seller" onClick={toggleMobileMenu} className="block py-2 text-sm font-medium text-foreground border-b border-border mb-2 pb-3">{t("header.sellerDashboard")}</Link>
+                    )}
                     <Link to="/orders" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.orders")}</Link>
                     <Link to="/wishlist" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.wishlist")}</Link>
                     <Link to="/account" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.profile")}</Link>
