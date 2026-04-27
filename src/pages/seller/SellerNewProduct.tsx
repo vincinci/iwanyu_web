@@ -186,9 +186,9 @@ export default function SellerNewProductPage() {
       Number(price) > 0 &&
       category.trim().length > 0 &&
       categoryOptions.length > 0 &&
-      (vendorId || (isAdmin && vendorName.trim().length >= 2))
+      !!vendorId
     );
-  }, [title, price, vendorId, vendorName, isAdmin, category, categoryOptions.length]);
+  }, [title, price, vendorId, category, categoryOptions.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -330,7 +330,7 @@ export default function SellerNewProductPage() {
                 <CardTitle className="text-base font-medium">{t("sellerNew.basics")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-            {!isAdmin && vendorOptions.length === 0 ? (
+            {vendorOptions.length === 0 && (
               <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
                 <div className="font-medium text-foreground">{t("sellerNew.noApprovedStore")}</div>
                 <div className="mt-1 text-muted-foreground">{t("sellerNew.submitVendorApplication")}</div>
@@ -338,36 +338,6 @@ export default function SellerNewProductPage() {
                   <Link to="/sell">
                     <Button variant="outline" className="rounded-md">{t("sellerNew.goToOnboarding")}</Button>
                   </Link>
-                </div>
-              </div>
-            ) : null}
-
-            {isAdmin && (
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.vendor")}</div>
-                  <Select value={vendorId} onValueChange={(v) => setVendorId(v)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder={t("sellerNew.chooseVendor")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendorOptions.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.orCreateVendor")}</div>
-                  <Input
-                    className="mt-1"
-                    value={vendorName}
-                    onChange={(e) => setVendorName(e.target.value)}
-                    placeholder={t("sellerNew.vendorName")}
-                  />
                 </div>
               </div>
             )}
