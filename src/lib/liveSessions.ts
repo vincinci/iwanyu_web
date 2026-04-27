@@ -299,6 +299,8 @@ export async function endLiveSession(sessionId: string) {
   const supabase = getSupabaseClient();
   if (supabase) {
     await supabase.from("auctions").update({ is_live: false }).eq("id", sessionId);
+    // Settle the auction: determine winner, release locked bids, send bid_won email
+    supabase.functions.invoke("settle-auction", { body: { auctionId: sessionId } }).catch(() => {});
   }
 
   const next = getLiveSessions().map((session) =>

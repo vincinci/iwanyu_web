@@ -1,8 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { TEMPLATES } from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
 interface CartItem {
   productId: string;
@@ -186,6 +188,47 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: itemsErr.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // ── Notify each vendor of the new order (fire-and-forget) ──
+    if (RESEND_API_KEY) {
+      (async () => {
+        try {
+          // Aggregate order value per vendor
+          const vendorAmounts = new Map<string, number>();
+          for (const row of rows) {
+            vendorAmounts.set(row.vendor_id, (vendorAmounts.get(row.vendor_id) ?? 0) + row.price_rwf * row.quantity);
+          }
+          for (const [vendorId, amount] of vendorAmounts) {
+            const { data: vendor } = await supabase
+              .from("vendors")
+              .select("name, owner_user_id")
+              .eq("id", vendorId)
+              .single();
+            if (!vendor?.owner_user_id) continue;
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("email")
+              .eq("id", vendor.owner_user_id)
+              .single();
+            if (!profile?.email) continue;
+            const tmpl = TEMPLATES["vendor_new_order"];
+            const ctx = { orderId, amount, storeName: vendor.name };
+            await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+              body: JSON.stringify({
+                from: "iwanyu <hello@iwanyu.store>",
+                to: [profile.email],
+                subject: tmpl.subject(ctx),
+                html: tmpl.html(ctx),
+              }),
+            });
+          }
+        } catch (e) {
+          console.warn("Failed to send vendor new-order emails:", e);
+        }
+      })();
     }
 
     return new Response(

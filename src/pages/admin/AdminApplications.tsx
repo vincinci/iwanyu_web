@@ -108,6 +108,16 @@ export default function AdminApplicationsPage() {
 
     setAllApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: "approved" as const, vendor_id: vendorId } : a));
     await refresh();
+
+    // Fire-and-forget: notify the seller their store is live
+    supabase.from("profiles").select("email").eq("id", app.owner_user_id).single()
+      .then(({ data }) => {
+        if (data?.email) {
+          return supabase.functions.invoke("send-email", {
+            body: { template: "seller_approved", to: data.email, data: { storeName: app.store_name } },
+          });
+        }
+      }).catch(() => {});
   }
 
   async function rejectApplication(app: VendorApplication) {
