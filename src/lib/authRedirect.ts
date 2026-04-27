@@ -21,17 +21,45 @@ function getConfiguredWebOrigin() {
   }
 }
 
-export function getOAuthRedirectUrl(next?: string) {
+function getPreferredOrigin() {
   const configuredOrigin = getConfiguredWebOrigin();
   const runtimeOrigin = trimTrailingSlash(window.location.origin);
-  const runtimeHost = window.location.hostname;
 
-  // In production/webviews, localhost origins can leak into OAuth redirects.
-  // Prefer explicit public origin when runtime host is local.
-  const baseOrigin = !import.meta.env.DEV && isLocalHost(runtimeHost) && configuredOrigin
-    ? configuredOrigin
-    : runtimeOrigin;
+  // In production, always prefer an explicitly configured canonical origin.
+  if (!import.meta.env.DEV && configuredOrigin) return configuredOrigin;
+  return runtimeOrigin;
+}
 
-  if (!next) return `${baseOrigin}/auth/callback`;
-  return `${baseOrigin}/auth/callback?next=${encodeURIComponent(next)}`;
+export function sanitizeNextPath(next: string | null | undefined, fallback = "/account") {
+  if (!next) return fallback;
+
+  const candidate = next.trim();
+  if (!candidate) return fallback;
+
+  // Allow only app-relative paths.
+  if (candidate.startsWith("/") && !candidate.startsWith("//")) {
+    return candidate;
+  }
+
+  // If an absolute URL is provided, only keep its path when same-origin.
+  try {
+    const preferredOrigin = getPreferredOrigin();
+    const preferred = new URL(preferredOrigin);
+    const parsed = new URL(candidate);
+    if (parsed.origin === preferred.origin) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || fallback;
+    }
+  } catch {
+    // ignore invalid URL
+  }
+
+  return fallback;
+}
+
+export function getOAuthRedirectUrl(next?: string) {
+  const baseOrigin = getPreferredOrigin();
+  const safeNext = sanitizeNextPath(next, "");
+
+  if (!safeNext) return `${baseOrigin}/auth/callback`;
+  return `${baseOrigin}/auth/callback?next=${encodeURIComponent(safeNext)}`;
 }

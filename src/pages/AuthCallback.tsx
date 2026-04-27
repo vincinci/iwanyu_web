@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { sanitizeNextPath } from "@/lib/authRedirect";
 
 export default function AuthCallbackPage() {
   const [searchParams] = useSearchParams();
@@ -10,7 +11,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const supabase = getSupabaseClient();
-    const next = searchParams.get("next") || "/account";
+    const next = sanitizeNextPath(searchParams.get("next"), "/account");
 
     if (!supabase) {
       setError("Authentication is not configured.");

@@ -10,7 +10,7 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getE2ELocalUserByCredentials, isE2EMode, writeE2ELocalUser } from "@/lib/e2e";
-import { getOAuthRedirectUrl } from "@/lib/authRedirect";
+import { getOAuthRedirectUrl, sanitizeNextPath } from "@/lib/authRedirect";
 
 export default function LoginPage() {
   const { user } = useAuth();
@@ -28,7 +28,7 @@ export default function LoginPage() {
   const state = location.state as { from?: { pathname?: string } } | null;
   const searchParams = new URLSearchParams(location.search);
   const nextParam = searchParams.get("next");
-  const nextPath = nextParam || state?.from?.pathname || "/account";
+  const nextPath = sanitizeNextPath(nextParam ?? state?.from?.pathname ?? "/account", "/account");
 
   useEffect(() => {
     if (user) navigate(nextPath, { replace: true });
@@ -90,7 +90,7 @@ export default function LoginPage() {
 
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: getOAuthRedirectUrl(nextParam ?? undefined) },
+      options: { redirectTo: getOAuthRedirectUrl(nextPath) },
     });
 
     if (e) setError(e.message);

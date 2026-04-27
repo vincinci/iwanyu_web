@@ -10,7 +10,7 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useEffect } from "react";
-import { getOAuthRedirectUrl } from "@/lib/authRedirect";
+import { getOAuthRedirectUrl, sanitizeNextPath } from "@/lib/authRedirect";
 
 export default function SignupPage() {
   const { user } = useAuth();
@@ -20,7 +20,7 @@ export default function SignupPage() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const nextParam = searchParams.get("next");
-  const nextPath = nextParam || "/account";
+  const nextPath = sanitizeNextPath(nextParam ?? "/account", "/account");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,7 +73,7 @@ export default function SignupPage() {
 
     const { error: e } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: getOAuthRedirectUrl(nextParam ?? undefined) },
+      options: { redirectTo: getOAuthRedirectUrl(nextPath) },
     });
 
     if (e) setError(e.message);
