@@ -329,6 +329,7 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
         const { error } = await supabase.from("vendors").insert({
           id: vendor.id,
           name: vendor.name,
+          shop_name: vendor.name,
           location: vendor.location ?? null,
           verified: Boolean(vendor.verified),
           owner_user_id: vendor.ownerUserId ?? null,

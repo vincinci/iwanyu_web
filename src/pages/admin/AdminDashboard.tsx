@@ -234,6 +234,7 @@ export default function AdminDashboardPage() {
     const { error: vendorErr } = await supabase.from("vendors").insert({
       id: vendorId,
       name: app.store_name,
+      shop_name: app.store_name,
       location: app.location,
       verified: false,
       owner_user_id: app.owner_user_id,

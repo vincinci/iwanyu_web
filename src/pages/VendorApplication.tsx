@@ -54,6 +54,7 @@ export default function VendorApplicationPage() {
       const { error: vendorErr } = await supabase.from("vendors").insert({
         id: vendorId,
         name: storeName.trim(),
+        shop_name: storeName.trim(),
         location: location.trim(),
         verified: false,
         owner_user_id: user.id,
