@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Mic, Plus, TrendingUp, SunMoon, Minus, MessageCircle, Send } from "lucide-react";
+import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Mic, Plus, TrendingUp, Minus, MessageCircle, Send } from "lucide-react";
 import { getLiveSessions, endLiveSession, type LiveSession } from "@/lib/liveSessions";
 import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
 import { useAuth } from "@/context/auth";
@@ -288,20 +288,37 @@ export default function LiveSessionPage() {
       <div className="flex flex-col h-screen">
         {/* Header */}
         <div className="border-b border-slate-200 bg-white/85 backdrop-blur px-6 py-4 flex items-center justify-between dark:border-slate-800 dark:bg-slate-900/80">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">{session.auctionEnabled ? "Live Auction" : "Live Stream"}</h1>
-            <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">{session.productTitle}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-red-500">Live</span>
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold tracking-tight truncate">{session.auctionEnabled ? "Live Auction" : "Live Stream"}</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{session.vendorName}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              <SunMoon className="h-3.5 w-3.5" /> Auto Theme
-            </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 rounded-full bg-slate-900/10 px-2.5 py-1 dark:bg-white/10">
+              <Users className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{viewerCount}</span>
+            </div>
+            <Button
+              onClick={() => setCameraEnabled(!cameraEnabled)}
+              variant={cameraEnabled ? "outline" : "default"}
+              size="sm"
+              className="rounded-full"
+            >
+              <Camera className="h-4 w-4 mr-1" />
+              {cameraEnabled ? "Pause" : "Resume"}
+            </Button>
             <Button
               onClick={handleEndSession}
               variant="destructive"
-              className="rounded-lg"
+              size="sm"
+              className="rounded-full"
             >
-              <StopCircle className="h-4 w-4 mr-2" /> End Session
+              <StopCircle className="h-4 w-4 mr-1" /> End
             </Button>
           </div>
         </div>
@@ -329,15 +346,9 @@ export default function LiveSessionPage() {
               )}
               
               {/* Live indicator */}
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 px-3 py-2 rounded-full">
+              <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 px-3 py-2 rounded-full text-white">
                 <span className="h-2 w-2 bg-white rounded-full animate-pulse" />
                 <span className="text-xs font-semibold">LIVE</span>
-              </div>
-
-              {/* Viewers count */}
-              <div className="absolute top-4 right-4 flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-full text-white">
-                <Users className="h-4 w-4" />
-                <span className="text-sm font-semibold">{viewerCount}</span>
               </div>
 
               <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-black/45 p-3 text-white backdrop-blur">
@@ -360,25 +371,19 @@ export default function LiveSessionPage() {
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
-                <CardContent className="p-4">
-                  <div className="text-xs text-slate-500 mb-1 dark:text-slate-400">Store</div>
-                  <div className="text-sm font-semibold">{session.vendorName}</div>
-                </CardContent>
-              </Card>
-              {session.auctionEnabled && (
+            {/* Stats — only shown for auction (bid info) */}
+            {session.auctionEnabled && (
+              <div className="mt-4">
                 <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-1 text-xs text-slate-500 mb-1 dark:text-slate-400">
                       <Gavel className="h-3 w-3" /> Current Bid
                     </div>
-                    <div className="text-sm font-semibold">{formatMoney(session.currentBidRwf)}</div>
+                    <div className="text-lg font-bold">{formatMoney(session.currentBidRwf)}</div>
                   </CardContent>
                 </Card>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar - Product Info */}
@@ -453,11 +458,11 @@ export default function LiveSessionPage() {
               </CardContent>
             </Card>
 
-            {/* Controls */}
-            <div className="space-y-2">
+            {/* Controls — only Pause/Resume camera, End Session is in header */}
+            <div>
               <Button
                 onClick={() => setCameraEnabled(!cameraEnabled)}
-                variant={cameraEnabled ? "destructive" : "default"}
+                variant={cameraEnabled ? "outline" : "default"}
                 className="w-full rounded-lg"
               >
                 {cameraEnabled ? (
@@ -465,13 +470,6 @@ export default function LiveSessionPage() {
                 ) : (
                   <><Mic className="mr-2 h-4 w-4" /> Resume Camera</>
                 )}
-              </Button>
-              <Button
-                onClick={handleEndSession}
-                variant="outline"
-                className="w-full rounded-lg border-red-500 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                <StopCircle className="h-4 w-4 mr-2" /> End Session
               </Button>
             </div>
 
