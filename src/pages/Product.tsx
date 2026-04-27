@@ -406,6 +406,7 @@ export default function ProductPage() {
                 <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-red-700">Live auction running</div>
                   <div className="mt-1 text-sm text-gray-700">Current bid: <span className="font-semibold text-gray-900">{formatMoney(liveAuctionSession.currentBidRwf)}</span></div>
+                  <div className="mt-1 text-[11px] text-red-700">This product is in auction mode. Direct purchase is disabled until auction ends.</div>
                   <div className="mt-2 flex items-center gap-2">
                     <input
                       type="number"
@@ -466,12 +467,12 @@ export default function ProductPage() {
                 <div className="p-3 flex items-center justify-between">
                   <div>
                     <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Quantity</div>
-                    <div className="text-sm font-medium">{quantity} {quantity === 1 ? "item" : "items"}</div>
+                    <div className="text-sm font-medium">{liveAuctionSession ? "Auction item: 1" : `${quantity} ${quantity === 1 ? "item" : "items"}`}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-8 w-8 rounded-full border flex items-center justify-center hover:bg-gray-50 transition">−</button>
-                    <span className="w-6 text-center font-medium">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="h-8 w-8 rounded-full border flex items-center justify-center hover:bg-gray-50 transition">+</button>
+                    <button disabled={Boolean(liveAuctionSession)} onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-8 w-8 rounded-full border flex items-center justify-center hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                    <span className="w-6 text-center font-medium">{liveAuctionSession ? 1 : quantity}</span>
+                    <button disabled={Boolean(liveAuctionSession)} onClick={() => setQuantity(quantity + 1)} className="h-8 w-8 rounded-full border flex items-center justify-center hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">+</button>
                   </div>
                 </div>
               </div>
@@ -479,11 +480,11 @@ export default function ProductPage() {
               {/* Add to Cart */}
               <Button
                 className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-12 text-base font-semibold"
-                disabled={!product.inStock}
+                disabled={!product.inStock || Boolean(liveAuctionSession)}
                 onClick={handleAddToCart}
               >
                 <ShoppingCart size={18} className="mr-2" />
-                {product.inStock ? "Add to cart" : "Out of stock"}
+                {!product.inStock ? "Out of stock" : liveAuctionSession ? "Bidding only during live auction" : "Add to cart"}
               </Button>
 
               <p className="text-center text-xs text-gray-400 mt-2">You won't be charged yet</p>

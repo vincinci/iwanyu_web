@@ -5,14 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, StopCircle, Users, Gavel, Package } from "lucide-react";
-import { useAuth } from "@/context/auth";
 import { getLiveSessions, endLiveSession, type LiveSession } from "@/lib/liveSessions";
 import { formatMoney } from "@/lib/money";
 
 export default function LiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);

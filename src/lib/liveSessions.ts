@@ -10,6 +10,7 @@ export type LiveSession = {
   productTitle: string;
   productImage: string;
   auctionEnabled: boolean;
+  auctionDurationHours?: number;
   startedAt: string;
   watchers: number;
   currentBidRwf: number;
@@ -25,11 +26,23 @@ type DbLiveAuctionRow = {
   title: string | null;
   image_url: string | null;
   current_bid: number | null;
+  ends_in: string | null;
   created_at: string | null;
   is_live: boolean | null;
   live_room: string | null;
   stream_url: string | null;
 };
+
+function parseAuctionDurationHours(value: string | null | undefined) {
+  if (!value) return undefined;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === "live-showcase") return undefined;
+  const match = trimmed.match(/^(\d+)h$/);
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  if (!Number.isFinite(hours) || hours <= 0) return undefined;
+  return hours;
+}
 
 function parseProductIdFromLiveRoom(value: string | null | undefined, fallback: string): string {
   if (!value) return fallback;
@@ -99,7 +112,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
 
   const { data, error } = await supabase
     .from("auctions")
-    .select("id, seller_user_id, vendor, title, image_url, current_bid, created_at, is_live, live_room, stream_url")
+    .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url")
     .eq("is_live", true)
     .order("created_at", { ascending: false })
     .limit(60);
@@ -152,6 +165,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
         productTitle: row.title || "Live product",
         productImage: row.image_url || "",
         auctionEnabled,
+        auctionDurationHours: parseAuctionDurationHours(row.ends_in),
         startedAt: row.created_at || new Date().toISOString(),
         watchers: Math.max(1, bidCountByAuction.get(auctionId) ?? 1),
         currentBidRwf: liveBid,
@@ -169,9 +183,13 @@ export async function createLiveSession(input: {
   sellerUserId?: string;
   product: Product;
   auctionEnabled: boolean;
+  auctionDurationHours?: number;
 }): Promise<LiveSession> {
   const supabase = getSupabaseClient();
   const basePrice = Math.max(0, Math.round(Number(input.product.price || 0)));
+  const normalizedAuctionHours = input.auctionEnabled
+    ? Math.min(24, Math.max(1, Math.round(Number(input.auctionDurationHours ?? 2))))
+    : undefined;
 
   if (supabase) {
     const { data, error } = await supabase
@@ -180,14 +198,14 @@ export async function createLiveSession(input: {
         seller_user_id: input.sellerUserId ?? null,
         title: input.product.title,
         current_bid: input.auctionEnabled ? basePrice : 0,
-        ends_in: input.auctionEnabled ? "live-auction" : "live-showcase",
+        ends_in: input.auctionEnabled ? `${normalizedAuctionHours}h` : "live-showcase",
         vendor: input.vendorName,
         image_url: input.product.image || "",
         is_live: true,
         live_room: `product:${input.product.id}`,
         stream_url: input.auctionEnabled ? "mode:auction" : "mode:showcase",
       })
-      .select("id, seller_user_id, vendor, title, image_url, current_bid, created_at, is_live, live_room, stream_url")
+      .select("id, seller_user_id, vendor, title, image_url, current_bid, ends_in, created_at, is_live, live_room, stream_url")
       .single();
 
     if (!error && data) {
@@ -200,6 +218,7 @@ export async function createLiveSession(input: {
         productTitle: row.title || input.product.title,
         productImage: row.image_url || input.product.image || "",
         auctionEnabled: isAuctionFromStreamUrl(row.stream_url),
+        auctionDurationHours: parseAuctionDurationHours(row.ends_in),
         startedAt: row.created_at || new Date().toISOString(),
         watchers: 1,
         currentBidRwf: Math.max(0, Math.round(Number(row.current_bid ?? 0))),
@@ -222,6 +241,7 @@ export async function createLiveSession(input: {
     productTitle: input.product.title,
     productImage: input.product.image,
     auctionEnabled: input.auctionEnabled,
+    auctionDurationHours: normalizedAuctionHours,
     startedAt: new Date().toISOString(),
     watchers: 1,
     currentBidRwf: input.auctionEnabled ? basePrice : 0,

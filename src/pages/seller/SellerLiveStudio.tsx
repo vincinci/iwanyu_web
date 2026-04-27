@@ -48,6 +48,7 @@ export default function SellerLiveStudioPage() {
   );
 
   const [selectedProductId, setSelectedProductId] = useState<string>(ownedProducts[0]?.id ?? "");
+  const [auctionDurationHours, setAuctionDurationHours] = useState<number>(5);
   const [activeSessions, setActiveSessions] = useState<LiveSession[]>([]);
   const [streamLoading, setStreamLoading] = useState(false);
   const [auctionLoading, setAuctionLoading] = useState(false);
@@ -124,29 +125,30 @@ export default function SellerLiveStudioPage() {
     setAuctionLoading(true);
     
     try {
-      const hasPermissions = await requestCameraAndMicPermissions();
-      if (!hasPermissions) {
-        setAuctionLoading(false);
-        return;
-      }
-
       if (!selectedProduct || !primaryVendor) {
         setError("Please select a product first");
         setAuctionLoading(false);
         return;
       }
+
+      const normalizedHours = Math.min(24, Math.max(1, Math.round(Number(auctionDurationHours || 0))));
+      if (!Number.isFinite(normalizedHours)) {
+        setError("Please set a valid auction duration");
+        setAuctionLoading(false);
+        return;
+      }
       
-      const session = await createLiveSession({
+      await createLiveSession({
         vendorId: primaryVendor.id,
         vendorName: primaryVendor.name,
         sellerUserId: user?.id,
         product: selectedProduct,
         auctionEnabled: true,
+        auctionDurationHours: normalizedHours,
       });
 
       await refreshSessions();
-      // Navigate to the live auction interface
-      navigate(`/live/${session.id}`);
+      navigate(`/product/${selectedProduct.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create auction");
     } finally {
@@ -164,7 +166,7 @@ export default function SellerLiveStudioPage() {
               <h1 className="text-3xl font-bold text-gray-900">Live Studio</h1>
               <p className="mt-1 text-sm text-gray-600">Stream and auction your products in real-time</p>
             </div>
-            <Link to="/seller/dashboard">
+            <Link to="/seller">
               <Button variant="outline" className="rounded-lg">← Back to Dashboard</Button>
             </Link>
           </div>
@@ -270,6 +272,19 @@ export default function SellerLiveStudioPage() {
                     </select>
                   </div>
 
+                  <div>
+                    <Label htmlFor="auction-duration" className="text-sm font-semibold">Auction Duration (hours)</Label>
+                    <Input
+                      id="auction-duration"
+                      type="number"
+                      min={1}
+                      max={24}
+                      value={auctionDurationHours}
+                      onChange={(e) => setAuctionDurationHours(Math.min(24, Math.max(1, Number(e.target.value || 1))))}
+                      className="mt-2"
+                    />
+                  </div>
+
                   {selectedProduct && (
                     <div className="rounded-lg bg-white border border-purple-200 p-3 flex gap-3">
                       {selectedProduct.image && (
@@ -286,9 +301,10 @@ export default function SellerLiveStudioPage() {
                     <div className="text-sm font-semibold text-gray-900">What happens:</div>
                     <ul className="space-y-1 text-xs text-gray-700">
                       <li>✓ Buyers place real-time bids</li>
+                      <li>✓ Single item auction (1 winner)</li>
                       <li>✓ Starting bid = product price</li>
                       <li>✓ Highest bidder wins</li>
-                      <li>✓ You manage auction duration</li>
+                      <li>✓ Auction auto-runs for the selected hours</li>
                     </ul>
                   </div>
 
@@ -298,9 +314,9 @@ export default function SellerLiveStudioPage() {
                     size="lg" 
                     className="w-full rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold disabled:opacity-50"
                   >
-                    {auctionLoading ? "Starting..." : "Start Live Auction"}
+                    {auctionLoading ? "Creating..." : "Create Timed Auction"}
                   </Button>
-                  <p className="text-xs text-gray-500 text-center">We'll request camera & mic access</p>
+                  <p className="text-xs text-gray-500 text-center">No camera needed for auction creation</p>
                 </CardContent>
               </Card>
             </div>
@@ -332,6 +348,7 @@ export default function SellerLiveStudioPage() {
                               <>
                                 <span className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium mr-2">Auction</span>
                                 <span>Current bid: <span className="font-semibold text-purple-600">{formatMoney(session.currentBidRwf)}</span></span>
+                                {session.auctionDurationHours ? <span className="ml-2">· {session.auctionDurationHours}h duration</span> : null}
                               </>
                             ) : (
                               <>
