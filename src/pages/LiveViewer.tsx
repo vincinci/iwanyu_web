@@ -323,7 +323,8 @@ function StreamView({
   session, sessionId, viewerCount, comments, commentsEndRef, commentText, setCommentText,
   posting, handleComment, guestName, setGuestName, user,
 }: StreamViewProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement>(null);
+  const desktopVideoRef = useRef<HTMLVideoElement>(null);
   const [streamState, setStreamState] = useState<StreamConnectionState>("idle");
   const viewerRef = useRef<LiveStreamViewer | null>(null);
 
@@ -338,7 +339,9 @@ function StreamView({
     const viewer = new LiveStreamViewer(sessionId, viewerId);
     viewerRef.current = viewer;
     viewer.onStream = (stream) => {
-      if (videoRef.current) { videoRef.current.srcObject = stream; void videoRef.current.play().catch(() => null); }
+      [mobileVideoRef.current, desktopVideoRef.current].forEach((el) => {
+        if (el) { el.srcObject = stream; void el.play().catch(() => null); }
+      });
     };
     viewer.onState = setStreamState;
     void viewer.connect();
@@ -413,7 +416,7 @@ function StreamView({
       {/* ── MOBILE: full-screen TikTok ── */}
       <div className="fixed inset-0 bg-black flex flex-col md:hidden">
         <div className="relative flex-1 overflow-hidden">
-          <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+          <video ref={mobileVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
           <StreamStateBadge state={streamState} />
 
           {/* Top bar */}
@@ -514,7 +517,7 @@ function StreamView({
       <div className="hidden md:flex min-h-screen bg-gray-950 text-white overflow-hidden">
         {/* Left: Video */}
         <div className="flex-1 relative">
-          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+          <video ref={desktopVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
           <StreamStateBadge state={streamState} />
           <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-6 pt-6 pb-8 bg-gradient-to-b from-black/70 to-transparent z-20">
             <Link to="/live" className="text-white hover:text-gray-300"><ArrowLeft className="h-5 w-5" /></Link>
