@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Mic, Plus, TrendingUp, Minus, MessageCircle, Send } from "lucide-react";
+import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send } from "lucide-react";
 import { getLiveSessions, endLiveSession, updateStreamProducts, type LiveSession, type StreamProduct } from "@/lib/liveSessions";
 import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
 import { LiveBroadcaster } from "@/lib/liveWebRTC";
@@ -279,312 +278,371 @@ export default function LiveSessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div className="flex flex-col h-screen">
-        {/* Header */}
-        <div className="border-b border-slate-200 bg-white/85 backdrop-blur px-6 py-4 flex items-center justify-between dark:border-slate-800 dark:bg-slate-900/80">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-red-500">Live</span>
+    <div className="h-dvh bg-black flex flex-col overflow-hidden">
+
+      {/* ── Main area: camera + desktop sidebar ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* ── Camera column ── */}
+        <div className="relative flex-1 bg-black overflow-hidden">
+
+          {/* Video / paused state */}
+          {cameraEnabled ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+              <div className="text-center">
+                <Camera className="mx-auto h-14 w-14 text-slate-500" />
+                <p className="mt-3 text-slate-400 text-sm">Camera paused</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight truncate">{session.auctionEnabled ? "Live Auction" : "Live Stream"}</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{session.vendorName}</p>
+          )}
+
+          {/* Top gradient */}
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
+
+          {/* Bottom gradient */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+
+          {/* ── TOP BAR overlay ── */}
+          <div
+            className="absolute top-0 left-0 right-0 flex items-center gap-2 px-4 py-3"
+            style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+          >
+            <div className="flex items-center gap-1.5 bg-red-600 rounded-full px-2.5 py-1 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-[11px] font-bold text-white uppercase tracking-wide">Live</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-semibold truncate leading-tight">
+                {session.auctionEnabled ? "Live Auction" : "Live Stream"}
+              </p>
+              <p className="text-white/60 text-[11px] truncate">{session.vendorName}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 bg-black/40 rounded-full px-2.5 py-1 backdrop-blur">
+                <Users className="h-3 w-3 text-white" />
+                <span className="text-xs text-white font-semibold">{viewerCount}</span>
+              </div>
+              <Button
+                onClick={() => setCameraEnabled(!cameraEnabled)}
+                size="sm"
+                className="rounded-full bg-white/20 hover:bg-white/30 text-white border-0 h-8 px-3 text-xs backdrop-blur"
+              >
+                <Camera className="h-3.5 w-3.5 mr-1" />
+                {cameraEnabled ? "Pause" : "Resume"}
+              </Button>
+              <Button
+                onClick={handleEndSession}
+                size="sm"
+                className="rounded-full bg-red-600 hover:bg-red-700 text-white border-0 h-8 px-3 text-xs"
+              >
+                <StopCircle className="h-3.5 w-3.5 mr-1" /> End
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1.5 rounded-full bg-slate-900/10 px-2.5 py-1 dark:bg-white/10">
-              <Users className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{viewerCount}</span>
-            </div>
-            <Button
-              onClick={() => setCameraEnabled(!cameraEnabled)}
-              variant={cameraEnabled ? "outline" : "default"}
-              size="sm"
-              className="rounded-full"
-            >
-              <Camera className="h-4 w-4 mr-1" />
-              {cameraEnabled ? "Pause" : "Resume"}
-            </Button>
-            <Button
-              onClick={handleEndSession}
-              variant="destructive"
-              size="sm"
-              className="rounded-full"
-            >
-              <StopCircle className="h-4 w-4 mr-1" /> End
-            </Button>
+
+          {/* ── TWITCH-STYLE CHAT OVERLAY ── */}
+          <div className="absolute left-3 right-3 bottom-14 flex flex-col justify-end gap-1.5 max-h-52 overflow-hidden pointer-events-none">
+            {comments.slice(-6).map((c) => (
+              <div key={c.id} className="flex items-start gap-1.5 w-fit max-w-[85%]">
+                <span className="inline-flex h-5 w-5 rounded-full bg-amber-400 text-[10px] font-bold text-amber-900 items-center justify-center shrink-0 mt-0.5">
+                  {c.userName.charAt(0).toUpperCase()}
+                </span>
+                <div className="rounded-xl bg-black/60 backdrop-blur-sm px-2.5 py-1 text-xs leading-snug">
+                  <span className="font-semibold text-amber-300 mr-1">{c.userName}</span>
+                  <span className="text-white">{c.text}</span>
+                </div>
+              </div>
+            ))}
+            <div ref={commentsEndRef} />
+          </div>
+
+          {/* ── BOTTOM STATUS BAR ── */}
+          <div className="absolute bottom-0 left-0 right-0 flex items-center gap-2 px-4 py-3">
+            <span className={`rounded-full text-[11px] font-medium px-2.5 py-1 ${
+              cameraStatus === "live" ? "bg-green-600 text-white" :
+              cameraStatus === "error" ? "bg-red-600 text-white" :
+              "bg-white/20 text-white backdrop-blur"
+            }`}>
+              {cameraStatus === "starting" ? "Starting…" :
+               cameraStatus === "live" ? "● Camera Live" :
+               cameraStatus === "error" ? "⚠ Camera Error" : "Camera Idle"}
+            </span>
+            {session.auctionEnabled && (
+              <span className="rounded-full bg-purple-600/80 backdrop-blur text-[11px] font-medium px-2.5 py-1 text-white flex items-center gap-1">
+                <Gavel className="h-3 w-3" /> {formatMoney(session.currentBidRwf)}
+              </span>
+            )}
+            {/* desktop stats */}
+            <span className="hidden lg:inline rounded-full bg-white/20 backdrop-blur text-[11px] text-white px-2.5 py-1">
+              Listed: {totals.totalListed}
+            </span>
+            <span className="hidden lg:inline rounded-full bg-white/20 backdrop-blur text-[11px] text-white px-2.5 py-1">
+              Revenue: {formatMoney(totals.totalRevenue)}
+            </span>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex gap-6 p-6 overflow-hidden">
-          {/* Video Feed */}
-          <div className="flex-1 flex flex-col">
-            <div className="relative rounded-2xl overflow-hidden flex-1 mb-4 border border-slate-200 bg-black shadow-xl dark:border-slate-800">
-              {cameraEnabled ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <Camera className="mx-auto h-12 w-12 text-slate-400" />
-                    <p className="mt-3 text-slate-300">Camera paused</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Live indicator */}
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 px-3 py-2 rounded-full text-white">
-                <span className="h-2 w-2 bg-white rounded-full animate-pulse" />
-                <span className="text-xs font-semibold">LIVE</span>
-              </div>
+        {/* ── DESKTOP RIGHT SIDEBAR ── */}
+        <div className="hidden lg:flex flex-col w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
 
-              <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-black/45 p-3 text-white backdrop-blur">
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-lg bg-white/10 px-3 py-2">
-                    <div className="text-[11px] uppercase tracking-wide text-slate-200">Camera</div>
-                    <div className="mt-1 text-sm font-semibold">
-                      {cameraStatus === "starting" ? "Starting" : cameraStatus === "live" ? "Live" : cameraStatus === "error" ? "Error" : "Idle"}
-                    </div>
+            {/* Error */}
+            {error && (
+              <div className="mx-4 mt-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-red-700">{error}</p>
+              </div>
+            )}
+
+            {/* Product Details */}
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                <Package className="h-4 w-4" /> Product Details
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Product Title</Label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg" placeholder="Product name" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Color</Label>
+                    <Input value={color} onChange={(e) => setColor(e.target.value)} className="rounded-lg" placeholder="Black" />
                   </div>
-                  <div className="rounded-lg bg-white/10 px-3 py-2">
-                    <div className="text-[11px] uppercase tracking-wide text-slate-200">Products Listed</div>
-                    <div className="mt-1 text-sm font-semibold">{totals.totalListed}</div>
-                  </div>
-                  <div className="rounded-lg bg-white/10 px-3 py-2">
-                    <div className="text-[11px] uppercase tracking-wide text-slate-200">Revenue</div>
-                    <div className="mt-1 text-sm font-semibold">{formatMoney(totals.totalRevenue)}</div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Size</Label>
+                    <Input value={size} onChange={(e) => setSize(e.target.value)} className="rounded-lg" placeholder="M / 42" />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Price (RWF)</Label>
+                    <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="rounded-lg" placeholder="0" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Quantity</Label>
+                    <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg" placeholder="0" />
+                  </div>
+                </div>
+                <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct}>
+                  <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting…" : "Post Product"}
+                </Button>
+                <p className="text-[11px] text-slate-400 text-center">Posted products appear below with live sales tracking.</p>
               </div>
             </div>
 
-            {/* Stats — only shown for auction (bid info) */}
-            {session.auctionEnabled && (
-              <div className="mt-4">
-                <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-1 text-xs text-slate-500 mb-1 dark:text-slate-400">
-                      <Gavel className="h-3 w-3" /> Current Bid
-                    </div>
-                    <div className="text-lg font-bold">{formatMoney(session.currentBidRwf)}</div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar - Product Info */}
-          <div className="w-80 flex flex-col gap-4">
-            <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90 flex-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Package className="h-4 w-4" /> Product Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block dark:text-slate-400">Product Title</Label>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="rounded-lg"
-                    placeholder="Product name"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-slate-500 mb-1 block dark:text-slate-400">Color</Label>
-                    <Input
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      className="rounded-lg"
-                      placeholder="Black"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-500 mb-1 block dark:text-slate-400">Size</Label>
-                    <Input
-                      value={size}
-                      onChange={(e) => setSize(e.target.value)}
-                      className="rounded-lg"
-                      placeholder="M / 42"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-slate-500 mb-1 block dark:text-slate-400">Price (RWF)</Label>
-                    <Input
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      className="rounded-lg"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-500 mb-1 block dark:text-slate-400">Quantity</Label>
-                    <Input
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      className="rounded-lg"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct}>
-                    <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting..." : "Post Product"}
-                  </Button>
-                  <p className="text-xs text-slate-500 mt-2 text-center dark:text-slate-400">Posted products appear below with live sales tracking.</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Controls — only Pause/Resume camera, End Session is in header */}
-            <div>
+            {/* Pause camera */}
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
               <Button
                 onClick={() => setCameraEnabled(!cameraEnabled)}
                 variant={cameraEnabled ? "outline" : "default"}
                 className="w-full rounded-lg"
+                size="sm"
               >
-                {cameraEnabled ? (
-                  <><Camera className="mr-2 h-4 w-4" /> Pause Camera</>
-                ) : (
-                  <><Mic className="mr-2 h-4 w-4" /> Resume Camera</>
-                )}
+                <Camera className="mr-2 h-4 w-4" />
+                {cameraEnabled ? "Pause Camera" : "Resume Camera"}
               </Button>
             </div>
 
-            <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm inline-flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" /> Stream Sales
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Listed</div>
-                    <div className="font-semibold">{totals.totalListed}</div>
-                  </div>
-                  <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Sold</div>
-                    <div className="font-semibold">{totals.totalSold}</div>
-                  </div>
-                  <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Revenue</div>
-                    <div className="font-semibold text-[12px]">{formatMoney(totals.totalRevenue)}</div>
-                  </div>
+            {/* Stream Sales */}
+            <div className="p-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4" /> Stream Sales
+              </h3>
+              <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+                  <div className="text-[10px] text-slate-500">Listed</div>
+                  <div className="font-semibold text-sm">{totals.totalListed}</div>
                 </div>
-
-                {postedProducts.length === 0 ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">No products posted in this stream yet.</p>
-                ) : (
-                  <div className="max-h-52 space-y-2 overflow-auto pr-1">
-                    {postedProducts.map((product) => {
-                      const remaining = Math.max(0, product.quantityAvailable - product.soldCount);
-                      const revenue = product.priceRwf * product.soldCount;
-                      return (
-                        <div key={product.id} className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
-                          <div className="text-xs font-semibold">{product.title}</div>
-                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                            {product.color ? `Color: ${product.color}` : "Color: -"} · {product.size ? `Size: ${product.size}` : "Size: -"}
-                          </div>
-                          <div className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
-                            Price: {formatMoney(product.priceRwf)} · Sold: {product.soldCount}/{product.quantityAvailable} · Revenue: {formatMoney(revenue)}
-                          </div>
-                          <div className="mt-2 flex items-center justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2"
-                              onClick={() => handleRecordSale(product.id, -1)}
-                              disabled={product.soldCount === 0}
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-7 px-2"
-                              onClick={() => handleRecordSale(product.id, 1)}
-                              disabled={remaining <= 0}
-                            >
-                              <Plus className="h-3.5 w-3.5" /> Sale
-                            </Button>
-                          </div>
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+                  <div className="text-[10px] text-slate-500">Sold</div>
+                  <div className="font-semibold text-sm">{totals.totalSold}</div>
+                </div>
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+                  <div className="text-[10px] text-slate-500">Revenue</div>
+                  <div className="font-semibold text-[11px]">{formatMoney(totals.totalRevenue)}</div>
+                </div>
+              </div>
+              {postedProducts.length === 0 ? (
+                <p className="text-xs text-slate-400">No products posted in this stream yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {postedProducts.map((product) => {
+                    const remaining = Math.max(0, product.quantityAvailable - product.soldCount);
+                    const revenue = product.priceRwf * product.soldCount;
+                    return (
+                      <div key={product.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-2">
+                        <div className="text-xs font-semibold">{product.title}</div>
+                        <div className="mt-0.5 text-[11px] text-slate-500">
+                          {product.color || "—"} · {product.size || "—"} · {formatMoney(product.priceRwf)}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Live Chat (seller view) */}
-            <Card className="border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm inline-flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4" /> Live Chat
-                  <span className="ml-auto text-xs text-slate-400 font-normal">{comments.length} msgs</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {/* Comment list */}
-                <div className="h-48 overflow-y-auto px-3 pb-2 space-y-2">
-                  {comments.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center pt-4">No messages yet.</p>
-                  ) : (
-                    comments.map((c) => (
-                      <div key={c.id} className="flex gap-1.5">
-                        <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center text-[10px] font-bold text-amber-700 shrink-0 mt-0.5">
-                          {c.userName.charAt(0).toUpperCase()}
+                        <div className="mt-0.5 text-[11px] text-slate-500">
+                          Sold: {product.soldCount}/{product.quantityAvailable} · {formatMoney(revenue)}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-200">{c.userName} </span>
-                          <span className="text-xs text-slate-600 dark:text-slate-300 break-words">{c.text}</span>
+                        <div className="mt-1.5 flex items-center justify-end gap-1">
+                          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRecordSale(product.id, -1)} disabled={product.soldCount === 0}>
+                            <Minus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" className="h-7 px-2" onClick={() => handleRecordSale(product.id, 1)} disabled={remaining <= 0}>
+                            <Plus className="h-3.5 w-3.5" /> Sale
+                          </Button>
                         </div>
                       </div>
-                    ))
-                  )}
-                  <div ref={commentsEndRef} />
+                    );
+                  })}
                 </div>
-                {/* Seller can reply */}
-                <form onSubmit={handleSellerComment} className="flex gap-1.5 border-t border-slate-100 dark:border-slate-800 px-3 py-2">
-                  <Input
-                    placeholder="Reply to viewers…"
-                    value={sellerComment}
-                    onChange={(e) => setSellerComment(e.target.value)}
-                    className="h-8 text-xs rounded-lg"
-                    maxLength={500}
-                    disabled={sellerPosting}
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="h-8 px-2 rounded-lg shrink-0"
-                    disabled={sellerPosting || !sellerComment.trim()}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop chat input (messages show in Twitch overlay on video) */}
+          <form
+            onSubmit={handleSellerComment}
+            className="flex gap-1.5 border-t border-slate-200 dark:border-slate-800 px-3 py-3 shrink-0"
+          >
+            <Input
+              placeholder="Reply to viewers…"
+              value={sellerComment}
+              onChange={(e) => setSellerComment(e.target.value)}
+              className="h-8 text-xs rounded-lg"
+              maxLength={500}
+              disabled={sellerPosting}
+            />
+            <Button type="submit" size="sm" className="h-8 px-2 rounded-lg shrink-0" disabled={sellerPosting || !sellerComment.trim()}>
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      {/* ── MOBILE BOTTOM PANEL (product form + sales) ── */}
+      <div
+        className="lg:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 overflow-y-auto"
+        style={{ maxHeight: '45vh' }}
+      >
+        <div className="p-4 space-y-5">
+          {/* Error */}
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-red-700">{error}</p>
+            </div>
+          )}
+
+          {/* Product Details */}
+          <div>
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <Package className="h-4 w-4" /> Product Details
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Product Title</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg" placeholder="Product name" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Color</Label>
+                  <Input value={color} onChange={(e) => setColor(e.target.value)} className="rounded-lg" placeholder="Black" />
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Size</Label>
+                  <Input value={size} onChange={(e) => setSize(e.target.value)} className="rounded-lg" placeholder="M / 42" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Price (RWF)</Label>
+                  <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="rounded-lg" placeholder="0" />
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Quantity</Label>
+                  <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg" placeholder="0" />
+                </div>
+              </div>
+              <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct}>
+                <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting…" : "Post Product"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Stream Sales */}
+          <div>
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4" /> Stream Sales
+            </h3>
+            <div className="grid grid-cols-3 gap-2 text-center mb-2">
+              <div className="rounded-lg bg-slate-50 p-2">
+                <div className="text-[10px] text-slate-500">Listed</div>
+                <div className="font-semibold text-sm">{totals.totalListed}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2">
+                <div className="text-[10px] text-slate-500">Sold</div>
+                <div className="font-semibold text-sm">{totals.totalSold}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2">
+                <div className="text-[10px] text-slate-500">Revenue</div>
+                <div className="font-semibold text-[11px]">{formatMoney(totals.totalRevenue)}</div>
+              </div>
+            </div>
+            {postedProducts.length === 0 ? (
+              <p className="text-xs text-slate-400">No products posted in this stream yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {postedProducts.map((product) => {
+                  const remaining = Math.max(0, product.quantityAvailable - product.soldCount);
+                  const revenue = product.priceRwf * product.soldCount;
+                  return (
+                    <div key={product.id} className="rounded-lg border border-slate-200 p-2">
+                      <div className="text-xs font-semibold">{product.title}</div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        {product.color || "—"} · {product.size || "—"} · {formatMoney(product.priceRwf)}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        Sold: {product.soldCount}/{product.quantityAvailable} · {formatMoney(revenue)}
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-end gap-1">
+                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRecordSale(product.id, -1)} disabled={product.soldCount === 0}>
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" className="h-7 px-2" onClick={() => handleRecordSale(product.id, 1)} disabled={remaining <= 0}>
+                          <Plus className="h-3.5 w-3.5" /> Sale
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ── MOBILE CHAT INPUT (pinned at very bottom) ── */}
+      <form
+        onSubmit={handleSellerComment}
+        className="lg:hidden flex gap-2 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
+        <Input
+          placeholder="Reply to viewers…"
+          value={sellerComment}
+          onChange={(e) => setSellerComment(e.target.value)}
+          className="h-9 text-sm rounded-full"
+          maxLength={500}
+          disabled={sellerPosting}
+        />
+        <Button type="submit" size="sm" className="h-9 w-9 p-0 rounded-full shrink-0" disabled={sellerPosting || !sellerComment.trim()}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
     </div>
   );
 }
