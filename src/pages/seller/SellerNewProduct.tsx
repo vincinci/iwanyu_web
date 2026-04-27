@@ -186,9 +186,9 @@ export default function SellerNewProductPage() {
       Number(price) > 0 &&
       category.trim().length > 0 &&
       categoryOptions.length > 0 &&
-      (vendorId || vendorName.trim().length >= 2)
+      (vendorId || (isAdmin && vendorName.trim().length >= 2))
     );
-  }, [title, price, vendorId, vendorName, category, categoryOptions.length]);
+  }, [title, price, vendorId, vendorName, isAdmin, category, categoryOptions.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -342,39 +342,35 @@ export default function SellerNewProductPage() {
               </div>
             ) : null}
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.vendor")}</div>
-                <Select value={vendorId} onValueChange={(v) => setVendorId(v)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder={t("sellerNew.chooseVendor")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendorOptions.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!isAdmin && myVendors.length === 0 ? (
-                  <div className="mt-2 text-xs text-muted-foreground">{t("sellerNew.noStoreYet")}</div>
-                ) : null}
-              </div>
+            {isAdmin && (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.vendor")}</div>
+                  <Select value={vendorId} onValueChange={(v) => setVendorId(v)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder={t("sellerNew.chooseVendor")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorOptions.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.orCreateVendor")}</div>
-                <Input
-                  className="mt-1"
-                  value={vendorName}
-                  onChange={(e) => setVendorName(e.target.value)}
-                  placeholder={t("sellerNew.vendorName")}
-                />
-                {!isAdmin ? (
-                  <div className="mt-2 text-xs text-muted-foreground">{t("sellerNew.vendorRequiresApproval")}</div>
-                ) : null}
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.orCreateVendor")}</div>
+                  <Input
+                    className="mt-1"
+                    value={vendorName}
+                    onChange={(e) => setVendorName(e.target.value)}
+                    placeholder={t("sellerNew.vendorName")}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <div className="text-sm font-medium text-muted-foreground">{t("sellerNew.title")}</div>
