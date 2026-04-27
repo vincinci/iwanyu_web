@@ -1,4 +1,4 @@
-import { BarChart3, Package, ShoppingBag, Store, Wallet, Bell, ArrowRight, Radio } from "lucide-react";
+import { BarChart3, Package, ShoppingBag, Store, Wallet, Bell, ArrowRight, Radio, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const navItems = [
   { label: "Overview", icon: BarChart3, href: "/seller" },
   { label: "Products", icon: Package, href: "/seller/products" },
   { label: "Orders", icon: ShoppingBag, href: "/seller/orders" },
+  { label: "Live Studio", icon: Smartphone, href: "/seller/live-studio" },
   { label: "Payouts", icon: Wallet, href: "/seller/payouts" },
   { label: "Store Settings", icon: Store, href: "/seller/settings" },
 ];
