@@ -10,6 +10,20 @@
     overflow-x: hidden;
   }
 
+  /* Prevent iOS Safari auto-zoom when focusing inputs (triggered when font-size < 16px) */
+  input,
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
