@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -131,7 +132,7 @@ function AuctionView({
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top bar */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+      <div className="bg-white border-b border-gray-100 px-4 pb-3 flex items-center gap-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <Link to="/live" className="text-gray-500 hover:text-gray-800">
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -416,7 +417,7 @@ function StreamView({
           <StreamStateBadge state={streamState} />
 
           {/* Top bar */}
-          <div className="absolute top-0 left-0 right-0 flex items-center gap-2 px-4 pt-10 pb-6 bg-gradient-to-b from-black/70 to-transparent z-20">
+          <div className="absolute top-0 left-0 right-0 flex items-center gap-2 px-4 pb-6 bg-gradient-to-b from-black/70 to-transparent z-20" style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))' }}>
             <Link to="/live" className="text-white">
               <ArrowLeft className="h-6 w-6 drop-shadow" />
             </Link>
@@ -462,7 +463,7 @@ function StreamView({
           </div>
 
           {/* Chat overlay */}
-          <div className="absolute bottom-0 left-0 right-0 z-20 pb-4 px-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+          <div className="absolute bottom-0 left-0 right-0 z-20 px-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
             <div className="max-h-40 overflow-y-auto flex flex-col-reverse space-y-reverse space-y-1 mb-3">
               {[...comments].reverse().slice(0, 15).map((c) => (
                 <div key={c.id} className="flex items-start gap-1.5">
@@ -669,18 +670,23 @@ export default function LiveViewerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <>
+        <Helmet><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" /></Helmet>
+        <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-400 border-t-transparent mx-auto mb-4" />
           <p className="text-white">Loading live session…</p>
         </div>
       </div>
+      </>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+      <>
+        <Helmet><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" /></Helmet>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
         <Radio className="h-12 w-12 text-gray-300 mb-4" />
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Session ended or not found</h2>
         <p className="text-sm text-gray-500 mb-6">This live session is no longer active.</p>
@@ -688,6 +694,7 @@ export default function LiveViewerPage() {
           <Button className="rounded-full">Browse Live Sessions</Button>
         </Link>
       </div>
+      </>
     );
   }
 
@@ -706,9 +713,11 @@ export default function LiveViewerPage() {
     user: user as { id: string; name?: string } | null,
   };
 
+  const helmet = <Helmet><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" /></Helmet>;
+
   if (session.auctionEnabled) {
     return (
-      <AuctionView
+      <>{helmet}<AuctionView
         {...commonProps}
         walletAvailable={walletAvailable}
         myLockedBid={myLockedBid}
@@ -718,9 +727,8 @@ export default function LiveViewerPage() {
         bidMsg={bidMsg}
         setBidMsg={setBidMsg}
         handleBid={handleBid}
-      />
-    );
+      /></>);
   }
 
-  return <StreamView {...commonProps} />;
+  return <>{helmet}<StreamView {...commonProps} /></>;
 }
