@@ -10,6 +10,7 @@ export type PawaPayDepositParams = {
   accountIdentifier?: string; // Phone number or wallet ID
   correlationId: string; // Unique ID for idempotency (e.g., orderId)
   notificationUrl?: string; // Webhook callback URL
+  returnUrl?: string; // Where the customer should be sent after payment page
 };
 
 export type PawaPayDepositResponse = {

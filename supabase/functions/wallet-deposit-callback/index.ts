@@ -43,15 +43,6 @@ Deno.serve(async (req: Request) => {
     
     const { depositId, status, requestedAmount, currency, country } = body;
 
-    // Only process completed deposits
-    if (status !== "COMPLETED") {
-      console.log(`Deposit ${depositId} status: ${status} - not processing`);
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // Validate currency (RWF for Rwanda)
     if (currency !== "RWF") {
       console.warn(`Unexpected currency: ${currency}`);
@@ -63,25 +54,9 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check for duplicate
-    const { data: existing } = await supabase
-      .from("wallet_transactions")
-      .select("id")
-      .eq("external_transaction_id", depositId)
-      .maybeSingle();
-
-    if (existing) {
-      return new Response(JSON.stringify({ success: true, reason: "Already processed" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Look up transaction by depositId to find userId
-    // The userId should have been stored when the deposit was initiated
     const { data: txnRecord, error: txnErr } = await supabase
       .from("wallet_transactions")
-      .select("user_id")
+      .select("id, user_id, status")
       .eq("external_transaction_id", depositId)
       .maybeSingle();
 
@@ -89,6 +64,35 @@ Deno.serve(async (req: Request) => {
       console.warn(`No transaction found for deposit ${depositId}`);
       return new Response(JSON.stringify({ error: "Transaction not found" }), {
         status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (status === "FAILED" || status === "CANCELLED") {
+      if (txnRecord.status !== "failed" && txnRecord.status !== "cancelled" && txnRecord.status !== "completed") {
+        await supabase
+          .from("wallet_transactions")
+          .update({ status: status === "FAILED" ? "failed" : "cancelled" })
+          .eq("id", txnRecord.id);
+      }
+
+      return new Response(JSON.stringify({ success: true, depositId }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (status !== "COMPLETED") {
+      console.log(`Deposit ${depositId} status: ${status} - waiting`);
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (txnRecord.status === "completed") {
+      return new Response(JSON.stringify({ success: true, reason: "Already processed" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -133,9 +137,11 @@ Deno.serve(async (req: Request) => {
       .from("wallet_transactions")
       .update({
         status: "completed",
+        previous_balance_rwf: previousBalance,
         new_balance_rwf: newBalance,
+        updated_at: new Date().toISOString(),
       })
-      .eq("external_transaction_id", depositId);
+      .eq("id", txnRecord.id);
 
     if (updateTxnErr) {
       console.warn("Failed to update transaction status:", updateTxnErr);

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { CheckCircle2, XCircle, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 
@@ -15,86 +14,74 @@ export default function WalletCallbackPage() {
   const { toast } = useToast();
   const supabase = getSupabaseClient();
 
-  const [status, setStatus] = useState<"verifying" | "success" | "failed">("verifying");
-  const [message, setMessage] = useState("Verifying your payment…");
+  const [status, setStatus] = useState<"verifying" | "success" | "failed" | "pending">("verifying");
+  const [message, setMessage] = useState("Checking your deposit...");
   const [amountRwf, setAmountRwf] = useState<number | null>(null);
   const [newBalanceRwf, setNewBalanceRwf] = useState<number | null>(null);
 
   useEffect(() => {
     const verify = async () => {
       try {
-        const transactionId = searchParams.get("transaction_id") || searchParams.get("tx_id");
-        const flwStatus = searchParams.get("status");
-        const topupId =
-          searchParams.get("topupId") || sessionStorage.getItem("pendingTopupId");
+        const depositId = searchParams.get("depositId") || sessionStorage.getItem("pendingDepositId");
+        const returnedStatus = searchParams.get("status")?.toUpperCase();
 
-        if (flwStatus === "cancelled") {
+        if (returnedStatus === "CANCELLED" || returnedStatus === "FAILED") {
           setStatus("failed");
-          setMessage("Payment was cancelled. Your wallet was not charged.");
+          setMessage("The deposit was not completed.");
           return;
         }
 
-        if (flwStatus === "failed") {
+        if (!depositId) {
           setStatus("failed");
-          setMessage("Payment failed. Please try again.");
-          return;
-        }
-
-        if (!transactionId || !topupId) {
-          setStatus("failed");
-          setMessage("Missing payment information. Please try again.");
+          setMessage("Missing deposit information. Please try again.");
           return;
         }
 
         if (!supabase || !user) {
           setStatus("failed");
-          setMessage("Please log in to verify your payment.");
+          setMessage("Please log in to verify your deposit.");
           return;
         }
 
-        const session = (await supabase.auth.getSession()).data.session;
-        const accessToken = session?.access_token;
-        if (!accessToken) {
-          setStatus("failed");
-          setMessage("Session expired. Please log in again.");
-          return;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const { data, error } = await supabase
+            .from("wallet_transactions")
+            .select("status, amount_rwf, new_balance_rwf")
+            .eq("user_id", user.id)
+            .eq("external_transaction_id", depositId)
+            .maybeSingle();
+
+          if (error || !data) {
+            setStatus("failed");
+            setMessage("We could not find this deposit in your wallet history.");
+            return;
+          }
+
+          if (data.status === "completed") {
+            sessionStorage.removeItem("pendingDepositId");
+            setAmountRwf(data.amount_rwf ?? null);
+            setNewBalanceRwf(data.new_balance_rwf ?? null);
+            setStatus("success");
+            setMessage(`${formatMoney(data.amount_rwf ?? 0)} has been added to your wallet.`);
+
+            toast({
+              title: "Deposit received",
+              description: `${formatMoney(data.amount_rwf ?? 0)} added to your wallet.`,
+            });
+            return;
+          }
+
+          if (data.status === "failed" || data.status === "cancelled") {
+            setStatus("failed");
+            setMessage("The deposit did not complete. You can try again.");
+            return;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 2500));
         }
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        if (!supabaseUrl || !supabaseAnonKey) throw new Error("Configuration missing");
-
-        const verifyRes = await fetch(
-          `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/wallet-topup-verify`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ topupId, transactionId }),
-          },
-        );
-
-        const data = await verifyRes.json();
-
-        if (!verifyRes.ok || !data.success) {
-          setStatus("failed");
-          setMessage(data.error || "Payment verification failed. Please contact support.");
-          return;
-        }
-
-        sessionStorage.removeItem("pendingTopupId");
-        setAmountRwf(data.amountRwf ?? null);
-        setNewBalanceRwf(data.newBalanceRwf ?? null);
-        setStatus("success");
-        setMessage(`${formatMoney(data.amountRwf ?? 0)} has been added to your wallet.`);
-
-        toast({
-          title: "Wallet topped up!",
-          description: `${formatMoney(data.amountRwf ?? 0)} added successfully.`,
-        });
+        setStatus("pending");
+        setMessage("Your deposit is still pending confirmation. The wallet will update automatically once PawaPay confirms it.");
       } catch (error) {
         console.error("Wallet verification error:", error);
         setStatus("failed");
@@ -110,43 +97,54 @@ export default function WalletCallbackPage() {
 
   return (
     <StorefrontPage>
-      <div className="container min-h-screen py-12 flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center">
+      <div className="container flex min-h-screen items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 text-center shadow-sm">
           {status === "verifying" && (
-            <div className="space-y-4">
-              <Loader2 className="h-16 w-16 animate-spin text-amber-500 mx-auto" />
-              <h1 className="text-2xl font-semibold">Verifying Payment</h1>
-              <p className="text-muted-foreground">{message}</p>
+            <div className="space-y-3">
+              <h1 className="text-2xl font-semibold text-gray-900">Checking deposit</h1>
+              <p className="text-sm text-gray-500">{message}</p>
             </div>
           )}
 
           {status === "success" && (
             <div className="space-y-4">
-              <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="h-10 w-10 text-green-600" />
-              </div>
-              <h1 className="text-2xl font-semibold text-green-600">Wallet Topped Up!</h1>
-              <p className="text-muted-foreground">{message}</p>
+              <h1 className="text-2xl font-semibold text-gray-900">Deposit complete</h1>
+              <p className="text-sm text-gray-500">{message}</p>
 
               {newBalanceRwf !== null && (
-                <div className="rounded-2xl bg-amber-50 border border-amber-100 px-6 py-4 inline-flex items-center gap-3 mx-auto">
-                  <Wallet className="h-5 w-5 text-amber-500 shrink-0" />
-                  <div className="text-left">
-                    <p className="text-xs text-gray-500">New balance</p>
-                    <p className="font-bold text-gray-900">{formatMoney(newBalanceRwf)}</p>
-                  </div>
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-left">
+                  <p className="text-xs uppercase tracking-[0.18em] text-gray-400">New balance</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{formatMoney(newBalanceRwf)}</p>
+                  {amountRwf !== null && (
+                    <p className="mt-2 text-sm text-gray-500">Deposit amount: {formatMoney(amountRwf)}</p>
+                  )}
                 </div>
               )}
 
-              <div className="flex gap-3 justify-center pt-4 flex-wrap">
+              <div className="flex flex-wrap justify-center gap-3 pt-2">
                 <Button
-                  className="rounded-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  className="rounded-full bg-gray-900 text-white hover:bg-gray-800"
                   onClick={() => navigate("/live")}
                 >
                   Browse Live Auctions
                 </Button>
                 <Button variant="outline" className="rounded-full" onClick={() => navigate("/wallet")}>
-                  Top Up Again
+                  Back to Wallet
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {status === "pending" && (
+            <div className="space-y-4">
+              <h1 className="text-2xl font-semibold text-gray-900">Deposit pending</h1>
+              <p className="text-sm text-gray-500">{message}</p>
+              <div className="flex flex-wrap justify-center gap-3 pt-2">
+                <Button className="rounded-full bg-gray-900 text-white hover:bg-gray-800" onClick={() => navigate("/wallet")}>
+                  Return to Wallet
+                </Button>
+                <Button variant="outline" className="rounded-full" onClick={() => window.location.reload()}>
+                  Check Again
                 </Button>
               </div>
             </div>
@@ -154,14 +152,11 @@ export default function WalletCallbackPage() {
 
           {status === "failed" && (
             <div className="space-y-4">
-              <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto">
-                <XCircle className="h-10 w-10 text-red-600" />
-              </div>
-              <h1 className="text-2xl font-semibold text-red-600">Payment Issue</h1>
-              <p className="text-muted-foreground">{message}</p>
-              <div className="flex gap-3 justify-center pt-4 flex-wrap">
+              <h1 className="text-2xl font-semibold text-gray-900">Deposit issue</h1>
+              <p className="text-sm text-gray-500">{message}</p>
+              <div className="flex flex-wrap justify-center gap-3 pt-2">
                 <Button
-                  className="rounded-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  className="rounded-full bg-gray-900 text-white hover:bg-gray-800"
                   onClick={() => navigate("/wallet")}
                 >
                   Try Again

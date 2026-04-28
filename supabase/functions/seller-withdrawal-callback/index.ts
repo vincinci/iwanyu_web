@@ -4,7 +4,24 @@ import { corsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const PAWAPAY_API_KEY = Deno.env.get("PAWAPAY_API_KEY") || "";
-const PAWAPAY_ENDPOINT = Deno.env.get("PAWAPAY_ENDPOINT") || "https://api.pawapay.cloud";
+const PAWAPAY_ENV = (Deno.env.get("PAWAPAY_ENV") || "live").trim().toLowerCase();
+const PAWAPAY_ENDPOINT = Deno.env.get("PAWAPAY_ENDPOINT") || "https://api.pawapay.io";
+
+function getPawaPayEndpoint(): string {
+  const configuredEndpoint = PAWAPAY_ENDPOINT.trim().replace(/\/+$/, "");
+  const defaultEndpoint = PAWAPAY_ENV === "sandbox"
+    ? "https://api.sandbox.pawapay.io"
+    : "https://api.pawapay.io";
+
+  switch (configuredEndpoint) {
+    case "https://api.pawapay.cloud":
+      return defaultEndpoint;
+    case "https://api.sandbox.pawapay.cloud":
+      return "https://api.sandbox.pawapay.io";
+    default:
+      return configuredEndpoint || defaultEndpoint;
+  }
+}
 
 /**
  * Seller Withdrawal Callback (PawaPay)
@@ -167,7 +184,7 @@ Deno.serve(async (req: Request) => {
 
     // Initiate PawaPay Payout (async - will update status via callback)
     try {
-      const payoutResponse = await fetch(`${PAWAPAY_ENDPOINT}/payouts`, {
+      const payoutResponse = await fetch(`${getPawaPayEndpoint()}/payouts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
