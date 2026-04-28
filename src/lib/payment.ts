@@ -342,6 +342,103 @@ export const paymentService = {
   },
 
   /**
+   * Withdraw wallet balance to mobile money (for all users)
+   */
+  async withdrawWalletBalance(
+    request: WalletWithdrawRequest,
+    userId: string
+  ): Promise<PaymentResult> {
+    const supabase = getSupabaseClient();
+
+    // Check for duplicate
+    if (idempotencyManager.isDuplicate(userId, request.amount)) {
+      return {
+        success: false,
+        message: "A withdrawal is already in progress. Please wait or try again.",
+      };
+    }
+
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new PaymentError("Please log in to continue.", "AUTH_REQUIRED", false);
+      }
+
+      idempotencyManager.markInProgress(userId, request.amount);
+
+      // Get user's wallet
+      const { data: wallet } = await supabase
+        .from("wallets")
+        .select("id, available_rwf")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!wallet) {
+        throw new PaymentError(
+          "No wallet found. Please contact support.",
+          "NO_WALLET",
+          false
+        );
+      }
+
+      if ((wallet.available_rwf ?? 0) < request.amount) {
+        throw new InsufficientFundsError(
+          wallet.available_rwf ?? 0,
+          request.amount
+        );
+      }
+
+      // Call withdrawal edge function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wallet-withdrawal`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            walletId: wallet.id,
+            amountRwf: Math.round(request.amount),
+            mobileNetwork: request.network,
+            phoneNumber: request.phone,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new PaymentError(
+          result.message || "Withdrawal failed. Please try again.",
+          "WITHDRAWAL_FAILED",
+          true
+        );
+      }
+
+      idempotencyManager.markComplete(userId, request.amount);
+
+      return {
+        success: true,
+        message: `${request.amount.toLocaleString()} RWF is on the way to +${request.phone}`,
+        referenceId: result.referenceId,
+      };
+    } catch (error) {
+      idempotencyManager.markComplete(userId, request.amount);
+
+      if (error instanceof PaymentError || error instanceof InsufficientFundsError) {
+        return { success: false, message: error.message };
+      }
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Withdrawal failed. Please try again.",
+      };
+    }
+  },
+
+  /**
    * Withdraw seller earnings to mobile money
    */
   async withdraw(request: WalletWithdrawRequest, userId: string): Promise<PaymentResult> {
