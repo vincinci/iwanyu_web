@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+imposuert { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -476,7 +476,7 @@ export default function WalletPage() {
                 ) : (
                   <Input
                     type="tel"
-                    placeholder={`+${countryCode === "RW" ? "250" : countryCode === "KE" ? "254" : ""}788123456`}
+                    placeholder={"+250788123456"}
                     value={depositPhoneInput}
                     onChange={(e) => setDepositPhoneInput(e.target.value)}
                     className="h-12 rounded-2xl border-gray-200"
@@ -485,7 +485,8 @@ export default function WalletPage() {
 
                 {!normalizedProfilePhone && (
                   <p className="text-xs text-gray-500">
-                    You can use any Rwanda number now, or save one in <Link to="/account" className="underline">Account</Link>.
+
+                    Enter your mobile money number to deposit.
                   </p>
                 )}
               </div>
@@ -587,7 +588,7 @@ export default function WalletPage() {
                 </div>
                 <Input
                   type="tel"
-                  placeholder={`+${countryCode === "RW" ? "250" : countryCode === "KE" ? "254" : ""}788123456`}
+                  placeholder={"+250788123456"}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="h-12 rounded-2xl border-gray-200"
