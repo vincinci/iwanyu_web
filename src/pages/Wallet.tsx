@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 import { formatMoney } from "@/lib/money";
-import { initializeFlutterwavePayment, redirectToFlutterwave } from "@/lib/flutterwave";
+import { initializePawaPayDeposit, redirectToPawaPay } from "@/lib/pawapay";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getUserWalletBalance } from "@/lib/liveSessions";
 import { useEffect } from "react";
@@ -81,44 +81,41 @@ export default function WalletPage() {
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error("Please log in to continue.");
 
-      // Create a pending topup record in the DB (serves as idempotency key + tx_ref)
-      const { data: topupRow, error: insertErr } = await supabase
-        .from("wallet_topups")
-        .insert({ user_id: user.id, amount_rwf: Math.round(amount) })
-        .select("id")
-        .single();
+      const correlationId = `wallet-${user.id}-${Date.now()}`;
 
-      if (insertErr || !topupRow) {
-        throw new Error(insertErr?.message ?? "Could not initiate top-up.");
-      }
-
-      const topupId = topupRow.id as string;
-
-      const result = await initializeFlutterwavePayment(
+      const result = await initializePawaPayDeposit(
         {
-          txRef: topupId,
           amount: Math.round(amount),
           currency: "RWF",
-          redirectUrl: `${window.location.origin}/wallet-callback?topupId=${topupId}`,
-          paymentOptions: "mobilemoney",
-          customer: {
-            email: user.email ?? "",
-            name: user.name ?? user.email ?? "",
-          },
-          customizations: {
-            title: "iwanyu Wallet",
-            description: `Wallet top-up – ${Math.round(amount).toLocaleString()} RWF`,
-          },
+          country: "RW",
+          correlationId,
+          notificationUrl: `${window.location.origin}/api/wallet-deposit-callback`,
         },
-        accessToken,
+        accessToken
       );
 
-      if (!result?.paymentLink) {
+      if (!result?.depositId || !result?.authenticationUrl) {
         throw new Error("Failed to initialize payment. Please try again.");
       }
 
-      sessionStorage.setItem("pendingTopupId", topupId);
-      redirectToFlutterwave(result.paymentLink);
+      const { error: txnCreateErr } = await supabase
+        .from("wallet_transactions")
+        .insert({
+          user_id: user.id,
+          type: "deposit",
+          amount_rwf: Math.round(amount),
+          external_transaction_id: result.depositId,
+          payment_method: "pawapay_momo",
+          status: "pending",
+          description: `PawaPay wallet deposit ${correlationId}`,
+        });
+
+      if (txnCreateErr) {
+        console.warn("Failed to create pending wallet transaction:", txnCreateErr);
+      }
+
+      sessionStorage.setItem("pendingDepositId", result.depositId);
+      redirectToPawaPay(result.authenticationUrl);
     } catch (e) {
       toast({
         title: "Top-up failed",
@@ -324,7 +321,7 @@ export default function WalletPage() {
 
           <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Secured by Flutterwave · Payments are non-refundable
+            Secured by PawaPay · Mobile money payments are non-refundable
           </div>
         </div>
 
