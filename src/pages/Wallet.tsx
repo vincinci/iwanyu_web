@@ -54,7 +54,7 @@ export default function WalletPage() {
           const { data, error } = await supabase
             .from("vendors")
             .select("id, payout_balance_rwf")
-            .eq("owner_id", user.id)
+            .eq("owner_user_id", user.id)
             .single();
 
           if (data) {
@@ -253,10 +253,10 @@ export default function WalletPage() {
         </div>
 
           {/* Seller Payout Balance (if seller) */}
-          {!isLoadingVendor && payoutBalance !== null && payoutBalance > 0 && (
+          {!isLoadingVendor && vendorId && (
             <div className="rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 p-6 text-white mb-8 shadow-lg">
               <p className="text-sm font-medium text-green-100 mb-1">Available for Withdrawal</p>
-              <p className="text-4xl font-black tracking-tight">{formatMoney(payoutBalance)}</p>
+              <p className="text-4xl font-black tracking-tight">{formatMoney(payoutBalance ?? 0)}</p>
               <p className="text-xs text-green-100 mt-3">Your seller earnings ready to withdraw</p>
             </div>
           )}
@@ -329,7 +329,7 @@ export default function WalletPage() {
         </div>
 
           {/* Seller Withdrawal Form */}
-          {!isLoadingVendor && vendorId && payoutBalance !== null && payoutBalance > 0 && (
+          {!isLoadingVendor && vendorId && (
             <div className="rounded-2xl border border-green-200 bg-green-50 p-6 shadow-sm space-y-6 mt-8">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
@@ -354,7 +354,7 @@ export default function WalletPage() {
                 />
                 {withdrawAmount && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Min: 1,000 RWF | Available: {formatMoney(payoutBalance)}
+                    Min: 1,000 RWF | Available: {formatMoney(payoutBalance ?? 0)}
                   </p>
                 )}
               </div>
@@ -399,7 +399,7 @@ export default function WalletPage() {
 
               <Button
                 onClick={handleWithdraw}
-                disabled={isWithdrawing || !withdrawAmount || Number(withdrawAmount) < 1000}
+                disabled={isWithdrawing || !withdrawAmount || Number(withdrawAmount) < 1000 || (payoutBalance ?? 0) < 1000}
                 className="w-full rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold py-6 text-base disabled:opacity-50"
               >
                 {isWithdrawing ? (
@@ -417,6 +417,11 @@ export default function WalletPage() {
               <p className="text-xs text-gray-500 text-center">
                 Funds typically arrive within 1-2 minutes. Your payout balance will be updated after confirmation.
               </p>
+              {(payoutBalance ?? 0) < 1000 && (
+                <p className="text-xs text-amber-700 text-center">
+                  You need at least {formatMoney(1000)} in seller earnings before you can withdraw.
+                </p>
+              )}
             </div>
           )}
 
