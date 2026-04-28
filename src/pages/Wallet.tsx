@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,9 +110,6 @@ export default function WalletPage() {
   const [depositPhoneInput, setDepositPhoneInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [vendorId, setVendorId] = useState<string | null>(null);
-  const [payoutBalance, setPayoutBalance] = useState<number | null>(null);
-  const [isLoadingVendor, setIsLoadingVendor] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(mobileNetworks[0]);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -129,13 +126,12 @@ export default function WalletPage() {
       ? normalizedProfilePhone
       : normalizePhone(depositPhoneInput);
   const normalizedWithdrawalPhone = normalizePhone(phoneNumber);
-  const hasEnoughSellerBalance = (payoutBalance ?? 0) >= paymentConfig.minWithdrawal;
   const canSubmitDeposit = amount >= paymentConfig.minDeposit && Boolean(normalizedDepositPhone);
   const canSubmitWithdrawal =
-    hasEnoughSellerBalance &&
     withdrawAmountNumber >= paymentConfig.minWithdrawal &&
-    withdrawAmountNumber <= (payoutBalance ?? 0) &&
+    withdrawAmountNumber <= (balance ?? 0) &&
     Boolean(normalizedWithdrawalPhone);
+  const hasEnoughBalance = (balance ?? 0) >= paymentConfig.minWithdrawal;
 
   useEffect(() => {
     if (!user) {
@@ -174,26 +170,10 @@ export default function WalletPage() {
         if (!nextProfilePhone) {
           setDepositPhoneMode("other");
         }
-
-        const { data: vendorData } = await supabase
-          .from("vendors")
-          .select("id, payout_balance_rwf")
-          .eq("owner_user_id", user.id)
-          .maybeSingle();
-
-        if (vendorData) {
-          setVendorId(vendorData.id);
-          setPayoutBalance(vendorData.payout_balance_rwf ?? 0);
-        } else {
-          setVendorId(null);
-          setPayoutBalance(null);
-          setActivePanel("deposit");
-        }
       } catch (error) {
         console.error("Failed to load wallet page:", error);
       } finally {
         setLoadingBalance(false);
-        setIsLoadingVendor(false);
         setIsLoadingRegion(false);
       }
     };
@@ -245,10 +225,10 @@ export default function WalletPage() {
   };
 
     const handleWithdraw = async () => {
-    if (!user || !vendorId) {
+    if (!user) {
       toast({
         title: "Withdrawal unavailable",
-        description: "You must be a seller to withdraw earnings.",
+        description: "Please log in to withdraw.",
         variant: "destructive",
       });
       return;
@@ -266,7 +246,7 @@ export default function WalletPage() {
     if (!canSubmitWithdrawal) {
       toast({
         title: "Invalid withdrawal",
-        description: `Withdrawal must be between ${formatMoney(paymentConfig.minWithdrawal)} and ${formatMoney(payoutBalance ?? 0)}.`,
+        description: `Withdrawal must be between ${formatMoney(paymentConfig.minWithdrawal)} and ${formatMoney(balance ?? 0)}.`,
         variant: "destructive",
       });
       return;
@@ -275,7 +255,7 @@ export default function WalletPage() {
     setIsWithdrawing(true);
 
     try {
-      const result = await paymentService.withdraw(
+      const result = await paymentService.withdrawWalletBalance(
         {
           amount: Math.round(withdrawAmountNumber),
           phone: normalizedWithdrawalPhone,
@@ -300,16 +280,9 @@ export default function WalletPage() {
 
       setWithdrawAmount("");
 
-      // Refresh payout balance
-      const { data } = await supabase
-        .from("vendors")
-        .select("payout_balance_rwf")
-        .eq("id", vendorId)
-        .single();
-
-      if (data) {
-        setPayoutBalance(data.payout_balance_rwf ?? 0);
-      }
+      // Refresh wallet balance
+      const wallet = await getUserWalletBalance(user.id);
+      setBalance(wallet?.availableRwf ?? 0);
     } catch (error) {
       let message = "Unknown error";
       if (error instanceof InsufficientFundsError) {
@@ -345,8 +318,8 @@ export default function WalletPage() {
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">My wallet</h1>
               <p className="mt-1 text-sm text-gray-500">
-                {activePanel === "withdraw" && vendorId
-                  ? "Send seller earnings to mobile money."
+                {activePanel === "withdraw"
+                  ? "Withdraw deposited money back to mobile money."
                   : "Deposit money to use for wallet payments."}
               </p>
             </div>
@@ -359,36 +332,30 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {vendorId ? (
-            <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
-              <button
-                type="button"
-                onClick={() => setActivePanel("deposit")}
-                className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
-                  activePanel === "deposit"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                Deposit
-              </button>
-              <button
-                type="button"
-                onClick={() => setActivePanel("withdraw")}
-                className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
-                  activePanel === "withdraw"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                Withdraw
-              </button>
-            </div>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-sm text-gray-500">
-              Deposit money here. Withdrawals appear once you have seller earnings.
-            </div>
-          )}
+          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setActivePanel("deposit")}
+              className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
+                activePanel === "deposit"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              Deposit
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePanel("withdraw")}
+              className={`rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
+                activePanel === "withdraw"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              Withdraw
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -529,13 +496,13 @@ export default function WalletPage() {
                 <div>
                   <p className="text-base font-semibold text-gray-900">Withdraw</p>
                   <p className="mt-1 text-sm text-gray-500">
-                    Send seller earnings to your mobile money wallet.
+                    Withdraw deposited money back to your mobile money.
                   </p>
                 </div>
 
                 <div className="text-right">
                   <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400">Available</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatMoney(payoutBalance ?? 0)}</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatMoney(balance ?? 0)}</p>
                 </div>
               </div>
 
@@ -546,7 +513,7 @@ export default function WalletPage() {
                   placeholder={`e.g. ${paymentConfig.minWithdrawal * 10}`}
                   value={withdrawAmount}
                   min={paymentConfig.minWithdrawal}
-                  max={payoutBalance ?? undefined}
+                  max={balance ?? undefined}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="h-12 rounded-2xl border-gray-200"
                 />
@@ -621,9 +588,9 @@ export default function WalletPage() {
                   : `Withdraw ${withdrawAmountNumber >= paymentConfig.minWithdrawal ? formatMoney(Math.round(withdrawAmountNumber)) : ""}`}
               </Button>
 
-              {!hasEnoughSellerBalance && (
+              {!hasEnoughBalance && (
                 <p className="text-xs text-gray-500">
-                  Withdrawals unlock once your seller earnings reach {formatMoney(paymentConfig.minWithdrawal)}.
+                  Withdrawals require a balance of at least {formatMoney(paymentConfig.minWithdrawal)}.
                 </p>
               )}
             </div>

@@ -187,6 +187,7 @@ Deno.serve(async (req: Request) => {
     const paymentPagePayload: Record<string, unknown> = {
       depositId,
       returnUrl: redirectBackUrl,
+      notificationUrl: `${SUPABASE_URL}/functions/v1/wallet-deposit-callback`,
       amountDetails: {
         amount: amount.toString(),
         currency,
