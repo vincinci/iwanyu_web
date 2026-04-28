@@ -6,28 +6,84 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 import { formatMoney } from "@/lib/money";
-import { initializePawaPayDeposit, redirectToPawaPay } from "@/lib/pawapay";
+import { paymentService, InsufficientFundsError, PaymentError } from "@/lib/payment";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getUserWalletBalance } from "@/lib/liveSessions";
-
-const PRESET_AMOUNTS = [1000, 5000, 10000, 20000];
-const MOBILE_NETWORKS = ["MTN", "Airtel", "Orange"] as const;
+import {
+  getUserCountry,
+  getPaymentConfig,
+  detectCountryFromPhone,
+  type CountryCode,
+  type MobileNetwork,
+} from "@/lib/region";
 
 type WalletPanel = "deposit" | "withdraw";
 
-function normalizeRwandanPhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-
-  if (!digits) return "";
-  if (digits.startsWith("250") && digits.length === 12) return digits;
-  if (digits.startsWith("0") && digits.length === 10) return `250${digits.slice(1)}`;
-  if (digits.startsWith("7") && digits.length === 9) return `250${digits}`;
-
-  return "";
+interface PhoneNormalizer {
+  (value: string): string;
 }
 
-function formatPhonePreview(value: string): string {
-  const normalized = normalizeRwandanPhone(value);
+function getPhoneNormalizer(countryCode: CountryCode): PhoneNormalizer {
+  return function normalizePhone(value: string): string {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return "";
+
+
+    // Try to detect country from phone number first
+    const detectedCountry = detectCountryFromPhone(value);
+    const code = detectedCountry || countryCode;
+
+    // Country-specific normalization
+    switch (code) {
+      case "RW":
+        if (digits.startsWith("250") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 10) return `250${digits.slice(1)}`;
+        if (digits.startsWith("7") && digits.length === 9) return `250${digits}`;
+        break;
+      case "KE":
+        if (digits.startsWith("254") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 10) return `254${digits.slice(1)}`;
+        if (digits.startsWith("7") && digits.length === 9) return `254${digits}`;
+        break;
+      case "UG":
+        if (digits.startsWith("256") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 10) return `256${digits.slice(1)}`;
+        if (digits.startsWith("7") && digits.length === 9) return `256${digits}`;
+        break;
+      case "NG":
+        if (digits.startsWith("234") && digits.length === 13) return digits;
+        if (digits.startsWith("0") && digits.length === 10) return `234${digits.slice(1)}`;
+        if (digits.startsWith("8") && digits.length === 9) return `234${digits}`;
+        break;
+      case "GH":
+        if (digits.startsWith("233") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 9) return `233${digits.slice(1)}`;
+        if (digits.startsWith("5") && digits.length === 9) return `233${digits}`;
+        break;
+      case "TZ":
+        if (digits.startsWith("255") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 10) return `255${digits.slice(1)}`;
+        if (digits.startsWith("6") && digits.length === 9) return `255${digits}`;
+        break;
+      case "ZM":
+        if (digits.startsWith("260") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 9) return `260${digits.slice(1)}`;
+        if (digits.startsWith("9") && digits.length === 9) return `260${digits}`;
+        break;
+      default:
+        // Default to Rwanda format
+        if (digits.startsWith("250") && digits.length === 12) return digits;
+        if (digits.startsWith("0") && digits.length === 10) return `250${digits.slice(1)}`;
+        if (digits.startsWith("7") && digits.length === 9) return `250${digits}`;
+    }
+
+    return digits;
+  };
+}
+
+function formatPhonePreview(value: string, countryCode: CountryCode): string {
+  const normalize = getPhoneNormalizer(countryCode);
+  const normalized = normalize(value);
   return normalized ? `+${normalized}` : value.trim();
 }
 
@@ -36,6 +92,12 @@ export default function WalletPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const supabase = getSupabaseClient();
+
+  // Region detection
+  const [countryCode, setCountryCode] = useState<CountryCode>("RW");
+  const [paymentConfig, setPaymentConfig] = useState(() => getPaymentConfig("RW"));
+  const [mobileNetworks, setMobileNetworks] = useState<MobileNetwork[]>(paymentConfig.mobileNetworks);
+  const [isLoadingRegion, setIsLoadingRegion] = useState(true);
 
   const [activePanel, setActivePanel] = useState<WalletPanel>("deposit");
   const [balance, setBalance] = useState<number | null>(null);
@@ -52,23 +114,26 @@ export default function WalletPage() {
   const [payoutBalance, setPayoutBalance] = useState<number | null>(null);
   const [isLoadingVendor, setIsLoadingVendor] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [selectedNetwork, setSelectedNetwork] = useState<(typeof MOBILE_NETWORKS)[number]>("MTN");
+  const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(mobileNetworks[0]);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
+  // Get normalized phone function for current country
+  const normalizePhone = getPhoneNormalizer(countryCode);
+
   const amount = selectedPreset ?? (customAmount ? Number(customAmount) : 0);
   const withdrawAmountNumber = Number(withdrawAmount || 0);
-  const normalizedProfilePhone = normalizeRwandanPhone(profilePhone);
+  const normalizedProfilePhone = normalizePhone(profilePhone);
   const normalizedDepositPhone =
     depositPhoneMode === "saved"
       ? normalizedProfilePhone
-      : normalizeRwandanPhone(depositPhoneInput);
-  const normalizedWithdrawalPhone = normalizeRwandanPhone(phoneNumber);
-  const hasEnoughSellerBalance = (payoutBalance ?? 0) >= 1000;
-  const canSubmitDeposit = amount >= 500 && Boolean(normalizedDepositPhone);
+      : normalizePhone(depositPhoneInput);
+  const normalizedWithdrawalPhone = normalizePhone(phoneNumber);
+  const hasEnoughSellerBalance = (payoutBalance ?? 0) >= paymentConfig.minWithdrawal;
+  const canSubmitDeposit = amount >= paymentConfig.minDeposit && Boolean(normalizedDepositPhone);
   const canSubmitWithdrawal =
     hasEnoughSellerBalance &&
-    withdrawAmountNumber >= 1000 &&
+    withdrawAmountNumber >= paymentConfig.minWithdrawal &&
     withdrawAmountNumber <= (payoutBalance ?? 0) &&
     Boolean(normalizedWithdrawalPhone);
 
@@ -80,6 +145,18 @@ export default function WalletPage() {
 
     const loadWallet = async () => {
       try {
+        // Load user's country first
+        const country = await getUserCountry();
+        setCountryCode(country);
+        const config = getPaymentConfig(country);
+        setPaymentConfig(config);
+        setMobileNetworks(config.mobileNetworks);
+        
+        // Set default network for user's country
+        if (config.mobileNetworks.length > 0) {
+          setSelectedNetwork(config.mobileNetworks[0]);
+        }
+
         const wallet = await getUserWalletBalance(user.id);
         setBalance(wallet?.availableRwf ?? 0);
 
@@ -117,14 +194,15 @@ export default function WalletPage() {
       } finally {
         setLoadingBalance(false);
         setIsLoadingVendor(false);
+        setIsLoadingRegion(false);
       }
     };
 
     void loadWallet();
   }, [navigate, supabase, user]);
 
-  const handleTopUp = async () => {
-    if (!user || !supabase || amount < 500) return;
+    const handleTopUp = async () => {
+    if (!user || amount < paymentConfig.minDeposit) return;
 
     if (!normalizedDepositPhone) {
       toast({
@@ -138,44 +216,23 @@ export default function WalletPage() {
     setIsProcessing(true);
 
     try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const accessToken = session?.access_token;
-      if (!accessToken) throw new Error("Please log in to continue.");
-
-      const correlationId = `wallet-${user.id}-${Date.now()}`;
-
-      const result = await initializePawaPayDeposit(
+      const result = await paymentService.depositMobileMoney(
         {
           amount: Math.round(amount),
-          currency: "RWF",
-          country: "RW",
-          correlationId,
-          accountIdentifier: normalizedDepositPhone,
-          returnUrl: `${window.location.origin}/wallet-callback`,
+          phone: normalizedDepositPhone,
+          method: "mobile_money",
         },
-        accessToken,
+        user.id
       );
 
-      if (!result?.depositId || !result?.authenticationUrl) {
-        throw new Error("Failed to initialize payment. Please try again.");
+      if (!result.success) {
+        toast({
+          title: "Deposit failed",
+          description: result.message,
+          variant: "destructive",
+        });
       }
-
-      const { error: txnCreateErr } = await supabase.from("wallet_transactions").insert({
-        user_id: user.id,
-        type: "deposit",
-        amount_rwf: Math.round(amount),
-        external_transaction_id: result.depositId,
-        payment_method: "pawapay_momo",
-        status: "pending",
-        description: `Wallet deposit ${correlationId}`,
-      });
-
-      if (txnCreateErr) {
-        throw new Error(txnCreateErr.message || "Failed to create pending wallet transaction.");
-      }
-
-      sessionStorage.setItem("pendingDepositId", result.depositId);
-      redirectToPawaPay(result.authenticationUrl);
+      // If success, user is redirected to PawaPay
     } catch (error) {
       toast({
         title: "Deposit failed",
@@ -187,8 +244,8 @@ export default function WalletPage() {
     }
   };
 
-  const handleWithdraw = async () => {
-    if (!user || !vendorId || !supabase) {
+    const handleWithdraw = async () => {
+    if (!user || !vendorId) {
       toast({
         title: "Withdrawal unavailable",
         description: "You must be a seller to withdraw earnings.",
@@ -200,7 +257,7 @@ export default function WalletPage() {
     if (!normalizedWithdrawalPhone) {
       toast({
         title: "Phone number required",
-        description: "Enter a valid Rwanda mobile money number.",
+        description: "Enter a valid mobile money number.",
         variant: "destructive",
       });
       return;
@@ -209,7 +266,7 @@ export default function WalletPage() {
     if (!canSubmitWithdrawal) {
       toast({
         title: "Invalid withdrawal",
-        description: `Withdrawal must be between ${formatMoney(1000)} and ${formatMoney(payoutBalance ?? 0)}.`,
+        description: `Withdrawal must be between ${formatMoney(paymentConfig.minWithdrawal)} and ${formatMoney(payoutBalance ?? 0)}.`,
         variant: "destructive",
       });
       return;
@@ -218,41 +275,32 @@ export default function WalletPage() {
     setIsWithdrawing(true);
 
     try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const accessToken = session?.access_token;
-      if (!accessToken) throw new Error("Please log in to continue.");
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seller-withdrawal-callback`,
+      const result = await paymentService.withdraw(
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            vendorId,
-            amountRwf: Math.round(withdrawAmountNumber),
-            mobileNetwork: selectedNetwork,
-            phoneNumber: normalizedWithdrawalPhone,
-            reason: "Seller earnings withdrawal",
-          }),
+          amount: Math.round(withdrawAmountNumber),
+          phone: normalizedWithdrawalPhone,
+          network: selectedNetwork.shortName as "MTN" | "Airtel",
         },
+        user.id
       );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Withdrawal failed. Please try again.");
+      if (!result.success) {
+        toast({
+          title: "Withdrawal failed",
+          description: result.message,
+          variant: "destructive",
+        });
+        return;
       }
 
       toast({
         title: "Withdrawal started",
-        description: `${formatMoney(withdrawAmountNumber)} is on the way to +${normalizedWithdrawalPhone}.`,
+        description: result.message,
       });
 
       setWithdrawAmount("");
 
+      // Refresh payout balance
       const { data } = await supabase
         .from("vendors")
         .select("payout_balance_rwf")
@@ -263,9 +311,17 @@ export default function WalletPage() {
         setPayoutBalance(data.payout_balance_rwf ?? 0);
       }
     } catch (error) {
+      let message = "Unknown error";
+      if (error instanceof InsufficientFundsError) {
+        message = error.message;
+      } else if (error instanceof PaymentError) {
+        message = error.message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
       toast({
         title: "Withdrawal failed",
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -346,7 +402,7 @@ export default function WalletPage() {
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {PRESET_AMOUNTS.map((presetAmount) => (
+                {[1000, 5000, 10000, 20000].map((presetAmount) => (
                   <button
                     key={presetAmount}
                     type="button"
@@ -369,17 +425,17 @@ export default function WalletPage() {
                 <label className="text-sm font-medium text-gray-900">Custom amount</label>
                 <Input
                   type="number"
-                  placeholder="e.g. 15000"
+                  placeholder={`e.g. ${paymentConfig.minDeposit * 10}`}
                   value={customAmount}
-                  min={500}
+                  min={paymentConfig.minDeposit}
                   onChange={(e) => {
                     setCustomAmount(e.target.value);
                     setSelectedPreset(null);
                   }}
                   className="h-12 rounded-2xl border-gray-200"
                 />
-                {customAmount && Number(customAmount) < 500 && (
-                  <p className="text-xs text-gray-500">Minimum deposit is {formatMoney(500)}.</p>
+                {customAmount && Number(customAmount) < paymentConfig.minDeposit && (
+                  <p className="text-xs text-gray-500">Minimum deposit is {formatMoney(paymentConfig.minDeposit)}.</p>
                 )}
               </div>
 
@@ -415,12 +471,12 @@ export default function WalletPage() {
 
                 {depositPhoneMode === "saved" && normalizedProfilePhone ? (
                   <div className="flex h-12 items-center rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm text-gray-700">
-                    {formatPhonePreview(profilePhone)}
+                    {formatPhonePreview(profilePhone, countryCode)}
                   </div>
                 ) : (
                   <Input
                     type="tel"
-                    placeholder="+250788123456"
+                    placeholder={`+${countryCode === "RW" ? "250" : countryCode === "KE" ? "254" : ""}788123456`}
                     value={depositPhoneInput}
                     onChange={(e) => setDepositPhoneInput(e.target.value)}
                     className="h-12 rounded-2xl border-gray-200"
@@ -452,12 +508,14 @@ export default function WalletPage() {
               <Button
                 type="button"
                 onClick={handleTopUp}
-                disabled={isProcessing || !canSubmitDeposit}
+                disabled={isProcessing || !canSubmitDeposit || isLoadingRegion}
                 className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
               >
                 {isProcessing
                   ? "Starting deposit..."
-                  : `Deposit ${amount >= 500 ? formatMoney(Math.round(amount)) : ""}`}
+                  : isLoadingRegion
+                  ? "Detecting region..."
+                  : `Deposit ${amount >= paymentConfig.minDeposit ? formatMoney(Math.round(amount)) : ""}`}
               </Button>
 
               <p className="text-xs text-gray-500">
@@ -484,31 +542,31 @@ export default function WalletPage() {
                 <label className="text-sm font-medium text-gray-900">Amount</label>
                 <Input
                   type="number"
-                  placeholder="e.g. 50000"
+                  placeholder={`e.g. ${paymentConfig.minWithdrawal * 10}`}
                   value={withdrawAmount}
-                  min={1000}
+                  min={paymentConfig.minWithdrawal}
                   max={payoutBalance ?? undefined}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="h-12 rounded-2xl border-gray-200"
                 />
-                <p className="text-xs text-gray-500">Minimum withdrawal is {formatMoney(1000)}.</p>
+                <p className="text-xs text-gray-500">Minimum withdrawal is {formatMoney(paymentConfig.minWithdrawal)}.</p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-900">Network</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {MOBILE_NETWORKS.map((network) => (
+                  {mobileNetworks.map((network) => (
                     <button
-                      key={network}
+                      key={network.id}
                       type="button"
                       onClick={() => setSelectedNetwork(network)}
                       className={`rounded-2xl border px-3 py-2.5 text-sm font-medium transition ${
-                        selectedNetwork === network
+                        selectedNetwork.id === network.id
                           ? "border-gray-900 bg-gray-900 text-white"
                           : "border-gray-200 text-gray-700 hover:border-gray-400"
                       }`}
                     >
-                      {network}
+                      {network.shortName}
                     </button>
                   ))}
                 </div>
@@ -529,7 +587,7 @@ export default function WalletPage() {
                 </div>
                 <Input
                   type="tel"
-                  placeholder="+250788123456"
+                  placeholder={`+${countryCode === "RW" ? "250" : countryCode === "KE" ? "254" : ""}788123456`}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="h-12 rounded-2xl border-gray-200"
@@ -540,7 +598,7 @@ export default function WalletPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-gray-500">You will receive</span>
                   <span className="font-medium text-gray-900">
-                    {formatMoney(withdrawAmountNumber >= 1000 ? Math.round(withdrawAmountNumber) : 0)}
+                    {formatMoney(withdrawAmountNumber >= paymentConfig.minWithdrawal ? Math.round(withdrawAmountNumber) : 0)}
                   </span>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
@@ -559,12 +617,12 @@ export default function WalletPage() {
               >
                 {isWithdrawing
                   ? "Submitting withdrawal..."
-                  : `Withdraw ${withdrawAmountNumber >= 1000 ? formatMoney(Math.round(withdrawAmountNumber)) : ""}`}
+                  : `Withdraw ${withdrawAmountNumber >= paymentConfig.minWithdrawal ? formatMoney(Math.round(withdrawAmountNumber)) : ""}`}
               </Button>
 
               {!hasEnoughSellerBalance && (
                 <p className="text-xs text-gray-500">
-                  Withdrawals unlock once your seller earnings reach {formatMoney(1000)}.
+                  Withdrawals unlock once your seller earnings reach {formatMoney(paymentConfig.minWithdrawal)}.
                 </p>
               )}
             </div>
