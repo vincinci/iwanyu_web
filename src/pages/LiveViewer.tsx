@@ -408,11 +408,13 @@ interface StreamViewProps {
   guestName: string;
   setGuestName: (v: string) => void;
   user: { id: string; name?: string } | null;
+  walletAvailable: number | null;
+  refreshWallet: () => void;
 }
 
 function StreamView({
   session, sessionId, viewerCount, comments, commentsEndRef, commentText, setCommentText,
-  posting, handleComment, guestName, setGuestName, user,
+  posting, handleComment, guestName, setGuestName, user, walletAvailable, refreshWallet,
 }: StreamViewProps) {
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const desktopVideoRef = useRef<HTMLVideoElement>(null);
@@ -426,7 +428,8 @@ function StreamView({
     return id;
   });
 
-  useEffect(() => {
+  const connectViewer = useCallback(() => {
+    if (viewerRef.current) { viewerRef.current.disconnect(); viewerRef.current = null; }
     const viewer = new LiveStreamViewer(sessionId, viewerId);
     viewerRef.current = viewer;
     viewer.onStream = (stream) => {
@@ -436,8 +439,26 @@ function StreamView({
     };
     viewer.onState = setStreamState;
     void viewer.connect();
-    return () => { viewer.disconnect(); viewerRef.current = null; };
   }, [sessionId, viewerId]);
+
+  useEffect(() => {
+    connectViewer();
+    return () => { viewerRef.current?.disconnect(); viewerRef.current = null; };
+  }, [connectViewer]);
+
+  // Auto-reconnect: if disconnected for >8s, reconnect from scratch
+  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (streamState === "disconnected" || streamState === "failed") {
+      disconnectTimerRef.current = setTimeout(() => {
+        setStreamState("connecting");
+        connectViewer();
+      }, 8000);
+    } else {
+      if (disconnectTimerRef.current) { clearTimeout(disconnectTimerRef.current); disconnectTimerRef.current = null; }
+    }
+    return () => { if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current); };
+  }, [streamState, connectViewer]);
 
   const [localProducts, setLocalProducts] = useState<StreamProduct[]>([]);
 
@@ -456,6 +477,11 @@ function StreamView({
     );
   };
 
+  const handlePurchasedAndRefresh = useCallback((productId: string) => {
+    handlePurchased(productId);
+    void refreshWallet();
+  }, [refreshWallet]); // eslint-disable-line
+
   const ProductsList = (
     <div className="space-y-3">
       {localProducts.length === 0 ? (
@@ -471,7 +497,7 @@ function StreamView({
             sessionId={sessionId}
             session={session}
             user={user}
-            onPurchased={() => handlePurchased(p.id)}
+            onPurchased={() => handlePurchasedAndRefresh(p.id)}
           />
         ))
       )}
@@ -554,6 +580,16 @@ function StreamView({
                 ? <Wifi className="h-4 w-4 text-green-400 drop-shadow" />
                 : <WifiOff className="h-4 w-4 text-red-400 drop-shadow" />}
             </span>
+            {user && (
+              <Link
+                to="/wallet"
+                className="shrink-0 flex items-center gap-1 rounded-full bg-black/40 backdrop-blur border border-white/20 px-2.5 py-1 text-xs text-white hover:bg-black/60"
+              >
+                <Wallet className="h-3.5 w-3.5 text-amber-400" />
+                {walletAvailable !== null ? formatMoney(walletAvailable) : "…"}
+                <span className="ml-1 flex items-center justify-center w-4 h-4 rounded-full bg-amber-400 text-black font-bold text-[10px]">+</span>
+              </Link>
+            )}
           </div>
 
           {/* Products button */}
@@ -630,11 +666,23 @@ function StreamView({
 
       {/* ── DESKTOP: two-column ── */}
       <div className="hidden md:flex min-h-screen bg-gray-950 text-white overflow-hidden">
-        {/* Left: Video — portrait 9:16 box centred in black letterbox (desktop only) */}
+        {/* Left: Video — phone frame on mobile viewer, full-area on desktop */}
         <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
-          <div className="relative h-full w-full lg:w-auto lg:aspect-[9/16]">
-            <video ref={desktopVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
-            <StreamStateBadge state={streamState} />
+          <div className="relative w-full max-w-[300px] lg:max-w-none" style={{ aspectRatio: "9/16" }} data-viewer-frame>
+            <style>{`@media (min-width: 1024px) { [data-viewer-frame] { position: absolute; inset: 0; aspect-ratio: auto; } }`}</style>
+
+            {/* Phone frame decoration — mobile only */}
+            <div className="absolute inset-0 rounded-[2.5rem] ring-[6px] ring-white/20 pointer-events-none z-20 lg:hidden" />
+            <div className="absolute top-0 inset-x-0 flex justify-center pt-2 z-20 pointer-events-none lg:hidden">
+              <div className="w-24 h-5 bg-black rounded-b-2xl" />
+            </div>
+            <div className="absolute bottom-2 inset-x-0 flex justify-center z-20 pointer-events-none lg:hidden">
+              <div className="w-24 h-1 bg-white/40 rounded-full" />
+            </div>
+
+            <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] lg:rounded-none">
+              <video ref={desktopVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+              <StreamStateBadge state={streamState} />
             <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-6 pt-6 pb-8 bg-gradient-to-b from-black/70 to-transparent z-20">
               <Link to="/live" className="text-white hover:text-gray-300"><ArrowLeft className="h-5 w-5" /></Link>
               <div className="flex-1 min-w-0">
@@ -654,11 +702,27 @@ function StreamView({
                 ? <Wifi className="h-4 w-4 text-green-400" />
                 : <WifiOff className="h-4 w-4 text-red-400" />}
             </div>
-          </div>
+          </div>{/* end content area */}
+          </div>{/* end viewer frame */}
         </div>
 
-        {/* Right: Products + Chat */}
+        {/* Right: Wallet + Products + Chat */}
         <div className="w-80 xl:w-96 bg-white text-gray-900 flex flex-col">
+          {/* Wallet bar */}
+          {user && (
+            <div className="border-b border-gray-100 px-4 py-2.5 flex items-center gap-2 shrink-0 bg-amber-50">
+              <Wallet className="h-4 w-4 text-amber-500 shrink-0" />
+              <span className="text-sm font-medium text-gray-700">
+                {walletAvailable !== null ? formatMoney(walletAvailable) : "Loading…"}
+              </span>
+              <Link
+                to="/wallet"
+                className="ml-auto flex items-center gap-1 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1"
+              >
+                <span className="text-base leading-none">+</span> Top Up
+              </Link>
+            </div>
+          )}
           <div className="border-b border-gray-100 px-4 py-3 flex items-center gap-2 shrink-0">
             <ShoppingBag className="h-4 w-4 text-amber-500" />
             <span className="font-semibold text-sm">Products</span>
@@ -727,8 +791,8 @@ export default function LiveViewerPage() {
   }, [user?.id, sessionId]);
 
   useEffect(() => {
-    if (session?.auctionEnabled) void refreshWallet();
-  }, [session?.auctionEnabled, refreshWallet]);
+    if (user?.id) void refreshWallet();
+  }, [user?.id, session?.auctionEnabled, refreshWallet]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -850,5 +914,5 @@ export default function LiveViewerPage() {
       /></>);
   }
 
-  return <>{helmet}<StreamView {...commonProps} /></>;
+  return <>{helmet}<StreamView {...commonProps} walletAvailable={walletAvailable} refreshWallet={refreshWallet} /></>;
 }

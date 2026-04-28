@@ -328,9 +328,25 @@ export default function LiveSessionPage() {
       {/* ── Main area: camera + desktop sidebar ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ── Camera column — full-width on mobile, portrait 9:16 centred on desktop ── */}
+        {/* ── Camera column — phone frame on mobile, full-area on desktop ── */}
         <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
-          <div className="relative h-full w-full lg:w-auto lg:aspect-[9/16]">
+
+          {/* Inner frame: phone-shaped on mobile, fills full column on desktop */}
+          <div className="relative w-full max-w-[280px] lg:max-w-none" style={{ aspectRatio: "9/16" }} data-camera-frame>
+            {/* Swap to full-area on desktop via inline override */}
+            <style>{`@media (min-width: 1024px) { [data-camera-frame] { position: absolute; inset: 0; aspect-ratio: auto; } }`}</style>
+
+            {/* Phone frame decoration — mobile only */}
+            <div className="absolute inset-0 rounded-[2.5rem] ring-[6px] ring-white/20 pointer-events-none z-20 lg:hidden" />
+            <div className="absolute top-0 inset-x-0 flex justify-center pt-2 z-20 pointer-events-none lg:hidden">
+              <div className="w-24 h-5 bg-black rounded-b-2xl" />
+            </div>
+            <div className="absolute bottom-2 inset-x-0 flex justify-center z-20 pointer-events-none lg:hidden">
+              <div className="w-24 h-1 bg-white/40 rounded-full" />
+            </div>
+
+            {/* Content area: rounded + clipped on mobile, plain on desktop */}
+            <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] lg:rounded-none">
 
           {/* Video / paused state */}
           {cameraEnabled ? (
@@ -434,8 +450,9 @@ export default function LiveSessionPage() {
               Revenue: {formatMoney(totals.totalRevenue)}
             </span>
           </div>
-          </div>{/* end aspect-ratio wrapper */}
-        </div>
+          </div>{/* end content area */}
+          </div>{/* end camera frame */}
+        </div>{/* end camera column */}
 
         {/* ── DESKTOP RIGHT SIDEBAR ── */}
         <div className="hidden lg:flex flex-col w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-hidden">

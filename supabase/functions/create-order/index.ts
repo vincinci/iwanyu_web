@@ -16,7 +16,7 @@ interface CreateOrderRequest {
   email: string;
   phone: string;
   address: string;
-  paymentMethod: "momo" | "card";
+  paymentMethod: "momo" | "wallet";
   discountCode?: string | null;
 }
 
@@ -231,6 +231,63 @@ Deno.serve(async (req: Request) => {
       })();
     }
 
+    // ── Handle wallet payment ──
+    let paymentStatus = "pending";
+    if (paymentMethod === "wallet") {
+      // Fetch user's current wallet balance
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("wallet_balance_rwf, locked_balance_rwf")
+        .eq("id", user.id)
+        .single();
+
+      if (profileErr || !profile) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch wallet balance" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const currentBalance = Number(profile.wallet_balance_rwf ?? 0);
+      const availableBalance = currentBalance - Number(profile.locked_balance_rwf ?? 0);
+
+      // Validate sufficient balance
+      if (availableBalance < total) {
+        return new Response(
+          JSON.stringify({ 
+            error: `Insufficient wallet balance. Required: ${total}, Available: ${availableBalance}` 
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Deduct from wallet
+      const newBalance = currentBalance - total;
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({ wallet_balance_rwf: newBalance })
+        .eq("id", user.id);
+
+      if (updateErr) {
+        return new Response(
+          JSON.stringify({ error: "Failed to deduct wallet balance" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Update order status to Paid
+      const { error: orderUpdateErr } = await supabase
+        .from("orders")
+        .update({ status: "Paid", payment: { ...paymentMeta, payment_status: "wallet_paid" } })
+        .eq("id", orderId);
+
+      if (orderUpdateErr) {
+        console.warn("Failed to update order status to Paid:", orderUpdateErr);
+      }
+
+      paymentStatus = "wallet_paid";
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -238,6 +295,7 @@ Deno.serve(async (req: Request) => {
         total,
         serviceFee,
         discountRwf,
+        paymentStatus,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

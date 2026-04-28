@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { 
-  ShoppingBag, CreditCard, Smartphone, ArrowLeft, Lock, Truck, 
-  ChevronRight, Shield, CheckCircle2, Loader2 
+  ShoppingBag, Smartphone, ArrowLeft, Lock, Truck, 
+  ChevronRight, Shield, CheckCircle2, Loader2, Wallet 
 } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { initializeFlutterwavePayment, redirectToFlutterwave } from "@/lib/flutterwave";
+import { initializePawaPayDeposit, redirectToPawaPay } from "@/lib/pawapay";
+import { getUserWalletBalance } from "@/lib/liveSessions";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -30,7 +31,8 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
+  const [paymentMethod, setPaymentMethod] = useState<"momo" | "wallet">("momo");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<null | {
@@ -38,6 +40,17 @@ export default function CheckoutPage() {
     discountRwf: number;
   }>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+
+  // Fetch wallet balance when user changes
+  useEffect(() => {
+    if (user?.id) {
+      getUserWalletBalance(user.id).then(wallet => {
+        if (wallet) {
+          setWalletBalance(wallet.availableRwf);
+        }
+      });
+    }
+  }, [user?.id]);
 
   const discountRwf = appliedDiscount?.discountRwf ?? 0;
   const discountedSubtotal = Math.max(0, Math.round(subtotal - discountRwf));
@@ -109,6 +122,13 @@ export default function CheckoutPage() {
         throw new Error("Checkout is not configured.");
       }
 
+      // Validate wallet payment if selected
+      if (paymentMethod === "wallet") {
+        if (walletBalance === null || walletBalance < total) {
+          throw new Error(`Insufficient wallet balance. Required: ${formatMoney(total)}, Available: ${formatMoney(walletBalance ?? 0)}`);
+        }
+      }
+
       const session = (await supabase.auth.getSession()).data.session;
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error("Please log in to continue");
@@ -143,37 +163,55 @@ export default function CheckoutPage() {
         throw new Error(errBody.error || "Order creation failed");
       }
 
-      const { orderId, total: serverTotal } = await createOrderRes.json();
+      const { orderId, total: serverTotal, paymentStatus } = await createOrderRes.json();
 
-      const customerName = user.name ?? user.email ?? trimmedEmail;
+      // If wallet payment, navigate to order confirmation directly
+      if (paymentMethod === "wallet") {
+        sessionStorage.setItem("pendingOrderId", orderId);
+        // Navigate to order confirmation page (or success page)
+        navigate(`/order-confirmation/${orderId}`);
+        return;
+      }
 
-      const result = await initializeFlutterwavePayment(
+      // Mobile money payment via PawaPay
+      const result = await initializePawaPayDeposit(
         {
-          txRef: orderId,
           amount: serverTotal,
           currency: "RWF",
-          redirectUrl: `${window.location.origin}/payment-callback?orderId=${orderId}`,
-          paymentOptions: paymentMethod === "momo" ? "mobilemoney" : "card",
-          customer: {
-            email: trimmedEmail,
-            name: customerName,
-            phone_number: trimmedPhone,
-          },
-          customizations: {
-            title: "iwanyu",
-            description: `Order ${orderId}`,
-          },
+          country: "RW",
+          correlationId: orderId, // Use orderId for idempotency
+          notificationUrl: `${window.location.origin}/api/wallet-deposit-callback`,
         },
         accessToken
       );
 
-      if (!result?.paymentLink) {
+      if (!result?.depositId || !result?.authenticationUrl) {
         throw new Error("Failed to initialize payment. Please try again.");
       }
 
-      sessionStorage.setItem("pendingOrderId", orderId);
+      // Store depositId in wallet_transactions as pending
+      // This will be matched with the webhook callback
+      const { error: txnCreateErr } = await supabase
+        .from("wallet_transactions")
+        .insert({
+          user_id: user.id,
+          type: "deposit",
+          amount_rwf: serverTotal,
+          external_transaction_id: result.depositId,
+          payment_method: "pawapay_momo",
+          status: "pending",
+          description: `PawaPay deposit for order ${orderId}`,
+        });
 
-      redirectToFlutterwave(result.paymentLink);
+      if (txnCreateErr) {
+        console.warn("Failed to create pending transaction:", txnCreateErr);
+        // Continue anyway - the webhook will handle it
+      }
+
+      sessionStorage.setItem("pendingOrderId", orderId);
+      sessionStorage.setItem("pendingDepositId", result.depositId);
+
+      redirectToPawaPay(result.authenticationUrl);
     } catch (e) {
       toast({
         title: t("checkout.checkoutFailed"),
@@ -327,24 +365,34 @@ export default function CheckoutPage() {
 
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod("card")}
+                      onClick={() => setPaymentMethod("wallet")}
+                      disabled={walletBalance === null || walletBalance < total}
                       className={`relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
-                        paymentMethod === "card" 
-                          ? "border-amber-500 bg-amber-50" 
-                          : "border-gray-200 hover:border-gray-300"
+                        walletBalance === null || walletBalance < total
+                          ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
+                          : paymentMethod === "wallet" 
+                            ? "border-blue-500 bg-blue-50" 
+                            : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
                       <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-                        paymentMethod === "card" ? "bg-amber-500" : "bg-gray-100"
+                        paymentMethod === "wallet" ? "bg-blue-500" : "bg-gray-100"
                       }`}>
-                        <CreditCard className={`h-6 w-6 ${paymentMethod === "card" ? "text-white" : "text-gray-500"}`} />
+                        <Wallet className={`h-6 w-6 ${paymentMethod === "wallet" ? "text-white" : "text-gray-500"}`} />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold text-gray-900">{t("checkout.card")}</div>
-                        <div className="text-xs text-gray-500">{t("checkout.cardHint")}</div>
+                        <div className="font-semibold text-gray-900">{t("checkout.wallet") || "Wallet"}</div>
+                        <div className="text-xs text-gray-500">
+                          {walletBalance === null 
+                            ? "Loading..." 
+                            : walletBalance < total
+                              ? `Insufficient (${formatMoney(walletBalance)})`
+                              : formatMoney(walletBalance)
+                          }
+                        </div>
                       </div>
-                      {paymentMethod === "card" && (
-                        <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-amber-500" />
+                      {paymentMethod === "wallet" && (
+                        <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-blue-500" />
                       )}
                     </button>
                   </div>
@@ -352,7 +400,10 @@ export default function CheckoutPage() {
                   <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
                     <Lock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                     <p className="text-xs text-blue-700">
-                      {t("checkout.redirectHint")}
+                      {paymentMethod === "wallet" 
+                        ? "Your wallet will be debited immediately upon order confirmation."
+                        : t("checkout.redirectHint")
+                      }
                     </p>
                   </div>
                 </div>

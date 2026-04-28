@@ -1,5 +1,4 @@
 export type PaymentMethod =
-  | { type: "card"; last4?: string }
   | { type: "momo"; network: "MTN" | "Airtel"; phone: string };
 
 export type OrderStatus = "Placed" | "Processing" | "Shipped" | "Delivered" | "Cancelled";

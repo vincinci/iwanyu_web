@@ -191,6 +191,9 @@ export default function AccountPage() {
                   <Link to="/wishlist" className="block rounded-xl p-3 hover:bg-gray-50">
                     <span className="font-medium text-gray-900">{t("header.wishlist")}</span>
                   </Link>
+                  <Link to="/wallet" className="block rounded-xl p-3 hover:bg-gray-50">
+                    <span className="font-medium text-gray-900">My Wallet</span>
+                  </Link>
                 </nav>
               </div>
 

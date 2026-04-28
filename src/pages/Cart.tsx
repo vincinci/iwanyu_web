@@ -1,20 +1,35 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useMemo } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Minus, Plus, Trash2, Wallet } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/cart";
+import { useAuth } from "@/context/auth";
 import { formatMoney } from "@/lib/money";
 import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useMarketplace } from "@/context/marketplace";
 import { useLanguage } from "@/context/languageContext";
 import { ProductCard } from "@/components/ProductCard";
+import { getUserWalletBalance } from "@/lib/liveSessions";
 
 export default function CartPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { items, itemCount, subtotal, removeItem, setQuantity, clear } = useCart();
   const { products } = useMarketplace();
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+
+  // Fetch wallet balance when component mounts or user changes
+  useEffect(() => {
+    if (user?.id) {
+      getUserWalletBalance(user.id).then(wallet => {
+        if (wallet) {
+          setWalletBalance(wallet.availableRwf);
+        }
+      });
+    }
+  }, [user?.id]);
 
   const recommended = useMemo(() => {
     if (items.length === 0) return [];
@@ -140,6 +155,25 @@ export default function CartPage() {
             </div>
 
             <div className="rounded-lg border border-border bg-card p-5 h-fit">
+              {user && walletBalance !== null && (
+                <div className="mb-5 pb-5 border-b border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Wallet size={18} className="text-blue-600" />
+                      <span className="text-sm font-medium text-foreground">{t("cart.walletBalance") || "Wallet Balance"}</span>
+                    </div>
+                    <Link
+                      to="/wallet"
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      Top up →
+                    </Link>
+                  </div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {formatMoney(walletBalance)}
+                  </div>
+                </div>
+              )}
               <h2 className="text-sm font-medium text-foreground">{t("cart.orderSummary")}</h2>
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">

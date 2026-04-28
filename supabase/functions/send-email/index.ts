@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
       status,
       provider_id: emailData?.id ?? null,
       error: status === "failed" ? JSON.stringify(emailData) : null,
-    }).catch(() => {});
+    }).then(() => null).catch(() => null);
 
     return new Response(
       JSON.stringify({ success: emailRes.ok, messageId: emailData?.id }),

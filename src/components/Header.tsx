@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { Menu, Search, ShoppingBag, UserCircle2, X, Heart, Truck, Sparkles, XCircle, Settings, LogOut, ChevronDown, Shield, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/cart';
@@ -10,17 +10,30 @@ import { useWishlist } from '@/context/wishlist';
 import { getNavCategoriesWithCounts } from '@/lib/categories';
 import { useLanguage } from '@/context/languageContext';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { getUserWalletBalance } from '@/lib/liveSessions';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const { itemCount } = useCart();
   const { user, signOut } = useAuth();
   const { products } = useMarketplace();
   const { count: wishlistCount } = useWishlist();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  // Fetch wallet balance when user changes
+  useEffect(() => {
+    if (user?.id) {
+      getUserWalletBalance(user.id).then(wallet => {
+        if (wallet) {
+          setWalletBalance(wallet.availableRwf);
+        }
+      });
+    }
+  }, [user?.id]);
 
   const categories = useMemo(() => {
     return getNavCategoriesWithCounts(products).map(({ id, name }) => ({ id, name }));
@@ -190,6 +203,19 @@ export const Header = () => {
                 <span className="text-[11px] text-muted-foreground mt-1">{t("header.wishlist")}</span>
               </Link>
 
+              {user && walletBalance !== null && (
+                <Link
+                  to="/wallet"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                >
+                  <Wallet size={16} className="text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-600">
+                    {new Intl.NumberFormat('en-US').format(Math.floor(walletBalance))}
+                  </span>
+                  <span className="text-xs text-blue-500">RWF</span>
+                </Link>
+              )}
+
               {user ? (
                 <div className="relative group/profile">
                   <button className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-muted transition-colors">
@@ -350,6 +376,14 @@ export const Header = () => {
                     <div className="rounded-md border border-border bg-muted/40 p-4 mb-4">
                         <div className="font-medium text-foreground">{user.name}</div>
                         <div className="text-xs text-muted-foreground">{user.email}</div>
+                        {walletBalance !== null && (
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                            <Wallet size={16} className="text-blue-600" />
+                            <span className="text-xs font-medium text-foreground">
+                              Balance: <span className="font-bold text-blue-600">{new Intl.NumberFormat('en-US').format(Math.floor(walletBalance))} RWF</span>
+                            </span>
+                          </div>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-2 mb-4">

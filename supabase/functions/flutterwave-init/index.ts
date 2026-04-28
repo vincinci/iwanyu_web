@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
         amount: amount,
         currency: currency,
         redirect_url: redirectUrl,
-        payment_options: paymentOptions || "card,mobilemoneyrwanda",
+        payment_options: paymentOptions || "mobilemoney",
         customer: {
           email: customer.email,
           name: customer.name || customer.email,
