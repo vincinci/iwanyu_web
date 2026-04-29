@@ -30,29 +30,53 @@ interface OrderDetails {
 export default function OrderConfirmationPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
   const supabase = getSupabaseClient();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchOrder = async () => {
+      if (!isReady) {
+        return;
+      }
+
       if (!orderId) {
         setError("No order ID provided");
         setLoading(false);
         return;
       }
 
-      try {
+      if (!user) {
+        setError("Please sign in to view this order");
+        setLoading(false);
+        return;
+      }
+
+      const fetchWithRetry = async (attempt = 0): Promise<void> => {
+        try {
+        const normalizedOrderId = decodeURIComponent(orderId).trim();
+
         // Fetch order details
         const { data: orderData, error: fetchError } = await supabase
           .from("orders")
           .select("id, total_rwf, status, created_at, shipping_address, shipping_name, shipping_phone, payment_method")
-          .eq("id", orderId)
+          .eq("id", normalizedOrderId)
+          .eq("buyer_user_id", user.id)
           .single();
 
         if (fetchError) {
+          if (attempt === 0) {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                void fetchWithRetry(1);
+              }
+            }, 1200);
+            return;
+          }
           console.error("Error fetching order:", fetchError);
           setError("Order not found");
           return;
@@ -62,7 +86,7 @@ export default function OrderConfirmationPage() {
         const { data: itemsData, error: itemsError } = await supabase
           .from("order_items")
           .select("product_id, title, quantity, price_rwf, image_url, status")
-          .eq("order_id", orderId);
+          .eq("order_id", normalizedOrderId);
 
         if (itemsError) {
           console.error("Error fetching order items:", itemsError);
@@ -72,16 +96,32 @@ export default function OrderConfirmationPage() {
           ...orderData,
           items: itemsData || []
         });
-      } catch (err) {
-        console.error("Error:", err);
-        setError("Failed to load order");
-      } finally {
-        setLoading(false);
-      }
+        } catch (err) {
+          if (attempt === 0) {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                void fetchWithRetry(1);
+              }
+            }, 1200);
+            return;
+          }
+          console.error("Error:", err);
+          setError("Failed to load order");
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        }
+      };
+
+      await fetchWithRetry();
     };
 
-    fetchOrder();
-  }, [orderId, supabase]);
+    void fetchOrder();
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, orderId, supabase, user]);
 
   if (loading) {
     return (
