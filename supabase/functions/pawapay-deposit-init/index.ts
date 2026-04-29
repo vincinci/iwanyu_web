@@ -84,6 +84,17 @@ function toAlpha3CountryCode(country: string): string {
   }
 }
 
+function toAlpha2CountryCode(country?: string): string {
+  if (!country) return "RW";
+  const normalized = country.trim().toUpperCase();
+  switch (normalized) {
+    case "RWA":
+      return "RW";
+    default:
+      return normalized;
+  }
+}
+
 function normalizeMsisdn(value?: string): string | undefined {
   if (!value) return undefined;
 
@@ -151,8 +162,9 @@ Deno.serve(async (req: Request) => {
     const normalizedMsisdn = normalizeMsisdn(accountIdentifier);
     const pawaPayEndpoint = getPawaPayEndpoint();
     const alpha3Country = toAlpha3CountryCode(country);
+    const alpha2Country = toAlpha2CountryCode(country);
     let phoneNumber = normalizedMsisdn;
-    let countryCode = alpha3Country;
+    let countryCode = alpha2Country;
 
     if (normalizedMsisdn) {
       console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
@@ -193,7 +205,7 @@ Deno.serve(async (req: Request) => {
       const predicted = (await predictResponse.json()) as PawaPayPredictProviderResponse;
       console.log("PawaPay: Provider prediction result:", predicted);
       phoneNumber = predicted.phoneNumber || normalizedMsisdn;
-      countryCode = predicted.country || alpha3Country;
+      countryCode = toAlpha2CountryCode(predicted.country || alpha2Country);
     }
 
     const paymentPagePayload: Record<string, unknown> = {
