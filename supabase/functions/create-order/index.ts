@@ -375,6 +375,67 @@ Deno.serve(async (req: Request) => {
         console.warn("Failed to update order status to Paid:", orderUpdateErr);
       }
 
+      // ── Credit each vendor's wallet with their payout share ──
+      // Aggregate payout per vendor from order items
+      const vendorPayouts = new Map<string, { amount: number; ownerId: string | null }>();
+      for (const row of rows) {
+        const prev = vendorPayouts.get(row.vendor_id);
+        if (prev) {
+          prev.amount += row.vendor_payout_rwf;
+        } else {
+          // Resolve vendor owner
+          const { data: v } = await supabase
+            .from("vendors")
+            .select("owner_user_id")
+            .eq("id", row.vendor_id)
+            .single();
+          vendorPayouts.set(row.vendor_id, {
+            amount: row.vendor_payout_rwf,
+            ownerId: v?.owner_user_id ?? null,
+          });
+        }
+      }
+
+      for (const [vendorId, payout] of vendorPayouts) {
+        if (!payout.ownerId || payout.amount <= 0) continue;
+
+        // Increment vendor's wallet balance atomically
+        const { data: vProfile } = await supabase
+          .from("profiles")
+          .select("wallet_balance_rwf")
+          .eq("id", payout.ownerId)
+          .single();
+
+        const vBalance = Number(vProfile?.wallet_balance_rwf ?? 0);
+        await supabase
+          .from("profiles")
+          .update({ wallet_balance_rwf: vBalance + payout.amount })
+          .eq("id", payout.ownerId);
+
+        // Record vendor credit transaction
+        await supabase.from("wallet_transactions").insert({
+          user_id: payout.ownerId,
+          type: "sale_credit",
+          amount_rwf: payout.amount,
+          status: "completed",
+          description: `Payout for order #${String(orderId).slice(0, 8).toUpperCase()}`,
+          external_transaction_id: `order_${orderId}_vendor_${vendorId}`,
+        }).catch(() => null);
+      }
+
+      // ── Record platform fee (service fee + host cut) ──
+      const platformFee = total - vendorPayout;
+      if (platformFee > 0) {
+        await supabase.from("wallet_transactions").insert({
+          user_id: user.id,      // attributed to buyer for audit trail
+          type: "platform_fee",
+          amount_rwf: platformFee,
+          status: "completed",
+          description: `Platform fee for order #${String(orderId).slice(0, 8).toUpperCase()} (service ${serviceFee} RWF + host cut)`,
+          external_transaction_id: `order_${orderId}_platform_fee`,
+        }).catch(() => null);
+      }
+
       paymentStatus = "wallet_paid";
     }
 
