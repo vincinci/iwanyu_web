@@ -100,15 +100,14 @@ export default function SellerProductsPage() {
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {visibleProducts.map((p) => {
             const vendor = vendors.find((v) => v.id === p.vendorId);
             const canDelete = isAdmin || ownedVendorIds.has(p.vendorId);
             return (
               <Card key={p.id} className="dashboard-card overflow-hidden">
-                <CardContent className="p-0 flex items-stretch gap-0">
-                  {/* Thumbnail */}
-                  <div className="w-24 h-24 shrink-0 bg-gray-100 overflow-hidden rounded-l-xl">
+                <CardContent className="p-0 flex flex-col">
+                  <div className="w-full aspect-[4/3] bg-gray-100 overflow-hidden">
                     {p.image ? (
                       <img
                         src={getOptimizedCloudinaryUrl(p.image, { kind: "image", width: 200 })}
@@ -120,21 +119,21 @@ export default function SellerProductsPage() {
                     )}
                   </div>
 
-                  {/* Info + Actions */}
-                  <div className="flex flex-1 flex-col justify-between px-4 py-3 min-w-0">
+                  <div className="flex flex-1 flex-col justify-between p-4 min-w-0">
                     <div>
                       <div className="font-semibold text-gray-900 truncate">{p.title}</div>
-                      <div className="text-sm text-gray-500 mt-0.5">
+                      <div className="text-sm text-gray-500 mt-1">
                         {vendor?.name ?? t("seller.unknown")}
-                        <span className="mx-1.5">·</span>
+                      </div>
+                      <div className="text-sm mt-1">
                         <span className="font-medium text-gray-700">{formatMoney(p.price)}</span>
-                        <span className="mx-1.5">·</span>
+                        <span className="mx-1.5 text-gray-300">|</span>
                         <span className={p.inStock ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
                           {p.inStock ? t("seller.inStock") : t("seller.out")}
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-3">
                       <Link to={`/product/${p.id}`}>
                         <Button size="sm" variant="outline" className="rounded-full h-8 px-3 text-xs gap-1">
                           <Eye size={13} /> {t("seller.view")}
