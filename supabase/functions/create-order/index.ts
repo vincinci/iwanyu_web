@@ -138,6 +138,50 @@ Deno.serve(async (req: Request) => {
         quantity: number;
         image_url: string | null;
       }>;
+
+    let walletCurrentBalance = 0;
+    let walletAvailableBalance = 0;
+
+    // For wallet checkout, validate funds before creating order records/emails.
+    if (paymentMethod === "wallet") {
+      let { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("wallet_balance_rwf, locked_balance_rwf")
+        .eq("id", user.id)
+        .single();
+
+      if (profileErr && /locked_balance_rwf/i.test(profileErr.message)) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("wallet_balance_rwf")
+          .eq("id", user.id)
+          .single();
+        profile = fallback.data as { wallet_balance_rwf?: number; locked_balance_rwf?: number } | null;
+        profileErr = fallback.error;
+        if (profile && typeof profile.locked_balance_rwf === "undefined") {
+          profile.locked_balance_rwf = 0;
+        }
+      }
+
+      if (profileErr || !profile) {
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch wallet balance: ${profileErr?.message ?? "profile not found"}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      walletCurrentBalance = Number(profile.wallet_balance_rwf ?? 0);
+      walletAvailableBalance = walletCurrentBalance - Number(profile.locked_balance_rwf ?? 0);
+
+      if (walletAvailableBalance < total) {
+        return new Response(
+          JSON.stringify({
+            error: `Insufficient wallet balance. Required: ${total}, Available: ${walletAvailableBalance}`,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
     };
 
     // 2. Decrement stock for each item
@@ -231,7 +275,8 @@ Deno.serve(async (req: Request) => {
     const paymentMethodLabel = paymentMethod === "wallet" ? "Wallet" : "Mobile Money";
 
     // ── Notify each vendor + buyer at order placement (fire-and-forget) ──
-    if (RESEND_API_KEY) {
+    // Wallet orders are emailed only after successful wallet deduction.
+    if (RESEND_API_KEY && paymentMethod !== "wallet") {
       (async () => {
         try {
           // Aggregate order details per vendor
@@ -324,49 +369,8 @@ Deno.serve(async (req: Request) => {
     // ── Handle wallet payment ──
     let paymentStatus = "pending";
     if (paymentMethod === "wallet") {
-      // Fetch user's current wallet balance.
-      // Some environments may not have locked_balance_rwf yet, so fall back safely.
-      let { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select("wallet_balance_rwf, locked_balance_rwf")
-        .eq("id", user.id)
-        .single();
-
-      if (profileErr && /locked_balance_rwf/i.test(profileErr.message)) {
-        const fallback = await supabase
-          .from("profiles")
-          .select("wallet_balance_rwf")
-          .eq("id", user.id)
-          .single();
-        profile = fallback.data as { wallet_balance_rwf?: number; locked_balance_rwf?: number } | null;
-        profileErr = fallback.error;
-        if (profile && typeof profile.locked_balance_rwf === "undefined") {
-          profile.locked_balance_rwf = 0;
-        }
-      }
-
-      if (profileErr || !profile) {
-        return new Response(
-          JSON.stringify({ error: `Failed to fetch wallet balance: ${profileErr?.message ?? "profile not found"}` }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      const currentBalance = Number(profile.wallet_balance_rwf ?? 0);
-      const availableBalance = currentBalance - Number(profile.locked_balance_rwf ?? 0);
-
-      // Validate sufficient balance
-      if (availableBalance < total) {
-        return new Response(
-          JSON.stringify({ 
-            error: `Insufficient wallet balance. Required: ${total}, Available: ${availableBalance}` 
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
       // Deduct from wallet
-      const newBalance = currentBalance - total;
+      const newBalance = walletCurrentBalance - total;
       const { error: updateErr } = await supabase
         .from("profiles")
         .update({ wallet_balance_rwf: newBalance })
@@ -469,6 +473,95 @@ Deno.serve(async (req: Request) => {
       }
 
       paymentStatus = "wallet_paid";
+
+      // Send placement notifications only after wallet payment is confirmed.
+      if (RESEND_API_KEY) {
+        (async () => {
+          try {
+            const vendorOrderDetails = new Map<string, {
+              amount: number;
+              itemCount: number;
+              items: Array<{ title: string; quantity: number; lineTotal: number }>;
+            }>();
+
+            for (const row of rows) {
+              const lineTotal = row.price_rwf * row.quantity;
+              const current = vendorOrderDetails.get(row.vendor_id) ?? {
+                amount: 0,
+                itemCount: 0,
+                items: [],
+              };
+
+              current.amount += lineTotal;
+              current.itemCount += row.quantity;
+              current.items.push({
+                title: row.title,
+                quantity: row.quantity,
+                lineTotal,
+              });
+
+              vendorOrderDetails.set(row.vendor_id, current);
+            }
+
+            for (const [vendorId, details] of vendorOrderDetails) {
+              const { data: vendor } = await supabase
+                .from("vendors")
+                .select("name, owner_user_id")
+                .eq("id", vendorId)
+                .single();
+
+              if (!vendor?.owner_user_id) continue;
+
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email")
+                .eq("id", vendor.owner_user_id)
+                .single();
+
+              let vendorEmail: string | null = profile?.email ?? null;
+              if (!vendorEmail) {
+                const { data: authUser } = await supabase.auth.admin.getUserById(vendor.owner_user_id);
+                vendorEmail = authUser?.user?.email ?? null;
+              }
+
+              if (!vendorEmail) continue;
+
+              const ctx = {
+                orderId,
+                amount: details.amount,
+                storeName: vendor.name,
+                itemCount: details.itemCount,
+                items: details.items,
+                buyerEmail: email.trim(),
+                shippingPhone: phone.trim(),
+                shippingAddress: address.trim(),
+              };
+
+              await sendTemplatedEmail(supabase, vendorEmail, "vendor_new_order", ctx);
+            }
+
+            const buyerCtx = {
+              orderId,
+              amount: total,
+              currency: "RWF",
+              status: "Paid",
+              paymentMethod: paymentMethodLabel,
+              shippingPhone: phone.trim(),
+              shippingAddress: address.trim(),
+              itemCount: rows.reduce((acc, row) => acc + row.quantity, 0),
+              items: rows.map((row) => ({
+                title: row.title,
+                quantity: row.quantity,
+                lineTotal: row.price_rwf * row.quantity,
+              })),
+            };
+
+            await sendTemplatedEmail(supabase, email.trim(), "order_received", buyerCtx);
+          } catch (e) {
+            console.warn("Failed to send wallet order placement emails:", e);
+          }
+        })();
+      }
     }
 
     return new Response(
