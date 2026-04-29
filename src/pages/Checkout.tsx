@@ -179,8 +179,10 @@ export default function CheckoutPage() {
           amount: serverTotal,
           currency: "RWF",
           country: "RW",
+          accountIdentifier: trimmedPhone,
           correlationId: orderId, // Use orderId for idempotency
           notificationUrl: `${window.location.origin}/api/wallet-deposit-callback`,
+          returnUrl: `${window.location.origin}/payment-callback?orderId=${encodeURIComponent(orderId)}`,
         },
         accessToken
       );
