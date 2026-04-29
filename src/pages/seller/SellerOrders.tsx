@@ -41,6 +41,9 @@ export default function SellerOrdersPage() {
     created_at: string;
     total_rwf: number;
     status: OrderStatus;
+    payment: {
+      payment_status?: string | null;
+    } | null;
   };
 
   type DbOrderItemRow = {
@@ -62,6 +65,7 @@ export default function SellerOrdersPage() {
     buyerEmail: string;
     total: number;
     status: OrderStatus;
+    paymentStatus: "received" | "pending";
     items: Array<{
       productId: string;
       vendorId: string;
@@ -123,7 +127,7 @@ export default function SellerOrdersPage() {
 
         const { data: orderRows, error: ordersErr } = await supabase
           .from("orders")
-          .select("id, buyer_email, created_at, total_rwf, status")
+          .select("id, buyer_email, created_at, total_rwf, status, payment")
           .in("id", orderIds)
           .order("created_at", { ascending: false });
 
@@ -136,6 +140,7 @@ export default function SellerOrdersPage() {
               buyerEmail: o.buyer_email ?? "",
               total: Number(o.total_rwf ?? 0),
               status: o.status,
+              paymentStatus: o.payment?.payment_status === "wallet_paid" ? "received" : "pending",
               items: [],
             });
           }
@@ -149,6 +154,7 @@ export default function SellerOrdersPage() {
               buyerEmail: "",
               total: 0,
               status: i.status,
+              paymentStatus: "pending",
               items: [],
             });
           }
@@ -275,6 +281,13 @@ export default function SellerOrdersPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <div className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          o.paymentStatus === "received"
+                            ? "bg-green-50 text-green-700 border border-green-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {o.paymentStatus === "received" ? "Payment received" : "Payment pending"}
+                        </div>
                         <div className="text-xs text-gray-600">{t("seller.orderStatus")}</div>
                         <div className="text-sm font-medium text-gray-900">{o.status}</div>
                       </div>
