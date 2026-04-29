@@ -39,6 +39,8 @@ export default function SellerDashboardPage() {
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
+  const SELLER_EARNINGS_RATE = 0.9; // Seller gets 90% of product base amount; buyer-paid 3% stays separate.
+
   // Check roles
   const isSellerOrAdmin = Boolean(user && (user.role === "seller" || user.role === "admin"));
 
@@ -143,7 +145,10 @@ export default function SellerDashboardPage() {
 
         const rows = (data ?? []) as Array<{ order_id: string; price_rwf: number; quantity: number; vendor_id: string }>;
         const uniqueOrders = new Set(rows.map((r) => r.order_id));
-        const salesRwf = rows.reduce((sum, r) => sum + Number(r.price_rwf ?? 0) * Number(r.quantity ?? 0), 0);
+        const salesRwf = rows.reduce((sum, r) => {
+          const baseAmount = Number(r.price_rwf ?? 0) * Number(r.quantity ?? 0);
+          return sum + Math.round(baseAmount * SELLER_EARNINGS_RATE);
+        }, 0);
 
         if (!cancelled) setMetrics({ productCount, orderCount: uniqueOrders.size, salesRwf });
       } catch {
@@ -157,7 +162,7 @@ export default function SellerDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, user, ownedVendorIds, products]);
+  }, [supabase, user, ownedVendorIds, products, SELLER_EARNINGS_RATE]);
 
   if (!user) {
     return (

@@ -18,6 +18,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 
 const SELLER_STATUSES: OrderStatus[] = ["Placed", "Processing", "Shipped", "Delivered", "Cancelled"];
+const SELLER_EARNINGS_RATE = 0.9;
 
 export default function SellerOrdersPage() {
   const { user } = useAuth();
@@ -245,10 +246,10 @@ export default function SellerOrdersPage() {
             {visibleOrders.map((o) => {
               const relevantItems = o.items;
 
-              // payout = vendor_payout_rwf (93% after platform fee). Fall back to price×qty if 0.
+              // Seller earnings are based on product base amount minus 10% platform fee.
               const sellerPayout = relevantItems.reduce((sum, i) => {
-                const p = Number(i.payout || 0);
-                return sum + (p > 0 ? p : Number(i.price || 0) * Math.max(1, Number(i.quantity || 1)));
+                const baseAmount = Number(i.price || 0) * Math.max(1, Number(i.quantity || 1));
+                return sum + Math.round(baseAmount * SELLER_EARNINGS_RATE);
               }, 0);
 
               return (
@@ -367,7 +368,9 @@ export default function SellerOrdersPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <div className="font-medium text-gray-900">{formatMoney(i.price * i.quantity)}</div>
+                              <div className="font-medium text-gray-900">
+                                {formatMoney(Math.round(Number(i.price || 0) * Math.max(1, Number(i.quantity || 1)) * SELLER_EARNINGS_RATE))}
+                              </div>
                             </div>
                           </div>
                         ))}
