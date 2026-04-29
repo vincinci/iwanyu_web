@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:system": "node scripts/test-system-live.mjs",
     "import:products": "node scripts/import-products-from-csv.mjs",
     "import:shopify": "node scripts/import-shopify-full.mjs"
   },

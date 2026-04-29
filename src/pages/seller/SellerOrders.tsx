@@ -49,6 +49,7 @@ export default function SellerOrdersPage() {
     title: string;
     price_rwf: number;
     quantity: number;
+    vendor_payout_rwf: number;
     image_url: string | null;
     status: OrderStatus;
   };
@@ -65,6 +66,7 @@ export default function SellerOrdersPage() {
       title: string;
       price: number;
       quantity: number;
+      payout: number;
       image: string;
       status: OrderStatus;
     }>;
@@ -85,7 +87,7 @@ export default function SellerOrdersPage() {
       try {
         let itemsQuery = supabase
           .from("order_items")
-          .select("order_id, product_id, vendor_id, title, price_rwf, quantity, image_url, status")
+          .select("order_id, product_id, vendor_id, title, price_rwf, quantity, vendor_payout_rwf, image_url, status")
           .order("created_at", { ascending: false });
 
         if (!isAdmin) {
@@ -134,6 +136,7 @@ export default function SellerOrdersPage() {
             title: i.title,
             price: Number(i.price_rwf ?? 0),
             quantity: Number(i.quantity ?? 1),
+            payout: Number(i.vendor_payout_rwf ?? 0),
             image: i.image_url ?? "",
             status: i.status,
           });
@@ -207,10 +210,11 @@ export default function SellerOrdersPage() {
             {visibleOrders.map((o) => {
               const relevantItems = o.items;
 
-              const sellerSubtotal = relevantItems.reduce(
-                (sum, i) => sum + Number(i.price || 0) * Math.max(1, Number(i.quantity || 1)),
-                0,
-              );
+              // payout = vendor_payout_rwf (93% after platform fee). Fall back to price×qty if 0.
+              const sellerPayout = relevantItems.reduce((sum, i) => {
+                const p = Number(i.payout || 0);
+                return sum + (p > 0 ? p : Number(i.price || 0) * Math.max(1, Number(i.quantity || 1)));
+              }, 0);
 
               return (
                 <Card key={o.id} className="dashboard-card">
@@ -229,7 +233,7 @@ export default function SellerOrdersPage() {
                         {!isAdmin ? (
                           <>
                             <span className="mx-2">•</span>
-                            {t("seller.yourItems")}: <span className="font-medium text-gray-900">{formatMoney(sellerSubtotal)}</span>
+                            Your earnings: <span className="font-semibold text-green-700">{formatMoney(sellerPayout)}</span>
                           </>
                         ) : null}
                       </div>
@@ -258,25 +262,35 @@ export default function SellerOrdersPage() {
                                   if (!supabase) return;
                                   const nextStatus = v as OrderStatus;
                                   try {
-                                    const { error } = await supabase
+                                    // Update the item-level status
+                                    const { error: itemErr } = await supabase
                                       .from("order_items")
                                       .update({ status: nextStatus })
                                       .eq("order_id", o.id)
                                       .eq("product_id", i.productId);
 
-                                    if (error) throw new Error(error.message);
+                                    if (itemErr) throw new Error(itemErr.message);
+
+                                    // Also update the order-level status so the buyer sees the change
+                                    await supabase
+                                      .from("orders")
+                                      .update({ status: nextStatus })
+                                      .eq("id", o.id);
 
                                     setOrders((prev) =>
                                       prev.map((ord) => {
                                         if (ord.id !== o.id) return ord;
                                         return {
                                           ...ord,
+                                          status: nextStatus,
                                           items: ord.items.map((it) =>
                                             it.productId === i.productId ? { ...it, status: nextStatus } : it
                                           ),
                                         };
                                       })
                                     );
+
+                                    toast({ title: `Status updated to ${nextStatus}` });
 
                                     // Notify buyer on key status changes (fire-and-forget)
                                     const emailTemplate: Record<string, string> = {
