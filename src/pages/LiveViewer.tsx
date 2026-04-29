@@ -196,43 +196,44 @@ function AuctionView({
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900">
-      <div className="relative w-full" style={{ minHeight: 340 }}>
-        {session.productImage ? (
-          <img src={session.productImage} alt={session.productTitle} className="w-full object-cover" style={{ height: 340 }} />
-        ) : (
-          <div className="w-full flex items-center justify-center bg-gray-900" style={{ height: 340 }}>
-            <ShoppingBag className="h-20 w-20 text-gray-600" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent" style={{ height: 96 }} />
-
-        <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
-          <Link to="/live" className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 shrink-0 border border-white/40">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Link to="/live" className="h-10 w-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-800 hover:bg-gray-50 shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div className="flex-1" />
-          <div className="flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1.5 text-xs text-white border border-white/40">
-            <Eye className="h-3.5 w-3.5" /> {viewerCount}
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-6">
-          <div className="flex items-center gap-2 mb-2 flex-wrap drop-shadow">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-0.5 text-[11px] font-bold text-white">
               <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/95 backdrop-blur px-2.5 py-0.5 text-[11px] font-bold text-white">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-bold text-white">
               <Gavel className="h-3 w-3" /> Auction
             </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2.5 py-0.5 text-[11px] text-gray-600">
+              <Eye className="h-3 w-3" /> {viewerCount}
+            </span>
             {session.auctionDurationHours && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-black/35 backdrop-blur px-2.5 py-0.5 text-[11px] text-white">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2.5 py-0.5 text-[11px] text-gray-600">
                 <Clock className="h-3 w-3" /> {session.auctionDurationHours}h
               </span>
             )}
           </div>
-          <h1 className="text-3xl font-extrabold text-white leading-tight drop-shadow">{session.productTitle}</h1>
-          <p className="text-sm text-white/85 mt-1">{session.vendorName}</p>
+        </div>
+
+        <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+          <div className="relative aspect-[16/7] md:aspect-[21/8]">
+            {session.productImage ? (
+              <img src={session.productImage} alt={session.productTitle} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                <ShoppingBag className="h-20 w-20 text-gray-600" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight drop-shadow">{session.productTitle}</h1>
+              <p className="text-sm text-white/85 mt-1">{session.vendorName}</p>
+            </div>
+          </div>
         </div>
       </div>
 
