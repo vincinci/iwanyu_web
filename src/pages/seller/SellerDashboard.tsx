@@ -26,10 +26,12 @@ const navItems = [
   { label: "Store Settings", icon: Store, href: "/seller/settings" },
 ];
 
+const SELLER_EARNINGS_RATE = 0.9; // Seller gets 90% of product base amount; buyer-paid 3% stays separate.
+
 export default function SellerDashboardPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const { products } = useMarketplace();
+  const { products, getVendorsForOwner } = useMarketplace();
   const supabase = getSupabaseClient();
   const location = useLocation();
   const [notifications, setNotifications] = useState<VendorNotification[]>([]);
@@ -39,42 +41,13 @@ export default function SellerDashboardPage() {
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  const SELLER_EARNINGS_RATE = 0.9; // Seller gets 90% of product base amount; buyer-paid 3% stays separate.
-
   // Check roles
   const isSellerOrAdmin = Boolean(user && (user.role === "seller" || user.role === "admin"));
 
-  const [ownedVendorIds, setOwnedVendorIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadOwnedVendorIds() {
-      if (!supabase || !user || user.role === "admin") {
-        setOwnedVendorIds([]);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("vendors")
-        .select("id")
-        .eq("owner_user_id", user.id)
-        .limit(200);
-
-      if (cancelled) return;
-      if (error) {
-        setOwnedVendorIds([]);
-        return;
-      }
-
-      setOwnedVendorIds(((data ?? []) as Array<{ id: string }>).map((v) => v.id));
-    }
-
-    void loadOwnedVendorIds();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, user]);
+  const ownedVendorIds = useMemo(() => {
+    if (!user || user.role === "admin") return [];
+    return getVendorsForOwner(user.id).map((v) => v.id);
+  }, [user, getVendorsForOwner]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,8 +132,32 @@ export default function SellerDashboardPage() {
     }
 
     void loadMetrics();
+
+    const refreshTimer = window.setInterval(() => {
+      void loadMetrics();
+    }, 15000);
+
+    const refreshOnFocus = () => {
+      void loadMetrics();
+    };
+    window.addEventListener("focus", refreshOnFocus);
+
+    const channel = supabase
+      .channel(`seller-overview-metrics-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        () => {
+          void loadMetrics();
+        }
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshOnFocus);
+      void supabase.removeChannel(channel);
     };
   }, [supabase, user, ownedVendorIds, products, SELLER_EARNINGS_RATE]);
 
