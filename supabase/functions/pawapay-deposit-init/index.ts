@@ -100,9 +100,9 @@ function normalizeMsisdn(value?: string): string | undefined {
 
   const digits = value.replace(/\D/g, "");
   if (!digits) return undefined;
-  if (digits.startsWith("250") && digits.length === 12) return digits;
-  if (digits.startsWith("0") && digits.length === 10) return `250${digits.slice(1)}`;
-  if (digits.startsWith("7") && digits.length === 9) return `250${digits}`;
+  if (digits.startsWith("250") && digits.length === 12) return `+${digits}`;
+  if (digits.startsWith("0") && digits.length === 10) return `+250${digits.slice(1)}`;
+  if (digits.startsWith("7") && digits.length === 9) return `+250${digits}`;
 
   return undefined;
 }
@@ -176,36 +176,16 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!predictResponse) {
-        return new Response(
-          JSON.stringify({ error: "Failed to validate mobile money number" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (!predictResponse.ok) {
+        console.warn("PawaPay provider prediction unavailable; continuing with normalized phone.");
+      } else if (!predictResponse.ok) {
         const predictError = await predictResponse.text();
-        console.error("PawaPay provider prediction failed:", predictError);
-
-        // Try to extract specific error message
-        let errorMessage = "Invalid or unsupported mobile money number";
-        try {
-          const parsed = JSON.parse(predictError);
-          // PawaPay might return different error structures
-          errorMessage = parsed.message || parsed.error || parsed.errorMessage || parsed.detail || predictError;
-        } catch {
-          if (predictError.trim()) errorMessage = predictError;
-        }
-
-        return new Response(
-          JSON.stringify({ error: errorMessage }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.warn("PawaPay provider prediction failed; continuing with normalized phone:", predictError);
+      } else {
+        const predicted = (await predictResponse.json()) as PawaPayPredictProviderResponse;
+        console.log("PawaPay: Provider prediction result:", predicted);
+        phoneNumber = normalizeMsisdn(predicted.phoneNumber) || normalizedMsisdn;
+        countryCode = toAlpha2CountryCode(predicted.country || alpha2Country);
       }
-
-      const predicted = (await predictResponse.json()) as PawaPayPredictProviderResponse;
-      console.log("PawaPay: Provider prediction result:", predicted);
-      phoneNumber = predicted.phoneNumber || normalizedMsisdn;
-      countryCode = toAlpha2CountryCode(predicted.country || alpha2Country);
     }
 
     const paymentPagePayload: Record<string, unknown> = {
