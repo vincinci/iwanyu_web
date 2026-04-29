@@ -155,6 +155,7 @@ Deno.serve(async (req: Request) => {
     let countryCode = alpha3Country;
 
     if (normalizedMsisdn) {
+      console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
       const predictResponse = await fetchWithPawaPayAuth(
         "/v2/predict-provider",
         { phoneNumber: normalizedMsisdn },
@@ -190,6 +191,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const predicted = (await predictResponse.json()) as PawaPayPredictProviderResponse;
+      console.log("PawaPay: Provider prediction result:", predicted);
       phoneNumber = predicted.phoneNumber || normalizedMsisdn;
       countryCode = predicted.country || alpha3Country;
     }
@@ -212,6 +214,8 @@ Deno.serve(async (req: Request) => {
     } else {
       paymentPagePayload.country = countryCode;
     }
+
+    console.log("PawaPay: Creating payment page with payload:", JSON.stringify(paymentPagePayload));
 
     const depositResponse = await fetchWithPawaPayAuth(
       "/v2/paymentpage",
