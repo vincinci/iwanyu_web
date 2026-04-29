@@ -42,6 +42,7 @@ export default function SellerDashboardPage() {
   const [metricsLoading, setMetricsLoading] = useState(false);
 
   // Check roles
+  const isAdmin = user?.role === "admin";
   const isSellerOrAdmin = Boolean(user && (user.role === "seller" || user.role === "admin"));
 
   const ownedVendorIds = useMemo(() => {
