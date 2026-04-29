@@ -195,6 +195,41 @@ function AuctionView({
   const minNextBid = Math.max(1, (session.currentBidRwf ?? 0) + 1);
   const bidStepOptions = [100, 500, 1000, 5000];
   const normalizedBid = Math.max(minNextBid, Math.round(Number(bidAmount || minNextBid)));
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!session.auctionDurationHours || session.auctionDurationHours <= 0) {
+      setRemainingSeconds(null);
+      return;
+    }
+
+    const startedAtMs = Date.parse(session.startedAt || "");
+    if (Number.isNaN(startedAtMs)) {
+      setRemainingSeconds(null);
+      return;
+    }
+
+    const endAtMs = startedAtMs + session.auctionDurationHours * 60 * 60 * 1000;
+
+    const tick = () => {
+      const next = Math.max(0, Math.floor((endAtMs - Date.now()) / 1000));
+      setRemainingSeconds(next);
+    };
+
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [session.auctionDurationHours, session.startedAt]);
+
+  const formatCountdown = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    const hh = String(hrs).padStart(2, "0");
+    const mm = String(mins).padStart(2, "0");
+    const ss = String(secs).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  };
 
   useEffect(() => {
     if (!bidAmount || Number(bidAmount) < minNextBid) {
@@ -233,6 +268,11 @@ function AuctionView({
             {session.auctionDurationHours && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2.5 py-0.5 text-[11px] text-gray-600">
                 <Clock className="h-3 w-3" /> {session.auctionDurationHours}h
+              </span>
+            )}
+            {remainingSeconds !== null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                <Clock className="h-3 w-3" /> {formatCountdown(remainingSeconds)}
               </span>
             )}
           </div>
