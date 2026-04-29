@@ -18,6 +18,7 @@ type DbOrder = {
   payment: {
     selected?: string;
     phone?: string;
+    payment_status?: string;
   } | null;
 };
 
@@ -34,6 +35,7 @@ type OrderItem = {
 type ViewOrder = {
   id: string;
   status: string;
+  paymentStatus: "received" | "pending";
   createdAt: string;
   total: number;
   shippingAddress: string | null;
@@ -98,6 +100,7 @@ export default function OrdersPage() {
         const combinedOrders: ViewOrder[] = (ordersData ?? []).map((o) => ({
           id: o.id,
           status: o.status,
+          paymentStatus: o.payment?.payment_status === "wallet_paid" ? "received" : "pending",
           createdAt: o.created_at,
           total: Number(o.total_rwf ?? 0),
           shippingAddress: o.shipping_address,
@@ -232,6 +235,9 @@ export default function OrdersPage() {
                             {statusInfo.icon}
                             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                           </Badge>
+                          <Badge className={`${order.paymentStatus === "received" ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"} border flex items-center gap-1.5 px-3 py-1 w-fit`}>
+                            {order.paymentStatus === "received" ? "Payment received" : "Payment pending"}
+                          </Badge>
                         </div>
                         <div className="flex items-center gap-2 text-gray-500">
                           <span className="text-sm">
@@ -322,6 +328,12 @@ export default function OrdersPage() {
                               <span className="text-sm text-gray-500">Method</span>
                               <span className="font-medium text-gray-900 text-sm">
                                 {getPaymentMethodLabel(order.paymentMethod)}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2">
+                              <span className="text-sm text-gray-500">Status</span>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${order.paymentStatus === "received" ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+                                {order.paymentStatus === "received" ? "Payment received" : "Payment pending"}
                               </span>
                             </div>
                             <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2">

@@ -36,8 +36,8 @@ export default function SellerDashboardPage() {
   const location = useLocation();
   const [notifications, setNotifications] = useState<VendorNotification[]>([]);
 
-  const [metrics, setMetrics] = useState<{ productCount: number; orderCount: number; salesRwf: number }>(
-    { productCount: 0, orderCount: 0, salesRwf: 0 }
+  const [metrics, setMetrics] = useState<{ productCount: number; orderCount: number; salesRwf: number; paidOrderCount: number; pendingOrderCount: number }>(
+    { productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0 }
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
@@ -91,7 +91,7 @@ export default function SellerDashboardPage() {
       if (!supabase || !user) return;
 
       if (!isAdmin && ownedVendorIds.length === 0) {
-        setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0 });
+        setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0 });
         return;
       }
 
@@ -121,9 +121,27 @@ export default function SellerDashboardPage() {
           return sum + Math.round(baseAmount * SELLER_EARNINGS_RATE);
         }, 0);
 
-        if (!cancelled) setMetrics({ productCount, orderCount: uniqueOrders.size, salesRwf });
+        let paidOrderCount = 0;
+        let pendingOrderCount = 0;
+        if (uniqueOrders.size > 0) {
+          let ordersQuery = supabase
+            .from("orders")
+            .select("id, payment")
+            .in("id", Array.from(uniqueOrders));
+
+          if (!isAdmin) {
+            ordersQuery = ordersQuery;
+          }
+
+          const { data: orderRows } = await ordersQuery;
+          const orderPayments = (orderRows ?? []) as Array<{ id: string; payment: { payment_status?: string | null } | null }>;
+          paidOrderCount = orderPayments.filter((o) => o.payment?.payment_status === "wallet_paid").length;
+          pendingOrderCount = Math.max(uniqueOrders.size - paidOrderCount, 0);
+        }
+
+        if (!cancelled) setMetrics({ productCount, orderCount: uniqueOrders.size, salesRwf, paidOrderCount, pendingOrderCount });
       } catch {
-        if (!cancelled) setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0 });
+        if (!cancelled) setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0 });
       } finally {
         if (!cancelled) setMetricsLoading(false);
       }
@@ -262,6 +280,9 @@ export default function SellerDashboardPage() {
                     </div>
                     <div className="text-2xl font-semibold text-gray-900">
                       {metricsLoading ? "..." : metrics.orderCount}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      {metricsLoading ? "..." : `${metrics.paidOrderCount} paid • ${metrics.pendingOrderCount} pending`}
                     </div>
                   </div>
                   <div className="dashboard-card p-5">
