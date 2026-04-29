@@ -6,14 +6,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { useEffect, useMemo, useState } from "react";
-import { Package, ShoppingBag, Clock, CheckCircle, Truck, XCircle, LogIn } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Package, ShoppingBag, Clock, CheckCircle, Truck, XCircle, LogIn, ChevronDown, ChevronUp, MapPin, CreditCard } from "lucide-react";
 
 type DbOrder = {
   id: string;
   created_at: string;
   status: string;
   total_rwf: number;
+  shipping_address: string | null;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  payment_method: string | null;
+};
+
+type OrderItem = {
+  product_id: string;
+  title: string;
+  quantity: number;
+  price_rwf: number;
+  image_url: string;
+  status: string;
 };
 
 type ViewOrder = {
@@ -21,6 +34,11 @@ type ViewOrder = {
   status: string;
   createdAt: string;
   total: number;
+  shippingAddress: string | null;
+  shippingName: string | null;
+  shippingPhone: string | null;
+  paymentMethod: string | null;
+  items: OrderItem[];
 };
 
 const statusConfig: Record<string, { icon: React.ReactNode; color: string; bgColor: string }> = {
@@ -36,32 +54,60 @@ export default function OrdersPage() {
   const { t } = useLanguage();
   const supabase = getSupabaseClient();
   const navigate = useNavigate();
-  const [dbOrders, setDbOrders] = useState<DbOrder[] | null>(null);
+  const [orders, setOrders] = useState<ViewOrder[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
       if (!supabase || !user) {
-        setDbOrders(null);
+        setOrders([]);
         return;
       }
 
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // Fetch orders with shipping and payment details
+        const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
-          .select("id, created_at, status, total_rwf")
+          .select("id, created_at, status, total_rwf, shipping_address, shipping_name, shipping_phone, payment_method")
           .eq("buyer_user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (cancelled) return;
-        if (error) throw error;
+        if (ordersError) throw ordersError;
 
-        setDbOrders((data ?? []) as DbOrder[]);
+        // Fetch order items for all orders
+        const orderIds = (ordersData ?? []).map(o => o.id);
+        let itemsData: OrderItem[] = [];
+        
+        if (orderIds.length > 0) {
+          const { data: items } = await supabase
+            .from("order_items")
+            .select("product_id, title, quantity, price_rwf, image_url, status, order_id")
+            .in("order_id", orderIds);
+          
+          itemsData = items || [];
+        }
+
+        // Combine orders with their items
+        const combinedOrders: ViewOrder[] = (ordersData ?? []).map((o) => ({
+          id: o.id,
+          status: o.status,
+          createdAt: o.created_at,
+          total: Number(o.total_rwf ?? 0),
+          shippingAddress: o.shipping_address,
+          shippingName: o.shipping_name,
+          shippingPhone: o.shipping_phone,
+          paymentMethod: o.payment_method,
+          items: itemsData.filter(item => (item as any).order_id === o.id),
+        }));
+
+        if (!cancelled) setOrders(combinedOrders);
       } catch {
-        if (!cancelled) setDbOrders([]);
+        if (!cancelled) setOrders([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -73,19 +119,22 @@ export default function OrdersPage() {
     };
   }, [supabase, user]);
 
-  const viewOrders: ViewOrder[] = useMemo(
-    () =>
-      (dbOrders ?? []).map((o) => ({
-        id: o.id,
-        status: o.status,
-        createdAt: o.created_at,
-        total: Number(o.total_rwf ?? 0),
-      })),
-    [dbOrders]
-  );
-
   const getStatusInfo = (status: string) => {
     return statusConfig[status.toLowerCase()] ?? statusConfig.pending;
+  };
+
+  const toggleOrder = (orderId: string) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
+
+  const getPaymentMethodLabel = (method: string | null) => {
+    if (!method) return "N/A";
+    switch (method) {
+      case "wallet": return "Wallet";
+      case "pawapay_momo": return "Mobile Money";
+      case "flutterwave_card": return "Card";
+      default: return method;
+    }
   };
 
   return (
@@ -139,7 +188,7 @@ export default function OrdersPage() {
                   </div>
                 ))}
               </div>
-            ) : viewOrders.length === 0 ? (
+            ) : orders.length === 0 ? (
               <div className="text-center py-16">
                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-orange-50 mb-6">
                   <ShoppingBag className="w-12 h-12 text-orange-400" />
@@ -158,40 +207,139 @@ export default function OrdersPage() {
                 </Link>
               </div>
             ) : (
-              viewOrders.map((order) => {
+              orders.map((order) => {
                 const statusInfo = getStatusInfo(order.status);
+                const isExpanded = expandedOrder === order.id;
+                
                 return (
                   <div 
-                      key={order.id} 
-                      onClick={() => navigate(`/order-confirmation/${order.id}`)}
-                      className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-gray-400 hover:shadow-md"
+                    key={order.id} 
+                    className="rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-gray-400 hover:shadow-md overflow-hidden"
+                  >
+                    {/* Order Header - Always Visible */}
+                    <div 
+                      onClick={() => toggleOrder(order.id)}
+                      className="cursor-pointer p-4"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                        <span className="text-base font-mono text-gray-700">
-                          Order #{order.id.slice(0, 8)}...
-                        </span>
-                        <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border flex items-center gap-1.5 px-3 py-1 w-fit`}>
-                          {statusInfo.icon}
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-                        <div>
-                          <span className="text-gray-500">{t("orders.date")}:</span>{" "}
-                          <span className="font-medium text-gray-900">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-base font-mono text-gray-700">
+                            Order #{order.id.slice(0, 8)}...
+                          </span>
+                          <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border flex items-center gap-1.5 px-3 py-1 w-fit`}>
+                            {statusInfo.icon}
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <span className="text-sm">
                             {new Date(order.createdAt).toLocaleDateString('en-US', {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric'
                             })}
                           </span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">{t("orders.total")}:</span>{" "}
                           <span className="font-bold text-gray-900">{formatMoney(order.total)}</span>
+                          {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                         </div>
                       </div>
                     </div>
+
+                    {/* Expanded Order Details */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 p-4 bg-gray-50">
+                        {/* Order Items */}
+                        {order.items.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                              <Package className="h-4 w-4" /> Items ({order.items.length})
+                            </h4>
+                            <div className="space-y-3">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="flex gap-3 rounded-lg border border-gray-200 bg-white p-3">
+                                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                                    {item.image_url ? (
+                                      <img 
+                                        src={item.image_url} 
+                                        alt={item.title} 
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center">
+                                        <Package className="h-6 w-6 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-1 flex-col justify-between">
+                                    <div>
+                                      <h5 className="font-medium text-gray-900 text-sm line-clamp-2">{item.title}</h5>
+                                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className={`rounded-full px-2 py-0.5 text-xs ${statusInfo.bgColor} ${statusInfo.color}`}>
+                                        {item.status}
+                                      </span>
+                                      <span className="font-semibold text-gray-900 text-sm">
+                                        {(item.price_rwf * item.quantity).toLocaleString()} RWF
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Shipping Info */}
+                        {(order.shippingName || order.shippingAddress) && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                              <MapPin className="h-4 w-4" /> Shipping Address
+                            </h4>
+                            <div className="rounded-lg border border-gray-200 bg-white p-3">
+                              {order.shippingName && (
+                                <p className="font-medium text-gray-900 text-sm">{order.shippingName}</p>
+                              )}
+                              {order.shippingPhone && (
+                                <p className="text-xs text-gray-500">{order.shippingPhone}</p>
+                              )}
+                              {order.shippingAddress && (
+                                <p className="text-sm text-gray-500">{order.shippingAddress}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Payment Info */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" /> Payment
+                          </h4>
+                          <div className="rounded-lg border border-gray-200 bg-white p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-500">Method</span>
+                              <span className="font-medium text-gray-900 text-sm">
+                                {getPaymentMethodLabel(order.paymentMethod)}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2">
+                              <span className="font-semibold text-gray-900">Total</span>
+                              <span className="font-bold text-gray-900">{formatMoney(order.total)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* View Full Details Button */}
+                        <Button 
+                          onClick={() => navigate(`/order-confirmation/${order.id}`)}
+                          className="w-full mt-4"
+                          variant="outline"
+                        >
+                          View Full Order Details
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 );
               })
             )}
