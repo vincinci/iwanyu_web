@@ -324,16 +324,30 @@ Deno.serve(async (req: Request) => {
     // ── Handle wallet payment ──
     let paymentStatus = "pending";
     if (paymentMethod === "wallet") {
-      // Fetch user's current wallet balance
-      const { data: profile, error: profileErr } = await supabase
+      // Fetch user's current wallet balance.
+      // Some environments may not have locked_balance_rwf yet, so fall back safely.
+      let { data: profile, error: profileErr } = await supabase
         .from("profiles")
         .select("wallet_balance_rwf, locked_balance_rwf")
         .eq("id", user.id)
         .single();
 
+      if (profileErr && /locked_balance_rwf/i.test(profileErr.message)) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("wallet_balance_rwf")
+          .eq("id", user.id)
+          .single();
+        profile = fallback.data as { wallet_balance_rwf?: number; locked_balance_rwf?: number } | null;
+        profileErr = fallback.error;
+        if (profile && typeof profile.locked_balance_rwf === "undefined") {
+          profile.locked_balance_rwf = 0;
+        }
+      }
+
       if (profileErr || !profile) {
         return new Response(
-          JSON.stringify({ error: "Failed to fetch wallet balance" }),
+          JSON.stringify({ error: `Failed to fetch wallet balance: ${profileErr?.message ?? "profile not found"}` }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -360,7 +374,7 @@ Deno.serve(async (req: Request) => {
 
       if (updateErr) {
         return new Response(
-          JSON.stringify({ error: "Failed to deduct wallet balance" }),
+          JSON.stringify({ error: `Failed to deduct wallet balance: ${updateErr.message}` }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
