@@ -365,15 +365,33 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Update order status to Paid
+      const verifiedAt = new Date().toISOString();
+
+      // Mark wallet orders as paid using a valid order lifecycle status.
       const { error: orderUpdateErr } = await supabase
         .from("orders")
-        .update({ status: "Paid", payment: { ...paymentMeta, payment_status: "wallet_paid" } })
+        .update({
+          status: "Processing",
+          payment_verified_at: verifiedAt,
+          payment: {
+            ...paymentMeta,
+            payment_status: "wallet_paid",
+            verified: true,
+            verified_at: verifiedAt,
+          },
+          updated_at: verifiedAt,
+        })
         .eq("id", orderId);
 
       if (orderUpdateErr) {
-        console.warn("Failed to update order status to Paid:", orderUpdateErr);
+        console.warn("Failed to update wallet-paid order state:", orderUpdateErr);
       }
+
+      await supabase
+        .from("order_items")
+        .update({ status: "Processing", updated_at: verifiedAt })
+        .eq("order_id", orderId)
+        .catch(() => null);
 
       // ── Credit each vendor's wallet with their payout share ──
       // Aggregate payout per vendor from order items
