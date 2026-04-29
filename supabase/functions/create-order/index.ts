@@ -138,6 +138,7 @@ Deno.serve(async (req: Request) => {
         quantity: number;
         image_url: string | null;
       }>;
+    };
 
     let walletCurrentBalance = 0;
     let walletAvailableBalance = 0;
