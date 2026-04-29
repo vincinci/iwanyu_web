@@ -54,6 +54,55 @@ async function fetchWithPawaPayAuth(
   return response;
 }
 
+async function createPaymentPageWithFallback(
+  basePayload: Record<string, unknown>,
+  options: { phoneNumber?: string; alpha2Country: string; alpha3Country: string },
+  credentials: string[],
+  endpoint: string,
+): Promise<{ response: Response | null; attemptName: string; errors: string[] }> {
+  const attempts: Array<{ name: string; payload: Record<string, unknown> }> = [];
+  const { phoneNumber, alpha2Country, alpha3Country } = options;
+
+  if (phoneNumber) {
+    attempts.push({
+      name: "phone+alpha2",
+      payload: { ...basePayload, phoneNumber, country: alpha2Country },
+    });
+    attempts.push({
+      name: "phone+alpha3",
+      payload: { ...basePayload, phoneNumber, country: alpha3Country },
+    });
+  }
+
+  attempts.push({
+    name: "no-phone+alpha2",
+    payload: { ...basePayload, country: alpha2Country },
+  });
+  attempts.push({
+    name: "no-phone+alpha3",
+    payload: { ...basePayload, country: alpha3Country },
+  });
+
+  const errors: string[] = [];
+
+  for (const attempt of attempts) {
+    const response = await fetchWithPawaPayAuth("/v2/paymentpage", attempt.payload, credentials, endpoint);
+    if (!response) {
+      errors.push(`${attempt.name}: no response`);
+      continue;
+    }
+
+    if (response.ok) {
+      return { response, attemptName: attempt.name, errors };
+    }
+
+    const body = await response.text();
+    errors.push(`${attempt.name}: ${response.status} ${body}`);
+  }
+
+  return { response: null, attemptName: "none", errors };
+}
+
 interface PawaPayDepositRequest {
   amount: number; // Amount in RWF
   currency: "RWF";
@@ -200,28 +249,30 @@ Deno.serve(async (req: Request) => {
       reason: correlationId.startsWith("wallet-") ? "Wallet deposit" : `Order ${correlationId}`,
     };
 
-    if (phoneNumber) {
-      paymentPagePayload.phoneNumber = phoneNumber;
-      paymentPagePayload.country = countryCode;
-    } else {
-      paymentPagePayload.country = countryCode;
-    }
+    console.log("PawaPay: Creating payment page with fallback attempts");
 
-    console.log("PawaPay: Creating payment page with payload:", JSON.stringify(paymentPagePayload));
-
-    const depositResponse = await fetchWithPawaPayAuth(
-      "/v2/paymentpage",
+    const attemptResult = await createPaymentPageWithFallback(
       paymentPagePayload,
+      {
+        phoneNumber,
+        alpha2Country: countryCode,
+        alpha3Country,
+      },
       pawaPayCredentials,
       pawaPayEndpoint,
     );
 
-    if (!depositResponse) {
+    if (!attemptResult.response) {
       return new Response(
-        JSON.stringify({ error: "Failed to initialize PawaPay request" }),
+        JSON.stringify({
+          error: "Failed to initialize PawaPay request",
+          details: attemptResult.errors.slice(-2),
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const depositResponse = attemptResult.response;
 
     if (!depositResponse.ok) {
       const errorText = await depositResponse.text();
@@ -253,6 +304,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const depositData = (await depositResponse.json()) as PawaPayPaymentPageResponse;
+
+    console.log("PawaPay: payment page created via attempt:", attemptResult.attemptName);
 
     if (!depositData.redirectUrl) {
       console.error("Invalid PawaPay response:", JSON.stringify(depositData));
