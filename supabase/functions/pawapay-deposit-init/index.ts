@@ -173,8 +173,18 @@ Deno.serve(async (req: Request) => {
         const predictError = await predictResponse.text();
         console.error("PawaPay provider prediction failed:", predictError);
 
+        // Try to extract specific error message
+        let errorMessage = "Invalid or unsupported mobile money number";
+        try {
+          const parsed = JSON.parse(predictError);
+          // PawaPay might return different error structures
+          errorMessage = parsed.message || parsed.error || parsed.errorMessage || parsed.detail || predictError;
+        } catch {
+          if (predictError.trim()) errorMessage = predictError;
+        }
+
         return new Response(
-          JSON.stringify({ error: "Invalid or unsupported mobile money number" }),
+          JSON.stringify({ error: errorMessage }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -221,16 +231,27 @@ Deno.serve(async (req: Request) => {
       const errorText = await depositResponse.text();
       console.error("PawaPay payment page creation failed:", errorText);
 
+      // Try to extract specific error message from PawaPay response
       let errorMessage = depositResponse.statusText?.trim() || `PawaPay request failed with ${depositResponse.status}`;
       try {
-        const parsed = JSON.parse(errorText) as { message?: string; error?: string };
-        errorMessage = parsed.message || parsed.error || errorMessage;
+        const parsed = JSON.parse(errorText) as { message?: string; error?: string; errorMessage?: string; detail?: string; errors?: unknown[] };
+        // PawaPay may return errors in different formats
+        errorMessage = parsed.message || parsed.error || parsed.errorMessage || parsed.detail || errorMessage;
+        
+        // Check for field-specific errors
+        if (parsed.errors && Array.isArray(parsed.errors) && parsed.errors.length > 0) {
+          const firstError = parsed.errors[0];
+          if (typeof firstError === "object" && firstError !== null) {
+            const errObj = firstError as Record<string, unknown>;
+            errorMessage = String(errObj.message || errObj.error || errorMessage);
+          }
+        }
       } catch {
         if (errorText.trim()) errorMessage = errorText;
       }
 
       return new Response(
-        JSON.stringify({ error: errorMessage }),
+        JSON.stringify({ error: errorMessage, code: depositResponse.status }),
         { status: depositResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

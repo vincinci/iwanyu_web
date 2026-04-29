@@ -52,7 +52,15 @@ export async function initializePawaPayDeposit(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Deposit initialization failed: ${errorText}`);
+    // Try to parse PawaPay error response for meaningful message
+    try {
+      const parsed = JSON.parse(errorText);
+      const errorMsg = parsed.error || parsed.message || parsed.errorMessage || errorText;
+      throw new Error(errorMsg);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error(`Deposit initialization failed: ${errorText}`);
+    }
   }
 
   const data = await response.json() as PawaPayDepositResponse;
