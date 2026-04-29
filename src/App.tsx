@@ -39,6 +39,7 @@ const SellerLiveStudioPage = lazy(() => import("./pages/seller/SellerLiveStudio"
 const LiveSessionPage = lazy(() => import("./pages/LiveSession"));
 const LiveViewerPage = lazy(() => import("./pages/LiveViewer"));
 const AuthCallbackPage = lazy(() => import("./pages/AuthCallback"));
+const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmation"));
 import { CartProvider } from "./context/cart";
 import { MarketplaceProvider } from "./context/marketplace";
 import { AuthProvider } from "./context/auth";
@@ -140,6 +141,7 @@ const AppContent = () => {
           } 
         />
         <Route path="/auth/callback" element={withSuspense(<AuthCallbackPage />)} />
+        <Route path="/order-confirmation/:orderId" element={withSuspense(<OrderConfirmationPage />)} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/vendor-application" element={withSuspense(<VendorApplicationPage />)} />
