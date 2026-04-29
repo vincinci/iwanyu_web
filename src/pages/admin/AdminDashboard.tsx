@@ -76,8 +76,24 @@ export default function AdminDashboardPage() {
   const [withdrawals, setWithdrawals] = useState<AdminWithdrawalRow[]>([]);
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
   const [categoryEdits, setCategoryEdits] = useState<Record<string, string>>({});
-  const getSoldCount = (product: unknown) => Number((product as { soldCount?: number } | null)?.soldCount ?? 0);
-  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getSoldCount = (_product: unknown) => 0; // kept for table column; real metrics come from order_items
+
+  // Real revenue / sales from order_items
+  const [salesMetrics, setSalesMetrics] = useState<{
+    totalRevenue: number;
+    totalUnitsSold: number;
+    vendorRevenue: Record<string, number>;   // vendor_id -> sum of price_rwf * quantity
+    vendorSales: Record<string, number>;     // vendor_id -> sum of quantity
+    productSales: Record<string, number>;    // product_id -> sum of quantity
+    productRevenue: Record<string, number>;  // product_id -> sum of price_rwf * quantity
+  }>({
+    totalRevenue: 0, totalUnitsSold: 0,
+    vendorRevenue: {}, vendorSales: {},
+    productSales: {}, productRevenue: {},
+  });
+  const [metricsLoading, setMetricsLoading] = useState(false);
+
   const productToDelete = useMemo(
     () => (deleteProductId ? products.find((p) => p.id === deleteProductId) : undefined),
     [deleteProductId, products]
@@ -157,6 +173,56 @@ export default function AdminDashboardPage() {
     return () => {
       cancelled = true;
     };
+  }, [supabase]);
+
+  // Load real revenue + sales from order_items (admin RLS policy allows this)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSalesMetrics() {
+      if (!supabase) return;
+      setMetricsLoading(true);
+      try {
+        // Fetch all order items in batches (limit 5000 per query)
+        const { data, error } = await supabase
+          .from("order_items")
+          .select("vendor_id, product_id, price_rwf, quantity")
+          .limit(10000);
+
+        if (cancelled || error || !data) return;
+
+        let totalRevenue = 0;
+        let totalUnitsSold = 0;
+        const vendorRevenue: Record<string, number> = {};
+        const vendorSales: Record<string, number> = {};
+        const productSales: Record<string, number> = {};
+        const productRevenue: Record<string, number> = {};
+
+        for (const row of data) {
+          const lineTotal = Number(row.price_rwf ?? 0) * Number(row.quantity ?? 0);
+          const qty = Number(row.quantity ?? 0);
+          totalRevenue += lineTotal;
+          totalUnitsSold += qty;
+          if (row.vendor_id) {
+            vendorRevenue[row.vendor_id] = (vendorRevenue[row.vendor_id] ?? 0) + lineTotal;
+            vendorSales[row.vendor_id] = (vendorSales[row.vendor_id] ?? 0) + qty;
+          }
+          if (row.product_id) {
+            productRevenue[row.product_id] = (productRevenue[row.product_id] ?? 0) + lineTotal;
+            productSales[row.product_id] = (productSales[row.product_id] ?? 0) + qty;
+          }
+        }
+
+        if (!cancelled) {
+          setSalesMetrics({ totalRevenue, totalUnitsSold, vendorRevenue, vendorSales, productSales, productRevenue });
+        }
+      } catch {
+        // silently fail – metrics stay at 0
+      } finally {
+        if (!cancelled) setMetricsLoading(false);
+      }
+    }
+    void loadSalesMetrics();
+    return () => { cancelled = true; };
   }, [supabase]);
 
   if (!user) {
@@ -477,7 +543,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <span className="text-xs text-gray-500 font-medium">{t("admin.revenue")}</span>
                   </div>
-                  <p className="text-3xl font-bold">{formatMoney(products.reduce((sum, p) => sum + (p.price * getSoldCount(p)), 0))}</p>
+                  <p className="text-3xl font-bold">{metricsLoading ? "..." : formatMoney(salesMetrics.totalRevenue)}</p>
                   <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><TrendingUp size={10} /> {t("admin.totalSales")}</p>
                 </div>
                 
@@ -488,7 +554,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <span className="text-xs text-gray-500 font-medium">{t("admin.totalSold")}</span>
                   </div>
-                  <p className="text-3xl font-bold">{products.reduce((sum, p) => sum + getSoldCount(p), 0).toLocaleString()}</p>
+                  <p className="text-3xl font-bold">{metricsLoading ? "..." : salesMetrics.totalUnitsSold.toLocaleString()}</p>
                   <p className="text-xs text-gray-500 mt-1">{t("admin.unitsSold")}</p>
                 </div>
               </div>
@@ -779,8 +845,8 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="px-4 py-3 text-gray-500">{vendor?.name || t("admin.none")}</td>
                           <td className="px-4 py-3 text-right font-medium">{formatMoney(product.price)}</td>
-                          <td className="px-4 py-3 text-right">{getSoldCount(product)}</td>
-                          <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(product.price * getSoldCount(product))}</td>
+                          <td className="px-4 py-3 text-right">{salesMetrics.productSales[product.id] ?? 0}</td>
+                          <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(salesMetrics.productRevenue[product.id] ?? 0)}</td>
                         </tr>
                       );
                     })}
@@ -805,8 +871,8 @@ export default function AdminDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {vendors.map((vendor) => {
                     const vendorProducts = products.filter(p => p.vendorId === vendor.id);
-                    const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * getSoldCount(p)), 0);
-                    const vendorSales = vendorProducts.reduce((sum, p) => sum + getSoldCount(p), 0);
+                    const vendorRevenue = salesMetrics.vendorRevenue[vendor.id] ?? 0;
+                    const vendorSales = salesMetrics.vendorSales[vendor.id] ?? 0;
                     
                     return (
                       <div key={vendor.id} className="dashboard-card p-5 transition-all hover:shadow-md">

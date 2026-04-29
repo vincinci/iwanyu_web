@@ -1,6 +1,6 @@
 import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Search, Trash2, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +39,36 @@ export default function AdminVendorsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteVendorId, setDeleteVendorId] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
-  const getSoldCount = (product: unknown) => Number((product as { soldCount?: number } | null)?.soldCount ?? 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getSoldCount = (_p: unknown) => 0;
+
+  // Real per-vendor revenue/sales from order_items
+  const [vendorMetrics, setVendorMetrics] = useState<{
+    revenue: Record<string, number>;
+    sales: Record<string, number>;
+  }>({ revenue: {}, sales: {} });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadVendorMetrics() {
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("vendor_id, price_rwf, quantity")
+        .limit(10000);
+      if (cancelled || error || !data) return;
+      const revenue: Record<string, number> = {};
+      const sales: Record<string, number> = {};
+      for (const row of data) {
+        if (!row.vendor_id) continue;
+        revenue[row.vendor_id] = (revenue[row.vendor_id] ?? 0) + Number(row.price_rwf ?? 0) * Number(row.quantity ?? 0);
+        sales[row.vendor_id] = (sales[row.vendor_id] ?? 0) + Number(row.quantity ?? 0);
+      }
+      if (!cancelled) setVendorMetrics({ revenue, sales });
+    }
+    void loadVendorMetrics();
+    return () => { cancelled = true; };
+  }, [supabase]);
 
   const vendorToDelete = useMemo(
     () => (deleteVendorId ? vendors.find((v) => v.id === deleteVendorId) : undefined),
@@ -233,8 +262,8 @@ export default function AdminVendorsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredVendors.map((vendor) => {
                 const vendorProducts = products.filter(p => p.vendorId === vendor.id);
-                const vendorRevenue = vendorProducts.reduce((sum, p) => sum + (p.price * getSoldCount(p)), 0);
-                const vendorSales = vendorProducts.reduce((sum, p) => sum + getSoldCount(p), 0);
+                const vendorRevenue = vendorMetrics.revenue[vendor.id] ?? 0;
+                const vendorSales = vendorMetrics.sales[vendor.id] ?? 0;
 
                 return (
                   <div key={vendor.id} className="dashboard-card p-5 transition-all hover:shadow-md">
