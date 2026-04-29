@@ -58,6 +58,14 @@ function parseAuctionDurationHours(value: string | null | undefined) {
   return hours;
 }
 
+function isAuctionExpiredByTime(startedAt: string, auctionDurationHours?: number) {
+  if (!auctionDurationHours || auctionDurationHours <= 0) return false;
+  const startedAtMs = Date.parse(startedAt || "");
+  if (Number.isNaN(startedAtMs)) return false;
+  const endAtMs = startedAtMs + auctionDurationHours * 60 * 60 * 1000;
+  return Date.now() >= endAtMs;
+}
+
 function parseProductIdFromLiveRoom(value: string | null | undefined, fallback: string): string {
   if (!value) return fallback;
   if (value.startsWith("product:")) {
@@ -109,7 +117,14 @@ function writeRawSessions(sessions: LiveSession[]) {
 }
 
 export function getLiveSessions(): LiveSession[] {
-  return readRawSessions().sort((a, b) => {
+  const normalized = readRawSessions().map((session) => {
+    if (session.status === "live" && session.auctionEnabled && isAuctionExpiredByTime(session.startedAt, session.auctionDurationHours)) {
+      return { ...session, status: "ended" as const };
+    }
+    return session;
+  });
+
+  return normalized.sort((a, b) => {
     const aTime = Date.parse(a.startedAt);
     const bTime = Date.parse(b.startedAt);
     return Number.isNaN(bTime) || Number.isNaN(aTime) ? 0 : bTime - aTime;
@@ -117,7 +132,13 @@ export function getLiveSessions(): LiveSession[] {
 }
 
 export function getActiveLiveSessions(): LiveSession[] {
-  return getLiveSessions().filter((session) => session.status === "live");
+  return getLiveSessions().filter((session) => {
+    if (session.status !== "live") return false;
+    if (session.auctionEnabled && isAuctionExpiredByTime(session.startedAt, session.auctionDurationHours)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
@@ -167,9 +188,12 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
     .map((row) => {
       const auctionId = String(row.id);
       const auctionEnabled = isAuctionFromStreamUrl(row.stream_url);
+      const auctionDurationHours = parseAuctionDurationHours(row.ends_in);
+      const startedAt = row.created_at || new Date().toISOString();
       const dbCurrentBid = Math.max(0, Math.round(Number(row.current_bid ?? 0)));
       const derivedBestBid = bestBidByAuction.get(auctionId) ?? 0;
       const liveBid = auctionEnabled ? Math.max(dbCurrentBid, derivedBestBid) : 0;
+      const endedByTime = auctionEnabled && isAuctionExpiredByTime(startedAt, auctionDurationHours);
 
       return {
         id: auctionId,
@@ -180,11 +204,11 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
         productImage: row.image_url || "",
         description: row.description || "",
         auctionEnabled,
-        auctionDurationHours: parseAuctionDurationHours(row.ends_in),
-        startedAt: row.created_at || new Date().toISOString(),
+        auctionDurationHours,
+        startedAt,
         watchers: bidCountByAuction.get(auctionId) ?? 0,
         currentBidRwf: liveBid,
-        status: "live",
+        status: endedByTime ? "ended" : "live",
         streamProducts: Array.isArray(row.stream_products)
           ? (row.stream_products as StreamProduct[])
           : [],
@@ -192,7 +216,7 @@ export async function fetchActiveLiveSessions(): Promise<LiveSession[]> {
     });
 
   writeRawSessions(normalized);
-  return normalized;
+  return normalized.filter((session) => session.status === "live");
 }
 
 export async function createLiveSession(input: {
