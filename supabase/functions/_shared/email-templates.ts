@@ -211,6 +211,55 @@ export const TEMPLATES: Record<string, EmailTemplate> = {
     `),
   },
 
+  order_received: {
+    subject: (ctx) => `Order received — #${String(ctx.orderId || "").slice(0, 8).toUpperCase()}`,
+    preheader: (ctx) => `We received your order for ${Number(ctx.amount || 0).toLocaleString()} RWF and it's now being processed.`,
+    html: (ctx) => emailLayout(`
+      ${statusBadge("Order Received", "#2563eb")}
+      <h1 style="margin:16px 0 10px;font-size:22px;font-weight:800;color:#111111;line-height:1.3;">We received your order ✅</h1>
+      <p style="margin:0;font-size:15px;color:#4b5563;line-height:1.7;">
+        Thank you for shopping on iwanyu. Your order is now in our system and the seller has been notified.
+      </p>
+
+      ${amountBox("Order Total", ctx.amount as number, String(ctx.currency || "RWF"))}
+
+      ${detailRows([
+        ["Order ID", `#${String(ctx.orderId || "").slice(0, 8).toUpperCase()}`],
+        ...(ctx.paymentMethod ? [["Payment Method", String(ctx.paymentMethod)] as [string, string]] : []),
+        ...(ctx.shippingPhone ? [["Phone", String(ctx.shippingPhone)] as [string, string]] : []),
+        ...(ctx.shippingAddress ? [["Shipping Address", String(ctx.shippingAddress)] as [string, string]] : []),
+        ["Status", String(ctx.status || "Placed")],
+      ])}
+
+      ${(() => {
+        const items = Array.isArray(ctx.items) ? (ctx.items as Array<Record<string, unknown>>) : [];
+        if (!items.length) return "";
+        return `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:22px 0;border:1px solid #f3f4f6;border-radius:10px;overflow:hidden;">
+          <tr>
+            <td style="padding:10px 12px;background:#f9fafb;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Item</td>
+            <td style="padding:10px 12px;background:#f9fafb;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;text-align:right;">Qty / Total</td>
+          </tr>
+          ${items.slice(0, 10).map((item) => {
+            const title = String(item.title || "Item");
+            const qty = Number(item.quantity || 0);
+            const total = Number(item.lineTotal || 0);
+            return `<tr>
+              <td style="padding:11px 12px;border-top:1px solid #f3f4f6;font-size:14px;color:#111111;">${title}</td>
+              <td style="padding:11px 12px;border-top:1px solid #f3f4f6;font-size:14px;color:#111111;text-align:right;">x${qty} · ${total.toLocaleString()} RWF</td>
+            </tr>`;
+          }).join("")}
+        </table>`;
+      })()}
+
+      ${ctaButton("View My Orders", `${SITE_URL}/orders`)}
+
+      ${divider()}
+      <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
+        Need help with this order? Contact <a href="mailto:${SUPPORT_EMAIL}" style="color:${BRAND_ORANGE};text-decoration:none;">${SUPPORT_EMAIL}</a>.
+      </p>
+    `),
+  },
+
   deposit_success: {
     subject: (ctx) => `You topped up ${Number(ctx.amount || 0).toLocaleString()} RWF on iwanyu`,
     preheader: (ctx) => `${Number(ctx.amount || 0).toLocaleString()} RWF is now in your wallet. New balance: ${Number(ctx.newBalance || 0).toLocaleString()} RWF.`,
@@ -407,8 +456,31 @@ export const TEMPLATES: Record<string, EmailTemplate> = {
         ["Order ID", `#${String(ctx.orderId || "").slice(0, 8).toUpperCase()}`],
         ...(ctx.storeName ? [["Store", String(ctx.storeName)] as [string, string]] : []),
         ...(ctx.itemCount ? [["Items", `${ctx.itemCount} item${Number(ctx.itemCount) > 1 ? "s" : ""}`] as [string, string]] : []),
+        ...(ctx.buyerEmail ? [["Customer", String(ctx.buyerEmail)] as [string, string]] : []),
+        ...(ctx.shippingPhone ? [["Phone", String(ctx.shippingPhone)] as [string, string]] : []),
+        ...(ctx.shippingAddress ? [["Shipping", String(ctx.shippingAddress)] as [string, string]] : []),
         ["Received", new Date().toLocaleDateString("en-RW", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })],
       ])}
+
+      ${(() => {
+        const items = Array.isArray(ctx.items) ? (ctx.items as Array<Record<string, unknown>>) : [];
+        if (!items.length) return "";
+        return `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:20px 0;border:1px solid #f3f4f6;border-radius:10px;overflow:hidden;">
+          <tr>
+            <td style="padding:10px 12px;background:#f9fafb;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Item</td>
+            <td style="padding:10px 12px;background:#f9fafb;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;text-align:right;">Qty / Total</td>
+          </tr>
+          ${items.slice(0, 10).map((item) => {
+            const title = String(item.title || "Item");
+            const qty = Number(item.quantity || 0);
+            const total = Number(item.lineTotal || 0);
+            return `<tr>
+              <td style="padding:11px 12px;border-top:1px solid #f3f4f6;font-size:14px;color:#111111;">${title}</td>
+              <td style="padding:11px 12px;border-top:1px solid #f3f4f6;font-size:14px;color:#111111;text-align:right;">x${qty} · ${total.toLocaleString()} RWF</td>
+            </tr>`;
+          }).join("")}
+        </table>`;
+      })()}
 
       ${ctaButton("Process This Order", `${SITE_URL}/seller/orders`)}
 

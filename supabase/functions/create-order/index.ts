@@ -20,6 +20,44 @@ interface CreateOrderRequest {
   discountCode?: string | null;
 }
 
+type EmailContext = Record<string, unknown>;
+
+async function sendTemplatedEmail(
+  supabase: ReturnType<typeof createClient>,
+  recipient: string,
+  templateKey: string,
+  ctx: EmailContext,
+): Promise<void> {
+  const tmpl = TEMPLATES[templateKey];
+  if (!tmpl) return;
+
+  const subject = tmpl.subject(ctx);
+  const html = tmpl.html(ctx);
+
+  const emailRes = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+    body: JSON.stringify({
+      from: "iwanyu <hello@iwanyu.store>",
+      to: [recipient],
+      subject,
+      html,
+    }),
+  });
+
+  const emailPayload = await emailRes.json().catch(() => ({}));
+
+  await supabase.from("email_log").insert({
+    recipient,
+    subject,
+    template: templateKey,
+    payload: ctx,
+    status: emailRes.ok ? "sent" : "failed",
+    provider_id: (emailPayload as { id?: string }).id ?? null,
+    error: emailRes.ok ? null : JSON.stringify(emailPayload),
+  }).catch(() => null);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -190,43 +228,88 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ── Notify each vendor of the new order (fire-and-forget) ──
+    const paymentMethodLabel = paymentMethod === "wallet" ? "Wallet" : "Mobile Money";
+
+    // ── Notify each vendor + buyer at order placement (fire-and-forget) ──
     if (RESEND_API_KEY) {
       (async () => {
         try {
-          // Aggregate order value per vendor
-          const vendorAmounts = new Map<string, number>();
+          // Aggregate order details per vendor
+          const vendorOrderDetails = new Map<string, {
+            amount: number;
+            itemCount: number;
+            items: Array<{ title: string; quantity: number; lineTotal: number }>;
+          }>();
+
           for (const row of rows) {
-            vendorAmounts.set(row.vendor_id, (vendorAmounts.get(row.vendor_id) ?? 0) + row.price_rwf * row.quantity);
+            const lineTotal = row.price_rwf * row.quantity;
+            const current = vendorOrderDetails.get(row.vendor_id) ?? {
+              amount: 0,
+              itemCount: 0,
+              items: [],
+            };
+
+            current.amount += lineTotal;
+            current.itemCount += row.quantity;
+            current.items.push({
+              title: row.title,
+              quantity: row.quantity,
+              lineTotal,
+            });
+
+            vendorOrderDetails.set(row.vendor_id, current);
           }
-          for (const [vendorId, amount] of vendorAmounts) {
+
+          for (const [vendorId, details] of vendorOrderDetails) {
             const { data: vendor } = await supabase
               .from("vendors")
               .select("name, owner_user_id")
               .eq("id", vendorId)
               .single();
+
             if (!vendor?.owner_user_id) continue;
+
             const { data: profile } = await supabase
               .from("profiles")
               .select("email")
               .eq("id", vendor.owner_user_id)
               .single();
+
             if (!profile?.email) continue;
-            const tmpl = TEMPLATES["vendor_new_order"];
-            const ctx = { orderId, amount, storeName: vendor.name };
-            await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
-              body: JSON.stringify({
-                from: "iwanyu <hello@iwanyu.store>",
-                to: [profile.email],
-                subject: tmpl.subject(ctx),
-                html: tmpl.html(ctx),
-              }),
-            });
+
+            const ctx = {
+              orderId,
+              amount: details.amount,
+              storeName: vendor.name,
+              itemCount: details.itemCount,
+              items: details.items,
+              buyerEmail: email.trim(),
+              shippingPhone: phone.trim(),
+              shippingAddress: address.trim(),
+            };
+
+            await sendTemplatedEmail(supabase, profile.email, "vendor_new_order", ctx);
           }
+
+          const buyerCtx = {
+            orderId,
+            amount: total,
+            currency: "RWF",
+            status: paymentMethod === "wallet" ? "Paid" : "Placed",
+            paymentMethod: paymentMethodLabel,
+            shippingPhone: phone.trim(),
+            shippingAddress: address.trim(),
+            itemCount: rows.reduce((acc, row) => acc + row.quantity, 0),
+            items: rows.map((row) => ({
+              title: row.title,
+              quantity: row.quantity,
+              lineTotal: row.price_rwf * row.quantity,
+            })),
+          };
+
+          await sendTemplatedEmail(supabase, email.trim(), "order_received", buyerCtx);
         } catch (e) {
-          console.warn("Failed to send vendor new-order emails:", e);
+          console.warn("Failed to send order placement emails:", e);
         }
       })();
     }
