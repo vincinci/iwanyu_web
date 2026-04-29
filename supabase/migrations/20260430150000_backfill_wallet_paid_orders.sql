@@ -32,7 +32,6 @@ where coalesce(o.payment->>'selected', '') = 'wallet'
     from public.wallet_transactions wt
     where wt.external_transaction_id = 'order_' || o.id::text || '_platform_fee'
       and wt.type = 'platform_fee'
-      and wt.status = 'completed'
   );
 
 update public.order_items oi
