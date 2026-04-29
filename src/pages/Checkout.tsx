@@ -22,7 +22,7 @@ export default function CheckoutPage() {
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { items, subtotal } = useCart();
+  const { items, subtotal, clear } = useCart();
   const { user } = useAuth();
   const supabase = getSupabaseClient();
   
@@ -164,6 +164,9 @@ export default function CheckoutPage() {
       }
 
       const { orderId, total: serverTotal, paymentStatus } = await createOrderRes.json();
+
+      // Order is persisted server-side; clear local cart before moving to payment/confirmation.
+      clear();
 
       // If wallet payment, navigate to order confirmation directly
       if (paymentMethod === "wallet") {
