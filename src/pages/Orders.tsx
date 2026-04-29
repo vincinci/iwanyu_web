@@ -15,12 +15,14 @@ type DbOrder = {
   status: string;
   total_rwf: number;
   shipping_address: string | null;
-  shipping_name: string | null;
-  shipping_phone: string | null;
-  payment_method: string | null;
+  payment: {
+    selected?: string;
+    phone?: string;
+  } | null;
 };
 
 type OrderItem = {
+  order_id?: string;
   product_id: string;
   title: string;
   quantity: number;
@@ -72,7 +74,7 @@ export default function OrdersPage() {
         // Fetch orders with shipping and payment details
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
-          .select("id, created_at, status, total_rwf, shipping_address, shipping_name, shipping_phone, payment_method")
+          .select("id, created_at, status, total_rwf, shipping_address, payment")
           .eq("buyer_user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -99,10 +101,10 @@ export default function OrdersPage() {
           createdAt: o.created_at,
           total: Number(o.total_rwf ?? 0),
           shippingAddress: o.shipping_address,
-          shippingName: o.shipping_name,
-          shippingPhone: o.shipping_phone,
-          paymentMethod: o.payment_method,
-          items: itemsData.filter(item => (item as any).order_id === o.id),
+          shippingName: null,
+          shippingPhone: o.payment?.phone ?? null,
+          paymentMethod: o.payment?.selected ?? null,
+          items: itemsData.filter(item => item.order_id === o.id),
         }));
 
         if (!cancelled) setOrders(combinedOrders);
