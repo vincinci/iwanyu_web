@@ -45,7 +45,7 @@ export default function SellerDashboardPage() {
   const isSellerOrAdmin = Boolean(user && (user.role === "seller" || user.role === "admin"));
 
   const ownedVendorIds = useMemo(() => {
-    if (!user || user.role === "admin") return [];
+    if (!user) return [];
     return getVendorsForOwner(user.id).map((v) => v.id);
   }, [user, getVendorsForOwner]);
 
@@ -89,30 +89,27 @@ export default function SellerDashboardPage() {
     async function loadMetrics() {
       if (!supabase || !user) return;
 
-      if (user.role === "admin") {
-        setMetrics({
-          productCount: products.length,
-          orderCount: 0,
-          salesRwf: 0,
-        });
-        return;
-      }
-
-      if (ownedVendorIds.length === 0) {
+      if (!isAdmin && ownedVendorIds.length === 0) {
         setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0 });
         return;
       }
 
       setMetricsLoading(true);
       try {
-        const ownedSet = new Set(ownedVendorIds);
-        const productCount = products.filter((p) => ownedSet.has(p.vendorId)).length;
+        const productCount = isAdmin
+          ? products.length
+          : products.filter((p) => ownedVendorIds.includes(p.vendorId)).length;
 
-        const { data, error } = await supabase
+        let query = supabase
           .from("order_items")
           .select("order_id, price_rwf, quantity, vendor_id")
-          .in("vendor_id", ownedVendorIds)
           .limit(5000);
+
+        if (!isAdmin) {
+          query = query.in("vendor_id", ownedVendorIds);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -159,7 +156,7 @@ export default function SellerDashboardPage() {
       window.removeEventListener("focus", refreshOnFocus);
       void supabase.removeChannel(channel);
     };
-  }, [supabase, user, ownedVendorIds, products, SELLER_EARNINGS_RATE]);
+  }, [supabase, user, isAdmin, ownedVendorIds, products, SELLER_EARNINGS_RATE]);
 
   if (!user) {
     return (
