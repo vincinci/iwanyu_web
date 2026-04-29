@@ -52,6 +52,7 @@ export default function SellerOrdersPage() {
     vendor_payout_rwf: number;
     image_url: string | null;
     status: OrderStatus;
+    created_at: string;
   };
 
   type SellerOrder = {
@@ -75,6 +76,17 @@ export default function SellerOrdersPage() {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<SellerOrder[]>([]);
 
+  function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (err && typeof err === "object") {
+      const maybeMessage = (err as { message?: unknown }).message;
+      if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) return maybeMessage;
+      const maybeError = (err as { error?: unknown }).error;
+      if (typeof maybeError === "string" && maybeError.trim().length > 0) return maybeError;
+    }
+    return t("seller.unknownError");
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -87,7 +99,7 @@ export default function SellerOrdersPage() {
       try {
         let itemsQuery = supabase
           .from("order_items")
-          .select("order_id, product_id, vendor_id, title, price_rwf, quantity, vendor_payout_rwf, image_url, status")
+          .select("order_id, product_id, vendor_id, title, price_rwf, quantity, vendor_payout_rwf, image_url, status, created_at")
           .order("created_at", { ascending: false });
 
         if (!isAdmin) {
@@ -113,21 +125,33 @@ export default function SellerOrdersPage() {
           .select("id, buyer_email, created_at, total_rwf, status")
           .in("id", orderIds)
           .order("created_at", { ascending: false });
-        if (ordersErr) throw ordersErr;
 
         const byId = new Map<string, SellerOrder>();
-        for (const o of (orderRows ?? []) as DbOrderRow[]) {
-          byId.set(o.id, {
-            id: o.id,
-            createdAt: o.created_at,
-            buyerEmail: o.buyer_email ?? "",
-            total: Number(o.total_rwf ?? 0),
-            status: o.status,
-            items: [],
-          });
+        if (!ordersErr) {
+          for (const o of (orderRows ?? []) as DbOrderRow[]) {
+            byId.set(o.id, {
+              id: o.id,
+              createdAt: o.created_at,
+              buyerEmail: o.buyer_email ?? "",
+              total: Number(o.total_rwf ?? 0),
+              status: o.status,
+              items: [],
+            });
+          }
         }
 
         for (const i of items) {
+          if (!byId.has(i.order_id)) {
+            byId.set(i.order_id, {
+              id: i.order_id,
+              createdAt: i.created_at,
+              buyerEmail: "",
+              total: 0,
+              status: i.status,
+              items: [],
+            });
+          }
+
           const parent = byId.get(i.order_id);
           if (!parent) continue;
           parent.items.push({
@@ -142,14 +166,25 @@ export default function SellerOrdersPage() {
           });
         }
 
-        const next = Array.from(byId.values()).filter((o) => o.items.length > 0);
+        for (const order of byId.values()) {
+          if (Number(order.total ?? 0) <= 0) {
+            order.total = order.items.reduce(
+              (sum, it) => sum + Number(it.price || 0) * Math.max(1, Number(it.quantity || 1)),
+              0
+            );
+          }
+        }
+
+        const next = Array.from(byId.values())
+          .filter((o) => o.items.length > 0)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         if (!cancelled) setOrders(next);
       } catch (e) {
         if (!cancelled) {
           setOrders([]);
           toast({
             title: t("seller.ordersLoadFailed"),
-            description: e instanceof Error ? e.message : t("seller.unknownError"),
+            description: getErrorMessage(e),
             variant: "destructive",
           });
         }
@@ -272,7 +307,7 @@ export default function SellerOrdersPage() {
                                     if (itemErr) throw new Error(itemErr.message);
 
                                     // Also update the order-level status so the buyer sees the change
-                                    await supabase
+                                    const { error: orderErr } = await supabase
                                       .from("orders")
                                       .update({ status: nextStatus })
                                       .eq("id", o.id);
@@ -282,7 +317,7 @@ export default function SellerOrdersPage() {
                                         if (ord.id !== o.id) return ord;
                                         return {
                                           ...ord,
-                                          status: nextStatus,
+                                          status: orderErr ? ord.status : nextStatus,
                                           items: ord.items.map((it) =>
                                             it.productId === i.productId ? { ...it, status: nextStatus } : it
                                           ),
@@ -290,7 +325,12 @@ export default function SellerOrdersPage() {
                                       })
                                     );
 
-                                    toast({ title: `Status updated to ${nextStatus}` });
+                                    toast({
+                                      title: `Status updated to ${nextStatus}`,
+                                      description: orderErr
+                                        ? "Item status was saved, but order header status update is blocked by permissions."
+                                        : undefined,
+                                    });
 
                                     // Notify buyer on key status changes (fire-and-forget)
                                     const emailTemplate: Record<string, string> = {
@@ -310,7 +350,7 @@ export default function SellerOrdersPage() {
                                   } catch (e) {
                                     toast({
                                       title: t("seller.updateFailed"),
-                                      description: e instanceof Error ? e.message : t("seller.unknownError"),
+                                      description: getErrorMessage(e),
                                       variant: "destructive",
                                     });
                                   }
