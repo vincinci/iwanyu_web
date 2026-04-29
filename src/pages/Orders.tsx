@@ -13,12 +13,14 @@ type DbOrder = {
   id: string;
   created_at: string;
   status: string;
+  payment_verified_at?: string | null;
   total_rwf: number;
   shipping_address: string | null;
   payment: {
     selected?: string;
     phone?: string;
     payment_status?: string;
+    verified?: boolean;
   } | null;
 };
 
@@ -62,6 +64,14 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
+  const getPaymentStatus = (order: DbOrder): "received" | "pending" => {
+    if (order.payment?.payment_status === "wallet_paid") return "received";
+    if (order.payment?.verified === true) return "received";
+    if (order.payment_verified_at) return "received";
+    if (String(order.status).toLowerCase() === "paid") return "received";
+    return "pending";
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -76,7 +86,7 @@ export default function OrdersPage() {
         // Fetch orders with shipping and payment details
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
-          .select("id, created_at, status, total_rwf, shipping_address, payment")
+          .select("id, created_at, status, payment_verified_at, total_rwf, shipping_address, payment")
           .eq("buyer_user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -100,7 +110,7 @@ export default function OrdersPage() {
         const combinedOrders: ViewOrder[] = (ordersData ?? []).map((o) => ({
           id: o.id,
           status: o.status,
-          paymentStatus: o.payment?.payment_status === "wallet_paid" ? "received" : "pending",
+          paymentStatus: getPaymentStatus(o),
           createdAt: o.created_at,
           total: Number(o.total_rwf ?? 0),
           shippingAddress: o.shipping_address,

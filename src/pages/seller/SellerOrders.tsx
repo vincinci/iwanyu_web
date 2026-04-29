@@ -41,8 +41,10 @@ export default function SellerOrdersPage() {
     created_at: string;
     total_rwf: number;
     status: OrderStatus;
+    payment_verified_at?: string | null;
     payment: {
       payment_status?: string | null;
+      verified?: boolean;
     } | null;
   };
 
@@ -92,6 +94,14 @@ export default function SellerOrdersPage() {
     return t("seller.unknownError");
   }
 
+  function getPaymentStatus(order: DbOrderRow): "received" | "pending" {
+    if (order.payment?.payment_status === "wallet_paid") return "received";
+    if (order.payment?.verified === true) return "received";
+    if (order.payment_verified_at) return "received";
+    if (String(order.status).toLowerCase() === "paid") return "received";
+    return "pending";
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -127,7 +137,7 @@ export default function SellerOrdersPage() {
 
         const { data: orderRows, error: ordersErr } = await supabase
           .from("orders")
-          .select("id, buyer_email, created_at, total_rwf, status, payment")
+          .select("id, buyer_email, created_at, total_rwf, status, payment_verified_at, payment")
           .in("id", orderIds)
           .order("created_at", { ascending: false });
 
@@ -140,7 +150,7 @@ export default function SellerOrdersPage() {
               buyerEmail: o.buyer_email ?? "",
               total: Number(o.total_rwf ?? 0),
               status: o.status,
-              paymentStatus: o.payment?.payment_status === "wallet_paid" ? "received" : "pending",
+              paymentStatus: getPaymentStatus(o),
               items: [],
             });
           }

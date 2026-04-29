@@ -133,9 +133,14 @@ export default function SellerDashboardPage() {
             ordersQuery = ordersQuery;
           }
 
-          const { data: orderRows } = await ordersQuery;
-          const orderPayments = (orderRows ?? []) as Array<{ id: string; payment: { payment_status?: string | null } | null }>;
-          paidOrderCount = orderPayments.filter((o) => o.payment?.payment_status === "wallet_paid").length;
+          const { data: orderRows } = await ordersQuery.select("id, status, payment_verified_at, payment");
+          const orderPayments = (orderRows ?? []) as Array<{ id: string; status: string; payment_verified_at?: string | null; payment: { payment_status?: string | null; verified?: boolean } | null }>;
+          paidOrderCount = orderPayments.filter((o) =>
+            o.payment?.payment_status === "wallet_paid" ||
+            o.payment?.verified === true ||
+            Boolean(o.payment_verified_at) ||
+            String(o.status).toLowerCase() === "paid"
+          ).length;
           pendingOrderCount = Math.max(uniqueOrders.size - paidOrderCount, 0);
         }
 
