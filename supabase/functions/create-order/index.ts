@@ -269,13 +269,20 @@ Deno.serve(async (req: Request) => {
 
             if (!vendor?.owner_user_id) continue;
 
+            // Prefer profiles.email, fall back to auth.users email (service role can read it)
             const { data: profile } = await supabase
               .from("profiles")
               .select("email")
               .eq("id", vendor.owner_user_id)
               .single();
 
-            if (!profile?.email) continue;
+            let vendorEmail: string | null = profile?.email ?? null;
+            if (!vendorEmail) {
+              const { data: authUser } = await supabase.auth.admin.getUserById(vendor.owner_user_id);
+              vendorEmail = authUser?.user?.email ?? null;
+            }
+
+            if (!vendorEmail) continue;
 
             const ctx = {
               orderId,
@@ -288,7 +295,7 @@ Deno.serve(async (req: Request) => {
               shippingAddress: address.trim(),
             };
 
-            await sendTemplatedEmail(supabase, profile.email, "vendor_new_order", ctx);
+            await sendTemplatedEmail(supabase, vendorEmail, "vendor_new_order", ctx);
           }
 
           const buyerCtx = {
