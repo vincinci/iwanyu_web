@@ -193,6 +193,25 @@ function AuctionView({
 }: AuctionViewProps) {
   const overBudget = walletAvailable !== null && bidAmount !== "" && Number(bidAmount) > walletAvailable;
   const minNextBid = Math.max(1, (session.currentBidRwf ?? 0) + 1);
+  const bidStepOptions = [100, 500, 1000, 5000];
+  const normalizedBid = Math.max(minNextBid, Math.round(Number(bidAmount || minNextBid)));
+
+  useEffect(() => {
+    if (!bidAmount || Number(bidAmount) < minNextBid) {
+      setBidAmount(String(minNextBid));
+    }
+  }, [bidAmount, minNextBid, setBidAmount]);
+
+  const applyBidDelta = (delta: number) => {
+    const next = Math.max(minNextBid, normalizedBid + delta);
+    setBidAmount(String(next));
+    setBidMsg(null);
+  };
+
+  const placeSelectedBid = () => {
+    setBidAmount(String(normalizedBid));
+    void handleBid();
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900">
@@ -276,22 +295,59 @@ function AuctionView({
                       )}
                     </div>
 
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-3">
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Current</span>
+                        <span className="font-semibold text-gray-700">{formatMoney(session.currentBidRwf)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Your next bid</span>
+                        <span className="font-extrabold text-gray-900 text-lg leading-none">{formatMoney(normalizedBid)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => applyBidDelta(-100)}
+                          className="h-10 w-10 rounded-xl bg-white text-gray-900 border border-gray-200 hover:bg-gray-100 px-0"
+                          disabled={bidding || normalizedBid <= minNextBid}
+                        >
+                          -
+                        </Button>
+                        <div className="flex-1 rounded-xl border border-gray-200 bg-white h-10 flex items-center justify-center text-sm font-semibold text-gray-800">
+                          Ready to bid {formatMoney(normalizedBid)}
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => applyBidDelta(100)}
+                          className="h-10 w-10 rounded-xl bg-white text-gray-900 border border-gray-200 hover:bg-gray-100 px-0"
+                          disabled={bidding}
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {bidStepOptions.map((step) => (
+                          <Button
+                            key={step}
+                            type="button"
+                            onClick={() => applyBidDelta(step)}
+                            className="rounded-full h-8 px-3 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
+                            disabled={bidding}
+                          >
+                            +{formatMoney(step)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        type="number"
-                        placeholder={`Enter at least ${formatMoney(minNextBid)}`}
-                        value={bidAmount}
-                        onChange={(e) => { setBidAmount(e.target.value); setBidMsg(null); }}
-                        className={`rounded-xl bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500 flex-1 ${overBudget ? "border-red-400" : ""}`}
-                        min={minNextBid}
-                      />
                       <Button
-                        onClick={handleBid}
-                        disabled={bidding || overBudget || !bidAmount}
+                        onClick={placeSelectedBid}
+                        disabled={bidding || overBudget}
                         className="rounded-xl bg-gray-900 text-white hover:bg-gray-800 font-bold shrink-0 px-6 disabled:opacity-50"
                       >
                         <TrendingUp className="h-4 w-4 mr-1.5" />
-                        {bidding ? "Placing..." : "Place Bid"}
+                        {bidding ? "Placing..." : `Bid ${formatMoney(normalizedBid)}`}
                       </Button>
                     </div>
 
