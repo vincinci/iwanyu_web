@@ -27,6 +27,20 @@ interface OrderDetails {
   items?: OrderItem[];
 }
 
+type OrderPaymentMeta = {
+  selected?: string;
+  phone?: string;
+};
+
+type OrderRow = {
+  id: string;
+  total_rwf: number;
+  status: string;
+  created_at: string;
+  shipping_address: string | null;
+  payment: OrderPaymentMeta | null;
+};
+
 export default function OrderConfirmationPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
@@ -63,10 +77,10 @@ export default function OrderConfirmationPage() {
         // Fetch order details
         const { data: orderData, error: fetchError } = await supabase
           .from("orders")
-          .select("id, total_rwf, status, created_at, shipping_address, shipping_name, shipping_phone, payment_method")
+          .select("id, total_rwf, status, created_at, shipping_address, payment")
           .eq("id", normalizedOrderId)
           .eq("buyer_user_id", user.id)
-          .single();
+          .maybeSingle<OrderRow>();
 
         if (fetchError) {
           if (attempt === 0) {
@@ -93,7 +107,14 @@ export default function OrderConfirmationPage() {
         }
 
         setOrder({
-          ...orderData,
+          id: orderData.id,
+          total_rwf: orderData.total_rwf,
+          status: orderData.status,
+          created_at: orderData.created_at,
+          shipping_address: orderData.shipping_address,
+          shipping_name: null,
+          shipping_phone: orderData.payment?.phone ?? null,
+          payment_method: orderData.payment?.selected ?? null,
           items: itemsData || []
         });
         } catch (err) {
