@@ -57,7 +57,6 @@ export default function SellerDashboardPage() {
         .from("vendors")
         .select("id")
         .eq("owner_user_id", user.id)
-        .eq("status", "approved")
         .limit(200);
 
       if (cancelled) return;
