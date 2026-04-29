@@ -416,6 +416,24 @@ export async function getUserLockedBid(auctionId: string, userId: string): Promi
   return Number((data as { amount: number }).amount ?? 0);
 }
 
+/** Get the user's highest historical bid on a specific auction. */
+export async function getUserHighestBid(auctionId: string, userId: string): Promise<number> {
+  const supabase = getSupabaseClient() ?? getPublicSupabaseClient();
+  if (!supabase) return 0;
+
+  const { data, error } = await supabase
+    .from("bids")
+    .select("amount")
+    .eq("auction_id", auctionId)
+    .eq("user_id", userId)
+    .order("amount", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return 0;
+  return Number((data as { amount: number }).amount ?? 0);
+}
+
 export function summarizeLiveForHome(vendors: Vendor[], products: Product[], activeSessions?: LiveSession[]): {
   liveSellers: Array<{ vendorId: string; vendorName: string; watchers: number }>;
   liveAuctions: LiveSession[];

@@ -34,6 +34,7 @@ import {
   placeBidOnLiveAuction,
   getUserWalletBalance,
   getUserLockedBid,
+  getUserHighestBid,
   purchaseLiveStreamProduct,
   type LiveSession,
   type StreamProduct,
@@ -178,6 +179,7 @@ interface AuctionViewProps {
   user: { id: string; name?: string } | null;
   walletAvailable: number | null;
   myLockedBid: number;
+  myHighestBid: number;
   bidAmount: string;
   setBidAmount: (v: string) => void;
   bidding: boolean;
@@ -189,7 +191,7 @@ interface AuctionViewProps {
 function AuctionView({
   session, viewerCount, comments, commentsEndRef, commentText, setCommentText,
   posting, handleComment, guestName, setGuestName, user, walletAvailable,
-  myLockedBid, bidAmount, setBidAmount, bidding, bidMsg, setBidMsg, handleBid,
+  myLockedBid, myHighestBid, bidAmount, setBidAmount, bidding, bidMsg, setBidMsg, handleBid,
 }: AuctionViewProps) {
   const overBudget = walletAvailable !== null && bidAmount !== "" && Number(bidAmount) > walletAvailable;
   const minNextBid = Math.max(1, (session.currentBidRwf ?? 0) + 1);
@@ -230,6 +232,9 @@ function AuctionView({
     const ss = String(secs).padStart(2, "0");
     return `${hh}:${mm}:${ss}`;
   };
+
+  const isWinning = !!user && myLockedBid > 0 && myLockedBid >= (session.currentBidRwf ?? 0);
+  const isOutbid = !!user && myHighestBid > 0 && (session.currentBidRwf ?? 0) > myHighestBid;
 
   useEffect(() => {
     if (!bidAmount || Number(bidAmount) < minNextBid) {
@@ -334,6 +339,28 @@ function AuctionView({
                         </div>
                       )}
                     </div>
+
+                    {(isWinning || isOutbid) && (
+                      <div
+                        className={`rounded-xl border px-3 py-2.5 text-xs font-semibold flex items-center justify-between ${
+                          isWinning
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : "bg-red-50 border-red-200 text-red-700"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                              isWinning ? "bg-green-500" : "bg-red-500"
+                            }`}
+                          />
+                          {isWinning ? "You are currently winning" : "You have been outbid"}
+                        </span>
+                        <span className="font-bold">
+                          {isWinning ? formatMoney(myLockedBid) : `Current ${formatMoney(session.currentBidRwf)}`}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-3">
                       <div className="flex items-center justify-between text-xs text-gray-500">
@@ -865,6 +892,7 @@ export default function LiveViewerPage() {
   const [bidMsg, setBidMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [walletAvailable, setWalletAvailable] = useState<number | null>(null);
   const [myLockedBid, setMyLockedBid] = useState<number>(0);
+  const [myHighestBid, setMyHighestBid] = useState<number>(0);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const loadSession = useCallback(async () => {
@@ -883,12 +911,14 @@ export default function LiveViewerPage() {
 
   const refreshWallet = useCallback(async () => {
     if (!user?.id || !sessionId) return;
-    const [bal, locked] = await Promise.all([
+    const [bal, locked, highest] = await Promise.all([
       getUserWalletBalance(user.id),
       getUserLockedBid(sessionId, user.id),
+      getUserHighestBid(sessionId, user.id),
     ]);
     if (bal) setWalletAvailable(bal.availableRwf);
     setMyLockedBid(locked);
+    setMyHighestBid(highest);
   }, [user?.id, sessionId]);
 
   useEffect(() => {
@@ -1006,6 +1036,7 @@ export default function LiveViewerPage() {
         {...commonProps}
         walletAvailable={walletAvailable}
         myLockedBid={myLockedBid}
+        myHighestBid={myHighestBid}
         bidAmount={bidAmount}
         setBidAmount={setBidAmount}
         bidding={bidding}
