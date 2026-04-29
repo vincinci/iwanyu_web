@@ -1,9 +1,8 @@
 import StorefrontPage from "@/components/StorefrontPage";
 import { formatMoney } from "@/lib/money";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
@@ -36,6 +35,7 @@ export default function OrdersPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const supabase = getSupabaseClient();
+  const navigate = useNavigate();
   const [dbOrders, setDbOrders] = useState<DbOrder[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -161,19 +161,20 @@ export default function OrdersPage() {
               viewOrders.map((order) => {
                 const statusInfo = getStatusInfo(order.status);
                 return (
-                  <Card key={order.id} className="border border-gray-200 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <CardTitle className="text-base font-mono text-gray-700">
+                  <div 
+                      key={order.id} 
+                      onClick={() => navigate(`/order-confirmation/${order.id}`)}
+                      className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-gray-400 hover:shadow-md"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                        <span className="text-base font-mono text-gray-700">
                           Order #{order.id.slice(0, 8)}...
-                        </CardTitle>
-                        <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border flex items-center gap-1.5 px-3 py-1`}>
+                        </span>
+                        <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border flex items-center gap-1.5 px-3 py-1 w-fit`}>
                           {statusInfo.icon}
                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                         </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
                       <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
                         <div>
                           <span className="text-gray-500">{t("orders.date")}:</span>{" "}
@@ -190,8 +191,7 @@ export default function OrdersPage() {
                           <span className="font-bold text-gray-900">{formatMoney(order.total)}</span>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
                 );
               })
             )}
