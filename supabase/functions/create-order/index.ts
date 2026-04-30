@@ -183,7 +183,6 @@ Deno.serve(async (req: Request) => {
         );
       }
     }
-    };
 
     // 2. Decrement stock for each item
     for (const li of lineItems) {
