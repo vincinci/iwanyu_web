@@ -159,8 +159,22 @@ export default function CheckoutPage() {
       );
 
       if (!createOrderRes.ok) {
-        const errBody = await createOrderRes.json().catch(() => ({ error: "Order creation failed" }));
-        throw new Error(errBody.error || "Order creation failed");
+        const errorText = await createOrderRes.text();
+        let errorMessage = `Order creation failed (${createOrderRes.status})`;
+
+        try {
+          const parsed = JSON.parse(errorText) as { error?: string; message?: string };
+          errorMessage = parsed.error || parsed.message || errorMessage;
+        } catch {
+          if (errorText.trim()) errorMessage = errorText.trim();
+        }
+
+        console.error("create-order failed", {
+          status: createOrderRes.status,
+          body: errorText,
+        });
+
+        throw new Error(errorMessage);
       }
 
       const { orderId, total: serverTotal, paymentStatus } = await createOrderRes.json();
