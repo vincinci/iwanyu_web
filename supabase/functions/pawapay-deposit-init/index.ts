@@ -37,14 +37,20 @@ async function fetchWithPawaPayAuth(
   let response: Response | null = null;
 
   for (const credential of credentials) {
-    response = await fetch(`${endpoint}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${credential}`,
-      },
-      body: JSON.stringify(body),
-    });
+    try {
+      response = await fetch(`${endpoint}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${credential}`,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (error) {
+      console.warn(`PawaPay fetch failed for ${path}:`, error);
+      response = null;
+      continue;
+    }
 
     if (response.status !== 401) {
       break;
@@ -168,8 +174,10 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  let step = "init";
   try {
     // Verify auth
+    step = "auth.header";
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
@@ -179,9 +187,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse request body
+    step = "request.parse";
     const body: PawaPayDepositRequest = await req.json();
     const { amount, currency, country, correlationId, accountIdentifier, returnUrl } = body;
 
+    step = "request.validate";
     if (!amount || !currency || !country || !correlationId) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: amount, currency, country, correlationId" }),
@@ -196,6 +206,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    step = "credentials";
     const pawaPayCredentials = getPawaPayCredentials();
 
     if (pawaPayCredentials.length === 0) {
@@ -205,6 +216,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    step = "payload.prepare";
     const origin = (req.headers.get("origin") || "https://www.iwanyu.store").replace(/\/+$/, "");
     const depositId = crypto.randomUUID();
     const redirectBackUrl = returnUrl?.trim() || `${origin}/payment-callback?orderId=${encodeURIComponent(correlationId)}`;
@@ -216,6 +228,7 @@ Deno.serve(async (req: Request) => {
     let countryCode = alpha2Country;
 
     if (normalizedMsisdn) {
+      step = "provider.predict";
       console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
       const predictResponse = await fetchWithPawaPayAuth(
         "/v2/predict-provider",
@@ -237,6 +250,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    step = "payment_page.init";
     const paymentPagePayload: Record<string, unknown> = {
       depositId,
       returnUrl: redirectBackUrl,
@@ -251,6 +265,7 @@ Deno.serve(async (req: Request) => {
 
     console.log("PawaPay: Creating payment page with fallback attempts");
 
+    step = "payment_page.request";
     const attemptResult = await createPaymentPageWithFallback(
       paymentPagePayload,
       {
@@ -265,7 +280,7 @@ Deno.serve(async (req: Request) => {
     if (!attemptResult.response) {
       return new Response(
         JSON.stringify({
-          error: "Failed to initialize PawaPay request",
+          error: `[pawapay-deposit-init:${step}] Failed to initialize PawaPay request`,
           details: attemptResult.errors.slice(-2),
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -275,6 +290,7 @@ Deno.serve(async (req: Request) => {
     const depositResponse = attemptResult.response;
 
     if (!depositResponse.ok) {
+      step = "payment_page.response";
       const errorText = await depositResponse.text();
       console.error("PawaPay payment page creation failed:", errorText);
 
@@ -298,11 +314,12 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(
-        JSON.stringify({ error: errorMessage, code: depositResponse.status }),
+        JSON.stringify({ error: `[pawapay-deposit-init:${step}] ${errorMessage}`, code: depositResponse.status }),
         { status: depositResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    step = "payment_page.parse";
     const depositData = (await depositResponse.json()) as PawaPayPaymentPageResponse;
 
     console.log("PawaPay: payment page created via attempt:", attemptResult.attemptName);
@@ -328,9 +345,10 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in pawapay-deposit-init:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error in pawapay-deposit-init:", { step, error: errorMessage });
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: `[pawapay-deposit-init:${step}] ${errorMessage}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
