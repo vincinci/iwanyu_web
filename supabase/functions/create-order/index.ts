@@ -63,8 +63,10 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  let step = "init";
   try {
     // Authenticate the caller
+    step = "auth.header";
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
@@ -78,6 +80,7 @@ Deno.serve(async (req: Request) => {
     const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
       global: { headers: { Authorization: authHeader } },
     });
+    step = "auth.user";
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -86,6 +89,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    step = "request.parse";
     const body: CreateOrderRequest = await req.json();
     const { items, email, phone, address, paymentMethod, discountCode } = body;
 
@@ -96,6 +100,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    step = "supabase.client";
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // 1. Compute totals server-side using the DB RPC
@@ -104,6 +109,7 @@ Deno.serve(async (req: Request) => {
       quantity: i.quantity,
     }));
 
+    step = "totals.compute";
     const { data: totals, error: totalsErr } = await supabase.rpc("compute_order_totals", {
       p_items: itemsPayload,
       p_discount_code: discountCode ?? null,
@@ -140,6 +146,7 @@ Deno.serve(async (req: Request) => {
       }>;
     };
 
+    step = "wallet.precheck";
     let walletCurrentBalance = 0;
     let walletAvailableBalance = 0;
 
@@ -184,6 +191,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    step = "stock.decrement";
     // 2. Decrement stock for each item
     for (const li of lineItems) {
       const { error: stockErr } = await supabase.rpc("decrement_stock", {
@@ -198,6 +206,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    step = "order.create";
     // 3. Create the order with server-computed totals
     const paymentMeta = {
       provider: "flutterwave",
@@ -246,6 +255,7 @@ Deno.serve(async (req: Request) => {
       return alloc;
     });
 
+    step = "order_items.insert";
     // 5. Insert order items
     const rows = lineItems.map((li, idx) => {
       const lineTotal = li.price_rwf * li.quantity;
@@ -272,6 +282,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    step = "notifications.enqueue";
     const paymentMethodLabel = paymentMethod === "wallet" ? "Wallet" : "Mobile Money";
 
     // ── Notify each vendor + buyer at order placement (fire-and-forget) ──
@@ -366,9 +377,11 @@ Deno.serve(async (req: Request) => {
       })();
     }
 
+    step = "wallet.capture";
     // ── Handle wallet payment ──
     let paymentStatus = "pending";
     if (paymentMethod === "wallet") {
+      step = "wallet.balance_deduct";
       // Deduct from wallet
       const newBalance = walletCurrentBalance - total;
       const { error: updateErr } = await supabase
@@ -383,6 +396,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      step = "wallet.order_mark_paid";
       const verifiedAt = new Date().toISOString();
 
       // Mark wallet orders as paid using a valid order lifecycle status.
@@ -405,12 +419,14 @@ Deno.serve(async (req: Request) => {
         console.warn("Failed to update wallet-paid order state:", orderUpdateErr);
       }
 
+      step = "wallet.items_mark_processing";
       await supabase
         .from("order_items")
         .update({ status: "Processing", updated_at: verifiedAt })
         .eq("order_id", orderId)
         .catch(() => null);
 
+      step = "wallet.vendor_credit";
       // ── Credit each vendor's wallet with their payout share ──
       // Aggregate payout per vendor from order items
       const vendorPayouts = new Map<string, { amount: number; ownerId: string | null }>();
@@ -459,6 +475,7 @@ Deno.serve(async (req: Request) => {
         }).catch(() => null);
       }
 
+      step = "wallet.platform_fee";
       // ── Record platform fee (service fee + host cut) ──
       const platformFee = total - vendorPayout;
       if (platformFee > 0) {
@@ -475,6 +492,7 @@ Deno.serve(async (req: Request) => {
       paymentStatus = "wallet_paid";
     }
 
+    step = "response.success";
     return new Response(
       JSON.stringify({
         success: true,
@@ -487,9 +505,19 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error("Error in create-order:", error);
+    const errorMessage = error instanceof Error
+      ? error.message
+      : (() => {
+          try {
+            return JSON.stringify(error);
+          } catch {
+            return String(error);
+          }
+        })();
+
+    console.error("Error in create-order:", { step, error: errorMessage });
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: `[create-order:${step}] ${errorMessage}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
