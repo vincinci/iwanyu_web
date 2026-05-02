@@ -25,40 +25,65 @@ function getPawaPayEndpoint(): string {
   }
 }
 
+function getPawaPayEndpoints(): string[] {
+  const primary = getPawaPayEndpoint();
+  const live = "https://api.pawapay.io";
+  const sandbox = "https://api.sandbox.pawapay.io";
+
+  if (primary === sandbox) return [sandbox, live];
+  if (primary === live) return [live, sandbox];
+
+  const defaultEndpoint = PAWAPAY_ENV === "sandbox" ? sandbox : live;
+  const alternate = defaultEndpoint === sandbox ? live : sandbox;
+  return [...new Set([primary, defaultEndpoint, alternate])];
+}
+
+function normalizePawaPayCredential(raw: string): string {
+  let token = raw.trim();
+  token = token.replace(/^bearer\s+/i, "");
+  token = token.replace(/^['\"]+|['\"]+$/g, "");
+  return token.trim();
+}
+
 function getPawaPayCredentials(): string[] {
-  return [...new Set([PAWAPAY_API_KEY.trim(), PAWAPAY_API_TOKEN.trim()].filter(Boolean))];
+  // Prefer API token, but gracefully fall back to legacy API key if present.
+  return [...new Set([PAWAPAY_API_TOKEN, PAWAPAY_API_KEY]
+    .map(normalizePawaPayCredential)
+    .filter(Boolean))];
 }
 
 async function fetchWithPawaPayAuth(
   path: string,
   body: Record<string, unknown>,
   credentials: string[],
-  endpoint: string,
+  endpoints: string[],
 ): Promise<Response | null> {
-  let response: Response | null = null;
+  let lastResponse: Response | null = null;
 
-  for (const credential of credentials) {
-    try {
-      response = await fetch(`${endpoint}${path}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${credential}`,
-        },
-        body: JSON.stringify(body),
-      });
-    } catch (error) {
-      console.warn(`PawaPay fetch failed for ${path}:`, error);
-      response = null;
-      continue;
-    }
+  for (const endpoint of endpoints) {
+    for (const credential of credentials) {
+      try {
+        lastResponse = await fetch(`${endpoint}${path}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${credential}`,
+          },
+          body: JSON.stringify(body),
+        });
+      } catch (error) {
+        console.warn(`PawaPay fetch failed for ${path}:`, error);
+        lastResponse = null;
+        continue;
+      }
 
-    if (response.status !== 401) {
-      break;
+      if (lastResponse.status !== 401) {
+        return lastResponse;
+      }
     }
   }
 
-  return response;
+  return lastResponse;
 }
 
 interface PawaPayDepositRequest {
@@ -206,7 +231,7 @@ Deno.serve(async (req: Request) => {
     // Otherwise generate a new UUID for this payment session.
     const depositId = isUuidV4(correlationId) ? correlationId : crypto.randomUUID();
     const normalizedMsisdn = normalizeMsisdn(accountIdentifier);
-    const pawaPayEndpoint = getPawaPayEndpoint();
+    const pawaPayEndpoints = getPawaPayEndpoints();
     const alpha3Country = toAlpha3CountryCode(country);
     if (!normalizedMsisdn) {
       return new Response(
@@ -221,7 +246,7 @@ Deno.serve(async (req: Request) => {
       "/v2/predict-provider",
       { phoneNumber: normalizedMsisdn },
       pawaPayCredentials,
-      pawaPayEndpoint,
+      pawaPayEndpoints,
     );
 
     if (!predictResponse) {
@@ -292,7 +317,7 @@ Deno.serve(async (req: Request) => {
       "/v2/deposits",
       depositPayload,
       pawaPayCredentials,
-      pawaPayEndpoint,
+      pawaPayEndpoints,
     );
 
     if (!depositResponse) {

@@ -51,36 +51,61 @@ function getPawaPayEndpoint(): string {
   }
 }
 
+function getPawaPayEndpoints(): string[] {
+  const primary = getPawaPayEndpoint();
+  const live = "https://api.pawapay.io";
+  const sandbox = "https://api.sandbox.pawapay.io";
+
+  if (primary === sandbox) return [sandbox, live];
+  if (primary === live) return [live, sandbox];
+
+  const defaultEndpoint = PAWAPAY_ENV === "sandbox" ? sandbox : live;
+  const alternate = defaultEndpoint === sandbox ? live : sandbox;
+  return [...new Set([primary, defaultEndpoint, alternate])];
+}
+
+function normalizePawaPayCredential(raw: string): string {
+  let token = raw.trim();
+  token = token.replace(/^bearer\s+/i, "");
+  token = token.replace(/^['\"]+|['\"]+$/g, "");
+  return token.trim();
+}
+
 function getPawaPayCredentials(): string[] {
-  return [...new Set([PAWAPAY_API_KEY.trim(), PAWAPAY_API_TOKEN.trim()].filter(Boolean))];
+  // Prefer API token, but gracefully fall back to legacy API key if present.
+  return [...new Set([PAWAPAY_API_TOKEN, PAWAPAY_API_KEY]
+    .map(normalizePawaPayCredential)
+    .filter(Boolean))];
 }
 
 async function fetchDepositStatus(
   depositId: string,
   credentials: string[],
-  endpoint: string,
+  endpoints: string[],
 ): Promise<Response | null> {
-  let response: Response | null = null;
+  let lastResponse: Response | null = null;
 
-  for (const credential of credentials) {
-    try {
-      response = await fetch(`${endpoint}/v2/deposits/${encodeURIComponent(depositId)}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${credential}`,
-        },
-      });
-    } catch {
-      response = null;
-      continue;
-    }
+  for (const endpoint of endpoints) {
+    for (const credential of credentials) {
+      try {
+        lastResponse = await fetch(`${endpoint}/v2/deposits/${encodeURIComponent(depositId)}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${credential}`,
+          },
+        });
+      } catch {
+        lastResponse = null;
+        continue;
+      }
 
-    if (response.status !== 401) {
-      break;
+      if (lastResponse.status !== 401) {
+        return lastResponse;
+      }
     }
   }
 
-  return response;
+  return lastResponse;
 }
 
 async function sendOrderConfirmationEmail(
@@ -217,8 +242,8 @@ Deno.serve(async (req: Request) => {
     }
 
     step = "pawapay.request";
-    const endpoint = getPawaPayEndpoint();
-    const pawaRes = await fetchDepositStatus(depositId, credentials, endpoint);
+    const endpoints = getPawaPayEndpoints();
+    const pawaRes = await fetchDepositStatus(depositId, credentials, endpoints);
     if (!pawaRes) {
       return new Response(JSON.stringify({ error: "Failed to reach PawaPay" }), {
         status: 502,
