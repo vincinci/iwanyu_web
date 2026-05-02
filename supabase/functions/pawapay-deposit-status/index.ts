@@ -180,6 +180,150 @@ function normalizePawaPayAuthorizationUrl(value: unknown): string | null {
   return url.toString();
 }
 
+async function findWalletTransaction(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  depositId: string,
+): Promise<{ id: string; user_id: string; status?: string | null } | null> {
+  const txnByExternal = await supabase
+    .from("wallet_transactions")
+    .select("id, user_id, status")
+    .eq("external_transaction_id", depositId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (txnByExternal.data) return txnByExternal.data;
+
+  const txnByReference = await supabase
+    .from("wallet_transactions")
+    .select("id, user_id, status")
+    .eq("reference", depositId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return txnByReference.data ?? null;
+}
+
+async function insertCompletedWalletTransaction(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  depositId: string,
+  depositAmount: number,
+  newBalance: number,
+): Promise<void> {
+  const modernInsert = await supabase
+    .from("wallet_transactions")
+    .insert({
+      user_id: userId,
+      type: "deposit",
+      amount_rwf: depositAmount,
+      external_transaction_id: depositId,
+      payment_method: "pawapay_momo",
+      status: "completed",
+      description: `Wallet deposit ${depositId}`,
+      new_balance_rwf: newBalance,
+    });
+
+  if (!modernInsert.error) return;
+
+  await supabase
+    .from("wallet_transactions")
+    .insert({
+      user_id: userId,
+      kind: "deposit",
+      amount: depositAmount,
+      reference: depositId,
+      metadata: {
+        source: "pawapay",
+        depositId,
+        payment_method: "pawapay_momo",
+        status: "completed",
+        new_balance_rwf: newBalance,
+      },
+    })
+    .catch(() => null);
+}
+
+async function reconcileWalletTopup(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  depositId: string,
+  depositAmount: number,
+): Promise<void> {
+  const txn = await findWalletTransaction(supabase, userId, depositId);
+  if (txn?.status === "completed") return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("wallet_balance_rwf")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile) {
+    const previousBalance = Number(profile.wallet_balance_rwf || 0);
+    const newBalance = previousBalance + depositAmount;
+    await supabase
+      .from("profiles")
+      .update({ wallet_balance_rwf: newBalance })
+      .eq("id", userId)
+      .catch(() => null);
+
+    if (txn) {
+      await supabase
+        .from("wallet_transactions")
+        .update({
+          status: "completed",
+          previous_balance_rwf: previousBalance,
+          new_balance_rwf: newBalance,
+          amount_rwf: depositAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", txn.id)
+        .catch(() => null);
+    } else {
+      await insertCompletedWalletTransaction(supabase, userId, depositId, depositAmount, newBalance);
+    }
+    return;
+  }
+
+  const { data: wallet } = await supabase
+    .from("wallets")
+    .select("balance")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const previousBalance = Number(wallet?.balance || 0);
+  const newBalance = previousBalance + depositAmount;
+
+  if (wallet) {
+    await supabase
+      .from("wallets")
+      .update({ balance: newBalance, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .catch(() => null);
+  } else {
+    await supabase
+      .from("wallets")
+      .insert({ user_id: userId, balance: newBalance, currency: "RWF" })
+      .catch(() => null);
+  }
+
+  if (txn) {
+    await supabase
+      .from("wallet_transactions")
+      .update({
+        status: "completed",
+        amount_rwf: depositAmount,
+        new_balance_rwf: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", txn.id)
+      .catch(() => null);
+  } else {
+    await insertCompletedWalletTransaction(supabase, userId, depositId, depositAmount, newBalance);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -431,85 +575,8 @@ Deno.serve(async (req: Request) => {
       }
 
       // 2) Otherwise, try to reconcile a wallet top-up for this user.
-      const txnByExternal = await supabase
-        .from("wallet_transactions")
-        .select("id, user_id, status")
-        .eq("external_transaction_id", depositId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      let txn = txnByExternal.data;
-      if (!txn) {
-        const txnByReference = await supabase
-          .from("wallet_transactions")
-          .select("id, user_id, status")
-          .eq("reference", depositId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        txn = txnByReference.data;
-      }
-
-      if (txn && txn.status !== "completed" && depositAmount != null && depositAmount > 0) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("wallet_balance_rwf")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (profile) {
-          const previousBalance = Number(profile.wallet_balance_rwf || 0);
-          const newBalance = previousBalance + depositAmount;
-          await supabase
-            .from("profiles")
-            .update({ wallet_balance_rwf: newBalance })
-            .eq("id", user.id)
-            .catch(() => null);
-
-          await supabase
-            .from("wallet_transactions")
-            .update({
-              status: "completed",
-              previous_balance_rwf: previousBalance,
-              new_balance_rwf: newBalance,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", txn.id)
-            .catch(() => null);
-        } else {
-          // Legacy wallet schema fallback (mobile DB): public.wallets(balance)
-          const { data: wallet } = await supabase
-            .from("wallets")
-            .select("balance")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-          const previousBalance = Number(wallet?.balance || 0);
-          const newBalance = previousBalance + depositAmount;
-
-          if (wallet) {
-            await supabase
-              .from("wallets")
-              .update({ balance: newBalance, updated_at: new Date().toISOString() })
-              .eq("user_id", user.id)
-              .catch(() => null);
-          } else {
-            await supabase
-              .from("wallets")
-              .insert({ user_id: user.id, balance: newBalance, currency: "RWF" })
-              .catch(() => null);
-          }
-
-          await supabase
-            .from("wallet_transactions")
-            .update({
-              status: "completed",
-              amount_rwf: depositAmount,
-              new_balance_rwf: newBalance,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", txn.id)
-            .catch(() => null);
-        }
+      if (depositAmount != null && depositAmount > 0) {
+        await reconcileWalletTopup(supabase, user.id, depositId, depositAmount);
       }
     }
 
