@@ -17,8 +17,10 @@ import { formatMoney } from "@/lib/money";
 import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary";
+import { sanitizeHtml } from "@/lib/security";
 import { ProductCard } from "@/components/ProductCard";
 import { fetchActiveLiveSessions, placeBidOnLiveAuction, type LiveSession } from "@/lib/liveSessions";
+import { usePreventDoubleClick } from "@/hooks/useRateLimit";
 
 type ProductMedia = {
   id: string;
@@ -382,9 +384,14 @@ export default function ProductPage() {
             {/* Description */}
             {hasDescription && (
               <div className="py-6 border-b">
-                <p className="text-[15px] leading-relaxed whitespace-pre-line">
-                  {showFullDescription || !isLongDescription ? descriptionText : descriptionText.slice(0, 400) + "..."}
-                </p>
+                <div 
+                  className="text-[15px] leading-relaxed prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ 
+                    __html: showFullDescription || !isLongDescription 
+                      ? sanitizeHtml(descriptionText) 
+                      : sanitizeHtml(descriptionText.slice(0, 400)) + "..." 
+                  }}
+                />
                 {isLongDescription && (
                   <button
                     onClick={() => setShowFullDescription(!showFullDescription)}

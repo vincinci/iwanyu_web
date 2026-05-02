@@ -14,8 +14,10 @@ import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { initializePawaPayDeposit, redirectToPawaPay } from "@/lib/pawapay";
+import { initializePawaPayDeposit } from "@/lib/pawapay";
 import { getUserWalletBalance } from "@/lib/liveSessions";
+import { usePreventDoubleClick } from "@/hooks/useRateLimit";
+import { validateEmail, validatePhone } from "@/lib/security";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -104,14 +106,27 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleCheckout = async () => {
-    if (isPlacing) return;
-    setIsPlacing(true);
-    
-    try {
+  // Prevent double-click on checkout
+  const { handler: handleCheckout, isProcessing: isCheckoutProcessing } = usePreventDoubleClick(
+    async () => {
       const trimmedEmail = email.trim();
       const trimmedAddress = `${address.trim()}${city ? `, ${city.trim()}` : ""}`;
       const trimmedPhone = phone.trim();
+
+      // Validate inputs
+      const emailValidation = validateEmail(trimmedEmail);
+      if (!emailValidation.valid) {
+        throw new Error(emailValidation.error);
+      }
+
+      const phoneValidation = validatePhone(trimmedPhone);
+      if (!phoneValidation.valid) {
+        throw new Error(phoneValidation.error);
+      }
+
+      if (trimmedAddress.length < 5) {
+        throw new Error("Please enter a valid shipping address");
+      }
 
       if (!user) {
         navigate("/login", { state: { from: location }, replace: false });
@@ -137,109 +152,116 @@ export default function CheckoutPage() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       if (!supabaseUrl || !supabaseAnonKey) throw new Error("Configuration missing");
 
-      // Create order via server-side edge function (totals computed from DB prices)
-      const createOrderRes = await fetch(
-        `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/create-order`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: supabaseAnonKey,
-            Authorization: `Bearer ${accessToken}`,
+      setIsPlacing(true);
+
+      try {
+        // Create order via server-side edge function (totals computed from DB prices)
+        const createOrderRes = await fetch(
+          `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/create-order`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+              email: trimmedEmail,
+              phone: trimmedPhone,
+              address: trimmedAddress,
+              paymentMethod,
+              discountCode: appliedDiscount?.code ?? null,
+            }),
+          }
+        );
+
+        if (!createOrderRes.ok) {
+          const errorText = await createOrderRes.text();
+          let errorMessage = `Order creation failed (${createOrderRes.status})`;
+
+          try {
+            const parsed = JSON.parse(errorText) as { error?: string; message?: string };
+            errorMessage = parsed.error || parsed.message || errorMessage;
+          } catch {
+            if (errorText.trim()) errorMessage = errorText.trim();
+          }
+
+          console.error("create-order failed", {
+            status: createOrderRes.status,
+            body: errorText,
+          });
+
+          throw new Error(errorMessage);
+        }
+
+        const { orderId, total: serverTotal, paymentStatus } = await createOrderRes.json();
+
+        // Order is persisted server-side; clear local cart before moving to payment/confirmation.
+        clear();
+
+        // If wallet payment, navigate to order confirmation directly
+        if (paymentMethod === "wallet") {
+          sessionStorage.setItem("pendingOrderId", orderId);
+          // Navigate to order confirmation page (or success page)
+          navigate(`/order-confirmation/${orderId}`);
+          return;
+        }
+
+        // Mobile money payment via PawaPay
+        const result = await initializePawaPayDeposit(
+          {
+            amount: serverTotal,
+            currency: "RWF",
+            country: "RW",
+            accountIdentifier: trimmedPhone,
+            correlationId: orderId, // Use orderId for idempotency
           },
-          body: JSON.stringify({
-            items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-            email: trimmedEmail,
-            phone: trimmedPhone,
-            address: trimmedAddress,
-            paymentMethod,
-            discountCode: appliedDiscount?.code ?? null,
-          }),
-        }
-      );
+          accessToken
+        );
 
-      if (!createOrderRes.ok) {
-        const errorText = await createOrderRes.text();
-        let errorMessage = `Order creation failed (${createOrderRes.status})`;
-
-        try {
-          const parsed = JSON.parse(errorText) as { error?: string; message?: string };
-          errorMessage = parsed.error || parsed.message || errorMessage;
-        } catch {
-          if (errorText.trim()) errorMessage = errorText.trim();
+        if (!result?.depositId) {
+          throw new Error("Failed to initialize payment. Please try again.");
         }
 
-        console.error("create-order failed", {
-          status: createOrderRes.status,
-          body: errorText,
-        });
+        // Store depositId in wallet_transactions as pending
+        // This will be matched with the webhook callback
+        const { error: txnCreateErr } = await supabase
+          .from("wallet_transactions")
+          .insert({
+            user_id: user.id,
+            type: "purchase",
+            amount_rwf: serverTotal,
+            external_transaction_id: result.depositId,
+            payment_method: "pawapay_momo",
+            status: "pending",
+            description: `PawaPay payment for order ${orderId}`,
+          });
 
-        throw new Error(errorMessage);
-      }
+        if (txnCreateErr) {
+          console.warn("Failed to create pending transaction:", txnCreateErr);
+          // Continue anyway - the webhook will handle it
+        }
 
-      const { orderId, total: serverTotal, paymentStatus } = await createOrderRes.json();
-
-      // Order is persisted server-side; clear local cart before moving to payment/confirmation.
-      clear();
-
-      // If wallet payment, navigate to order confirmation directly
-      if (paymentMethod === "wallet") {
         sessionStorage.setItem("pendingOrderId", orderId);
-        // Navigate to order confirmation page (or success page)
-        navigate(`/order-confirmation/${orderId}`);
-        return;
-      }
+        sessionStorage.setItem("pendingDepositId", result.depositId);
 
-      // Mobile money payment via PawaPay
-      const result = await initializePawaPayDeposit(
-        {
-          amount: serverTotal,
-          currency: "RWF",
-          country: "RW",
-          accountIdentifier: trimmedPhone,
-          correlationId: orderId, // Use orderId for idempotency
-          notificationUrl: `${window.location.origin}/api/wallet-deposit-callback`,
-          returnUrl: `${window.location.origin}/payment-callback?orderId=${encodeURIComponent(orderId)}`,
-        },
-        accessToken
-      );
-
-      if (!result?.depositId || !result?.authenticationUrl) {
-        throw new Error("Failed to initialize payment. Please try again.");
-      }
-
-      // Store depositId in wallet_transactions as pending
-      // This will be matched with the webhook callback
-      const { error: txnCreateErr } = await supabase
-        .from("wallet_transactions")
-        .insert({
-          user_id: user.id,
-          type: "deposit",
-          amount_rwf: serverTotal,
-          external_transaction_id: result.depositId,
-          payment_method: "pawapay_momo",
-          status: "pending",
-          description: `PawaPay deposit for order ${orderId}`,
+        // Direct deposit flow: customer confirms the payment on their phone.
+        // Show the in-app verification page which polls and reconciles the order.
+        navigate(
+          `/payment-callback?orderId=${encodeURIComponent(orderId)}&depositId=${encodeURIComponent(result.depositId)}`,
+        );
+      } catch (e) {
+        toast({
+          title: t("checkout.checkoutFailed"),
+          description: e instanceof Error ? e.message : "Unknown error",
+          variant: "destructive",
         });
-
-      if (txnCreateErr) {
-        console.warn("Failed to create pending transaction:", txnCreateErr);
-        // Continue anyway - the webhook will handle it
+        setIsPlacing(false);
       }
-
-      sessionStorage.setItem("pendingOrderId", orderId);
-      sessionStorage.setItem("pendingDepositId", result.depositId);
-
-      redirectToPawaPay(result.authenticationUrl);
-    } catch (e) {
-      toast({
-        title: t("checkout.checkoutFailed"),
-        description: e instanceof Error ? e.message : "Unknown error",
-        variant: "destructive",
-      });
-      setIsPlacing(false);
-    }
-  };
+    },
+    3000 // 3 second cooldown
+  );
 
   if (items.length === 0) {
     return (
@@ -534,10 +556,10 @@ export default function CheckoutPage() {
                   {/* Checkout Button */}
                   <Button
                     onClick={handleCheckout}
-                    disabled={!canPlaceOrder || isPlacing}
+                    disabled={!canPlaceOrder || isPlacing || isCheckoutProcessing}
                     className="w-full mt-6 h-12 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-base rounded-xl disabled:opacity-50"
                   >
-                    {isPlacing ? (
+                    {isPlacing || isCheckoutProcessing ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
                         {t("checkout.processing")}

@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { checkDepositStatus } from "@/lib/pawapay";
 
 export default function WalletCallbackPage() {
   const navigate = useNavigate();
@@ -18,6 +19,14 @@ export default function WalletCallbackPage() {
   const [message, setMessage] = useState("Checking your deposit...");
   const [amountRwf, setAmountRwf] = useState<number | null>(null);
   const [newBalanceRwf, setNewBalanceRwf] = useState<number | null>(null);
+
+  const maybeRedirectToPawaPayAuth = (depositId: string, url: string | undefined): void => {
+    if (!url) return;
+    const key = `pawapayAuthRedirected:${depositId}`;
+    if (sessionStorage.getItem(key) === "1") return;
+    sessionStorage.setItem(key, "1");
+    window.location.assign(url);
+  };
 
   useEffect(() => {
     const verify = async () => {
@@ -42,6 +51,9 @@ export default function WalletCallbackPage() {
           setMessage("Please log in to verify your deposit.");
           return;
         }
+
+        const session = (await supabase.auth.getSession()).data.session;
+        const accessToken = session?.access_token;
 
         for (let attempt = 0; attempt < 8; attempt += 1) {
           const { data, error } = await supabase
@@ -78,6 +90,48 @@ export default function WalletCallbackPage() {
           }
 
           await new Promise((resolve) => setTimeout(resolve, 2500));
+        }
+
+        // Webhook may be delayed or misconfigured; attempt an authenticated status check
+        // which also reconciles the wallet transaction when it is completed.
+        if (accessToken) {
+          const statusRes = await checkDepositStatus(depositId, accessToken).catch(() => null);
+
+          const authUrl = statusRes?.authorizationUrl || statusRes?.authenticationUrl;
+          if (authUrl) {
+            maybeRedirectToPawaPayAuth(depositId, authUrl);
+            return;
+          }
+
+          if (statusRes?.status === "FAILED") {
+            setStatus("failed");
+            setMessage("The deposit did not complete. You can try again.");
+            return;
+          }
+
+          if (statusRes?.status === "COMPLETED") {
+            // Re-check wallet transaction to read new balance.
+            const { data } = await supabase
+              .from("wallet_transactions")
+              .select("status, amount_rwf, new_balance_rwf")
+              .eq("user_id", user.id)
+              .eq("external_transaction_id", depositId)
+              .maybeSingle();
+
+            if (data?.status === "completed") {
+              sessionStorage.removeItem("pendingDepositId");
+              setAmountRwf(data.amount_rwf ?? null);
+              setNewBalanceRwf(data.new_balance_rwf ?? null);
+              setStatus("success");
+              setMessage(`${formatMoney(data.amount_rwf ?? 0)} has been added to your wallet.`);
+
+              toast({
+                title: "Deposit received",
+                description: `${formatMoney(data.amount_rwf ?? 0)} added to your wallet.`,
+              });
+              return;
+            }
+          }
         }
 
         setStatus("pending");

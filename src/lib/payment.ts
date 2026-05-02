@@ -5,7 +5,6 @@
 
 import {
   initializePawaPayDeposit,
-  redirectToPawaPay,
   PawaPayDepositParams,
   PawaPayDepositResponse,
 } from "./pawapay";
@@ -201,7 +200,7 @@ export const paymentService = {
 
       const result = await initializePawaPayDeposit(params, accessToken);
 
-      if (!result?.depositId || !result?.authenticationUrl) {
+      if (!result?.depositId) {
         throw new PaymentError(
           "Failed to initialize payment. Please try again.",
           "INIT_FAILED",
@@ -230,14 +229,16 @@ export const paymentService = {
       // Store pending deposit ID for callback
       sessionStorage.setItem("pendingDepositId", result.depositId);
 
-      // Redirect to PawaPay
-      redirectToPawaPay(result.authenticationUrl);
+      // Direct deposit flow: confirm on the user's phone and verify in-app.
+      window.location.assign(
+        `${window.location.origin}/wallet-callback?depositId=${encodeURIComponent(result.depositId)}`
+      );
 
       return {
         success: true,
-        message: "Redirecting to payment...",
+        message: "Deposit initiated. Waiting for confirmation...",
         referenceId: result.depositId,
-        redirectUrl: result.authenticationUrl,
+        redirectUrl: "/wallet-callback",
       };
     } catch (error) {
       idempotencyManager.markComplete(userId, request.amount);

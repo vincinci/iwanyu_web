@@ -281,14 +281,14 @@ export function MarketplaceProvider({ children }: { children: React.ReactNode })
 
       // Cache for fast reloads
       try {
-        const cache: MarketplaceCache = {
-          fetchedAt: Date.now(),
-          vendors: vendorRows,
-          products: productRows,
-        };
-        window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-      } catch {
-        // ignore
+      const cache: MarketplaceCache = {
+        fetchedAt: Date.now(),
+        vendors: vendorRows,
+        products: productRows,
+      };
+      window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      } catch (error) {
+      console.warn("[MarketplaceContext] Failed to cache data:", error);
       }
     } catch (error) {
       console.error('[MarketplaceContext] Refresh error:', error);

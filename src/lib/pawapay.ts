@@ -19,6 +19,7 @@ export type PawaPayDepositResponse = {
   requestedAmount: string;
   currency: string;
   authenticationUrl?: string; // Redirect URL for user authentication
+  authorizationUrl?: string; // Redirect-auth URL (some providers)
   country: string;
 };
 
@@ -54,9 +55,27 @@ export async function initializePawaPayDeposit(
     const errorText = await response.text();
     // Try to parse PawaPay error response for meaningful message
     try {
-      const parsed = JSON.parse(errorText);
+      const parsed = JSON.parse(errorText) as {
+        error?: string;
+        message?: string;
+        errorMessage?: string;
+        details?: unknown;
+      };
+
       const errorMsg = parsed.error || parsed.message || parsed.errorMessage || errorText;
-      throw new Error(errorMsg);
+      const details = parsed.details;
+
+      let detailsText = "";
+      if (typeof details === "string") {
+        detailsText = details.trim();
+      } else if (Array.isArray(details)) {
+        detailsText = details.map((d) => (typeof d === "string" ? d : JSON.stringify(d))).join("; ");
+      } else if (details && typeof details === "object") {
+        detailsText = JSON.stringify(details);
+      }
+
+      const combined = detailsText ? `${errorMsg} — ${detailsText}` : errorMsg;
+      throw new Error(combined);
     } catch (e) {
       if (e instanceof Error) throw e;
       throw new Error(`Deposit initialization failed: ${errorText}`);

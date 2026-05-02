@@ -7,6 +7,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { ProfileCompletion } from "@/components/ProfileCompletion";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Deals = lazy(() => import("./pages/Deals"));
@@ -299,6 +300,7 @@ const AppContent = () => {
 };
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -320,6 +322,8 @@ const App = () => (
       </HelmetProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
+

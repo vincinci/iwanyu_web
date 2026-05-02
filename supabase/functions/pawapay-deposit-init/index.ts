@@ -1,7 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const PAWAPAY_API_KEY = Deno.env.get("PAWAPAY_API_KEY") || "";
 const PAWAPAY_API_TOKEN = Deno.env.get("PAWAPAY_API_TOKEN") || "";
@@ -60,55 +61,6 @@ async function fetchWithPawaPayAuth(
   return response;
 }
 
-async function createPaymentPageWithFallback(
-  basePayload: Record<string, unknown>,
-  options: { phoneNumber?: string; alpha2Country: string; alpha3Country: string },
-  credentials: string[],
-  endpoint: string,
-): Promise<{ response: Response | null; attemptName: string; errors: string[] }> {
-  const attempts: Array<{ name: string; payload: Record<string, unknown> }> = [];
-  const { phoneNumber, alpha2Country, alpha3Country } = options;
-
-  if (phoneNumber) {
-    attempts.push({
-      name: "phone+alpha2",
-      payload: { ...basePayload, phoneNumber, country: alpha2Country },
-    });
-    attempts.push({
-      name: "phone+alpha3",
-      payload: { ...basePayload, phoneNumber, country: alpha3Country },
-    });
-  }
-
-  attempts.push({
-    name: "no-phone+alpha2",
-    payload: { ...basePayload, country: alpha2Country },
-  });
-  attempts.push({
-    name: "no-phone+alpha3",
-    payload: { ...basePayload, country: alpha3Country },
-  });
-
-  const errors: string[] = [];
-
-  for (const attempt of attempts) {
-    const response = await fetchWithPawaPayAuth("/v2/paymentpage", attempt.payload, credentials, endpoint);
-    if (!response) {
-      errors.push(`${attempt.name}: no response`);
-      continue;
-    }
-
-    if (response.ok) {
-      return { response, attemptName: attempt.name, errors };
-    }
-
-    const body = await response.text();
-    errors.push(`${attempt.name}: ${response.status} ${body}`);
-  }
-
-  return { response: null, attemptName: "none", errors };
-}
-
 interface PawaPayDepositRequest {
   amount: number; // Amount in RWF
   currency: "RWF";
@@ -119,9 +71,11 @@ interface PawaPayDepositRequest {
   returnUrl?: string;
 }
 
-interface PawaPayPaymentPageResponse {
+interface PawaPayInitiateDepositResponse {
   depositId?: string;
-  redirectUrl?: string;
+  status?: "ACCEPTED" | "REJECTED" | "DUPLICATE_IGNORED" | string;
+  created?: string;
+  failureReason?: unknown;
 }
 
 interface PawaPayPredictProviderResponse {
@@ -155,18 +109,23 @@ function normalizeMsisdn(value?: string): string | undefined {
 
   const digits = value.replace(/\D/g, "");
   if (!digits) return undefined;
-  if (digits.startsWith("250") && digits.length === 12) return `+${digits}`;
-  if (digits.startsWith("0") && digits.length === 10) return `+250${digits.slice(1)}`;
-  if (digits.startsWith("7") && digits.length === 9) return `+250${digits}`;
+  // pawaPay expects MSISDN as digits only (no '+' prefix)
+  if (digits.startsWith("250") && digits.length === 12) return digits;
+  if (digits.startsWith("0") && digits.length === 10) return `250${digits.slice(1)}`;
+  if (digits.startsWith("7") && digits.length === 9) return `250${digits}`;
 
   return undefined;
+}
+
+function isUuidV4(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 /**
  * PawaPay Deposit Initialization
  *
- * Starts a hosted PawaPay payment page session.
- * Returns a redirect URL the customer can be sent to.
+ * Initiates a direct deposit request with PawaPay.
+ * No hosted payment page redirect is required for most MMO providers.
  */
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
@@ -186,10 +145,29 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return new Response(JSON.stringify({ error: "Supabase env not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    step = "auth.user";
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Parse request body
     step = "request.parse";
     const body: PawaPayDepositRequest = await req.json();
-    const { amount, currency, country, correlationId, accountIdentifier, returnUrl } = body;
+    const { amount, currency, country, correlationId, accountIdentifier } = body;
 
     step = "request.validate";
     if (!amount || !currency || !country || !correlationId) {
@@ -206,6 +184,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (!accountIdentifier?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Missing required field: accountIdentifier" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     step = "credentials";
     const pawaPayCredentials = getPawaPayCredentials();
 
@@ -217,132 +202,146 @@ Deno.serve(async (req: Request) => {
     }
 
     step = "payload.prepare";
-    const origin = (req.headers.get("origin") || "https://www.iwanyu.store").replace(/\/+$/, "");
-    const depositId = crypto.randomUUID();
-    const redirectBackUrl = returnUrl?.trim() || `${origin}/payment-callback?orderId=${encodeURIComponent(correlationId)}`;
+    // If correlationId is already a UUID (e.g. orderId), reuse it for idempotency.
+    // Otherwise generate a new UUID for this payment session.
+    const depositId = isUuidV4(correlationId) ? correlationId : crypto.randomUUID();
     const normalizedMsisdn = normalizeMsisdn(accountIdentifier);
     const pawaPayEndpoint = getPawaPayEndpoint();
     const alpha3Country = toAlpha3CountryCode(country);
-    const alpha2Country = toAlpha2CountryCode(country);
-    let phoneNumber = normalizedMsisdn;
-    let countryCode = alpha2Country;
-
-    if (normalizedMsisdn) {
-      step = "provider.predict";
-      console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
-      const predictResponse = await fetchWithPawaPayAuth(
-        "/v2/predict-provider",
-        { phoneNumber: normalizedMsisdn },
-        pawaPayCredentials,
-        pawaPayEndpoint,
+    if (!normalizedMsisdn) {
+      return new Response(
+        JSON.stringify({ error: "Invalid phone number format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
-
-      if (!predictResponse) {
-        console.warn("PawaPay provider prediction unavailable; continuing with normalized phone.");
-      } else if (!predictResponse.ok) {
-        const predictError = await predictResponse.text();
-        console.warn("PawaPay provider prediction failed; continuing with normalized phone:", predictError);
-      } else {
-        const predicted = (await predictResponse.json()) as PawaPayPredictProviderResponse;
-        console.log("PawaPay: Provider prediction result:", predicted);
-        phoneNumber = normalizeMsisdn(predicted.phoneNumber) || normalizedMsisdn;
-        countryCode = toAlpha2CountryCode(predicted.country || alpha2Country);
-      }
     }
 
-    step = "payment_page.init";
-    const paymentPagePayload: Record<string, unknown> = {
-      depositId,
-      returnUrl: redirectBackUrl,
-      notificationUrl: `${SUPABASE_URL}/functions/v1/wallet-deposit-callback`,
-      amountDetails: {
-        amount: amount.toString(),
-        currency,
-      },
-      customerMessage: correlationId.startsWith("wallet-") ? "Wallet deposit" : "Order payment",
-      reason: correlationId.startsWith("wallet-") ? "Wallet deposit" : `Order ${correlationId}`,
-    };
-
-    console.log("PawaPay: Creating payment page with fallback attempts");
-
-    step = "payment_page.request";
-    const attemptResult = await createPaymentPageWithFallback(
-      paymentPagePayload,
-      {
-        phoneNumber,
-        alpha2Country: countryCode,
-        alpha3Country,
-      },
+    step = "provider.predict";
+    console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
+    const predictResponse = await fetchWithPawaPayAuth(
+      "/v2/predict-provider",
+      { phoneNumber: normalizedMsisdn },
       pawaPayCredentials,
       pawaPayEndpoint,
     );
 
-    if (!attemptResult.response) {
+    if (!predictResponse) {
+      return new Response(
+        JSON.stringify({ error: "Failed to reach PawaPay provider prediction" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const predictRaw = await predictResponse.text();
+    let predicted: PawaPayPredictProviderResponse = {};
+    try {
+      predicted = predictRaw ? (JSON.parse(predictRaw) as PawaPayPredictProviderResponse) : {};
+    } catch {
+      predicted = {};
+    }
+
+    if (!predictResponse.ok) {
       return new Response(
         JSON.stringify({
-          error: `[pawapay-deposit-init:${step}] Failed to initialize PawaPay request`,
-          details: attemptResult.errors.slice(-2),
+          error: "PawaPay provider prediction failed",
+          details: predictRaw || predicted,
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: predictResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const depositResponse = attemptResult.response;
+    step = "deposit.init";
+    const provider = (predicted.provider ?? "").toString().trim();
+    const predictedPhone = normalizeMsisdn(predicted.phoneNumber) || normalizedMsisdn;
+    const predictedCountry = toAlpha3CountryCode(predicted.country || alpha3Country);
+
+    if (!provider) {
+      return new Response(
+        JSON.stringify({
+          error: "Unable to determine mobile money provider for this phone number.",
+          details: { phoneNumber: predictedPhone, country: predictedCountry },
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const customerMessage = correlationId.startsWith("wallet-") ? "Wallet deposit" : "Order payment";
+
+    const depositPayload: Record<string, unknown> = {
+      depositId,
+      payer: {
+        type: "MMO",
+        accountDetails: {
+          phoneNumber: predictedPhone,
+          provider,
+        },
+      },
+      amount: Math.trunc(amount).toString(),
+      currency,
+      clientReferenceId: isUuidV4(correlationId) ? correlationId : depositId,
+      customerMessage,
+    };
+
+    if (isUuidV4(correlationId)) {
+      depositPayload.metadata = [{ orderId: correlationId }];
+    } else {
+      depositPayload.metadata = [{ correlationId }];
+    }
+
+    step = "deposit.request";
+    const depositResponse = await fetchWithPawaPayAuth(
+      "/v2/deposits",
+      depositPayload,
+      pawaPayCredentials,
+      pawaPayEndpoint,
+    );
+
+    if (!depositResponse) {
+      return new Response(
+        JSON.stringify({ error: `[pawapay-deposit-init:${step}] Failed to reach PawaPay` }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const rawText = await depositResponse.text();
+    let parsed: PawaPayInitiateDepositResponse = {};
+    try {
+      parsed = rawText ? (JSON.parse(rawText) as PawaPayInitiateDepositResponse) : {};
+    } catch {
+      parsed = {};
+    }
 
     if (!depositResponse.ok) {
-      step = "payment_page.response";
-      const errorText = await depositResponse.text();
-      console.error("PawaPay payment page creation failed:", errorText);
-
-      // Try to extract specific error message from PawaPay response
-      let errorMessage = depositResponse.statusText?.trim() || `PawaPay request failed with ${depositResponse.status}`;
-      try {
-        const parsed = JSON.parse(errorText) as { message?: string; error?: string; errorMessage?: string; detail?: string; errors?: unknown[] };
-        // PawaPay may return errors in different formats
-        errorMessage = parsed.message || parsed.error || parsed.errorMessage || parsed.detail || errorMessage;
-        
-        // Check for field-specific errors
-        if (parsed.errors && Array.isArray(parsed.errors) && parsed.errors.length > 0) {
-          const firstError = parsed.errors[0];
-          if (typeof firstError === "object" && firstError !== null) {
-            const errObj = firstError as Record<string, unknown>;
-            errorMessage = String(errObj.message || errObj.error || errorMessage);
-          }
-        }
-      } catch {
-        if (errorText.trim()) errorMessage = errorText;
-      }
-
       return new Response(
-        JSON.stringify({ error: `[pawapay-deposit-init:${step}] ${errorMessage}`, code: depositResponse.status }),
-        { status: depositResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: `[pawapay-deposit-init:${step}] PawaPay API error: ${depositResponse.status}`,
+          details: rawText || parsed,
+        }),
+        { status: depositResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    step = "payment_page.parse";
-    const depositData = (await depositResponse.json()) as PawaPayPaymentPageResponse;
-
-    console.log("PawaPay: payment page created via attempt:", attemptResult.attemptName);
-
-    if (!depositData.redirectUrl) {
-      console.error("Invalid PawaPay response:", JSON.stringify(depositData));
+    const initStatus = String(parsed.status ?? "").trim().toUpperCase();
+    if (initStatus === "REJECTED") {
       return new Response(
-        JSON.stringify({ error: "Invalid response from PawaPay" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "PawaPay rejected the deposit request",
+          details: parsed.failureReason ?? parsed,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    // ACCEPTED or DUPLICATE_IGNORED -> treat as PROCESSING.
     return new Response(
       JSON.stringify({
         success: true,
-        depositId: depositData.depositId || depositId,
+        depositId: parsed.depositId || depositId,
         status: "PROCESSING",
-        requestedAmount: amount.toString(),
+        requestedAmount: Math.trunc(amount).toString(),
         currency,
-        authenticationUrl: depositData.redirectUrl,
         country,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

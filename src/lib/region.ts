@@ -37,6 +37,57 @@ export interface CountryPaymentConfig {
   withdrawalFee: number;
 }
 
+function normalizeCountryCode(value: unknown): CountryCode | null {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  const upper = normalized.toUpperCase();
+
+  if (upper in COUNTRY_CONFIGS) return upper as CountryCode;
+
+  // ISO-3166 alpha-3
+  switch (upper) {
+    case "RWA":
+      return "RW";
+    case "KEN":
+      return "KE";
+    case "UGA":
+      return "UG";
+    case "NGA":
+      return "NG";
+    case "GHA":
+      return "GH";
+    case "TZA":
+      return "TZ";
+    case "ZMB":
+      return "ZM";
+    default:
+      break;
+  }
+
+  // Common country names (stored in profiles.country)
+  switch (upper) {
+    case "RWANDA":
+      return "RW";
+    case "KENYA":
+      return "KE";
+    case "UGANDA":
+      return "UG";
+    case "NIGERIA":
+      return "NG";
+    case "GHANA":
+      return "GH";
+    case "TANZANIA":
+      return "TZ";
+    case "ZAMBIA":
+      return "ZM";
+    default:
+      return null;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Country Configurations
 // ─────────────────────────────────────────────────────────────
@@ -202,7 +253,7 @@ export async function getUserCountry(): Promise<CountryCode> {
     if (user) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("phone, country_code")
+        .select("phone, country")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -212,11 +263,9 @@ export async function getUserCountry(): Promise<CountryCode> {
         if (phoneCountry) return phoneCountry;
       }
 
-      // Use explicit country code if set
-      if (profile?.country_code) {
-        const code = profile.country_code.toUpperCase() as CountryCode;
-        if (COUNTRY_CONFIGS[code]) return code;
-      }
+      // Use explicit country if set (either code or name)
+      const profileCountry = normalizeCountryCode((profile as { country?: unknown } | null)?.country);
+      if (profileCountry) return profileCountry;
     }
   } catch (error) {
     console.error("Failed to get user country from profile:", error);
