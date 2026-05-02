@@ -431,12 +431,23 @@ Deno.serve(async (req: Request) => {
       }
 
       // 2) Otherwise, try to reconcile a wallet top-up for this user.
-      const { data: txn } = await supabase
+      const txnByExternal = await supabase
         .from("wallet_transactions")
         .select("id, user_id, status")
         .eq("external_transaction_id", depositId)
         .eq("user_id", user.id)
         .maybeSingle();
+
+      let txn = txnByExternal.data;
+      if (!txn) {
+        const txnByReference = await supabase
+          .from("wallet_transactions")
+          .select("id, user_id, status")
+          .eq("reference", depositId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        txn = txnByReference.data;
+      }
 
       if (txn && txn.status !== "completed" && depositAmount != null && depositAmount > 0) {
         const { data: profile } = await supabase
@@ -459,6 +470,40 @@ Deno.serve(async (req: Request) => {
             .update({
               status: "completed",
               previous_balance_rwf: previousBalance,
+              new_balance_rwf: newBalance,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", txn.id)
+            .catch(() => null);
+        } else {
+          // Legacy wallet schema fallback (mobile DB): public.wallets(balance)
+          const { data: wallet } = await supabase
+            .from("wallets")
+            .select("balance")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          const previousBalance = Number(wallet?.balance || 0);
+          const newBalance = previousBalance + depositAmount;
+
+          if (wallet) {
+            await supabase
+              .from("wallets")
+              .update({ balance: newBalance, updated_at: new Date().toISOString() })
+              .eq("user_id", user.id)
+              .catch(() => null);
+          } else {
+            await supabase
+              .from("wallets")
+              .insert({ user_id: user.id, balance: newBalance, currency: "RWF" })
+              .catch(() => null);
+          }
+
+          await supabase
+            .from("wallet_transactions")
+            .update({
+              status: "completed",
+              amount_rwf: depositAmount,
               new_balance_rwf: newBalance,
               updated_at: new Date().toISOString(),
             })
