@@ -67,7 +67,7 @@ function getPawaPayEndpoints(): string[] {
 function normalizePawaPayCredential(raw: string): string {
   let token = raw.trim();
   token = token.replace(/^bearer\s+/i, "");
-  token = token.replace(/^['\"]+|['\"]+$/g, "");
+  token = token.replace(/^['"]+|['"]+$/g, "");
   return token.trim();
 }
 
@@ -151,8 +151,11 @@ async function sendOrderConfirmationEmail(
 
 function mapPawaPayDepositStatus(value: unknown): DepositStatus {
   const s = String(value ?? "").trim().toUpperCase();
-  if (s === "COMPLETED") return "COMPLETED";
-  if (s === "FAILED") return "FAILED";
+  const failedStatuses = new Set(["FAILED", "REJECTED", "CANCELLED", "DECLINED"]);
+  const completedStatuses = new Set(["COMPLETED", "SETTLED", "PAID", "SUCCESS"]);
+
+  if (failedStatuses.has(s)) return "FAILED";
+  if (completedStatuses.has(s)) return "COMPLETED";
   return "PROCESSING";
 }
 

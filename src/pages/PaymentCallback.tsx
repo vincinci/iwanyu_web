@@ -68,9 +68,11 @@ export default function PaymentCallbackPage() {
 
         const pollOnce = async (): Promise<"completed" | "failed" | "pending"> => {
           const res = await checkDepositStatus(depositId, accessToken);
-          const s = res?.status;
-          if (s === "COMPLETED") return "completed";
-          if (s === "FAILED") return "failed";
+          const s = String(res?.status ?? "").trim().toUpperCase();
+          const failedStatuses = new Set(["FAILED", "REJECTED", "CANCELLED", "DECLINED"]);
+          const completedStatuses = new Set(["COMPLETED", "SETTLED", "PAID", "SUCCESS"]);
+          if (completedStatuses.has(s)) return "completed";
+          if (failedStatuses.has(s)) return "failed";
 
           const authUrl = res?.authorizationUrl || res?.authenticationUrl;
           if (authUrl) {
