@@ -187,7 +187,6 @@ export const paymentService = {
       const correlationId = `wallet-${userId}-${Date.now()}`;
 
       // Initialize deposit with PawaPay
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/+$/, "");
       const params: PawaPayDepositParams = {
         amount: Math.round(request.amount),
         currency: "RWF",
@@ -195,8 +194,6 @@ export const paymentService = {
         accountIdentifier: request.phone,
         provider: request.provider,
         correlationId,
-        ...(supabaseUrl ? { notificationUrl: `${supabaseUrl}/functions/v1/wallet-deposit-callback` } : {}),
-        returnUrl: `${window.location.origin}/wallet-callback`,
       };
 
       const result = await initializePawaPayDeposit(params, accessToken);
