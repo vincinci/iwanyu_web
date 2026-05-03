@@ -154,25 +154,22 @@ final class AppStore: ObservableObject {
                 throw APIError.invalidResponse
             }
 
-            let initPayload: [String: Any] = [
-                "txRef": orderId,
+            let depositPayload: [String: Any] = [
                 "amount": total,
                 "currency": "RWF",
-                "redirectUrl": "https://www.iwanyu.store/payment-callback?orderId=\(orderId)",
-                "paymentOptions": paymentMethod == "momo" ? "mobilemoney" : "card",
-                "customer": [
-                    "email": email,
-                    "name": session?.user.email ?? email,
-                    "phone_number": phone
-                ],
-                "customizations": [
-                    "title": "iwanyu",
-                    "description": "Order \(orderId)"
-                ]
+                "country": "RW",
+                "accountIdentifier": phone,
+                "correlationId": orderId,
+                "returnUrl": "https://www.iwanyu.store/payment-callback?orderId=\(orderId)"
             ]
-            let initResult = try await api.initFlutterwavePayment(accessToken: token, payload: initPayload)
+
+            let depositResult = try await api.initPawaPayDeposit(accessToken: token, payload: depositPayload)
+            guard let _ = depositResult.depositId else {
+                throw APIError.invalidResponse
+            }
+
             errorMessage = nil
-            return initResult["paymentLink"]
+            return "Payment request sent. Approve it on your phone to complete the order."
         } catch {
             errorMessage = error.localizedDescription
             return nil

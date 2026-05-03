@@ -141,9 +141,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // TODO: Initiate mobile money refund to user's phone
-    // This would call Flutterwave or other mobile money provider API
-    // to send refund back to user's registered phone number
-    // For now, we've deducted from wallet and recorded the transaction
+    // This would call the mobile money provider API (PawaPay) to send
+    // the refund back to the user's registered phone number.
+    // For now, we've deducted from wallet and recorded the transaction.
 
     console.log(`Wallet refund processed: User ${userId}, Amount: ${actualRefundAmount} RWF, Reason: ${reason}`);
 

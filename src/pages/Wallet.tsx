@@ -121,10 +121,9 @@ export default function WalletPage() {
   const amount = selectedPreset ?? (customAmount ? Number(customAmount) : 0);
   const withdrawAmountNumber = Number(withdrawAmount || 0);
   const normalizedProfilePhone = normalizePhone(profilePhone);
-  const normalizedDepositPhone =
-    depositPhoneMode === "saved"
-      ? normalizedProfilePhone
-      : normalizePhone(depositPhoneInput);
+  const normalizedDepositPhone = depositPhoneMode === "saved"
+    ? normalizedProfilePhone
+    : normalizePhone(depositPhoneInput);
   const normalizedWithdrawalPhone = normalizePhone(phoneNumber);
   const canSubmitDeposit = amount >= paymentConfig.minDeposit && Boolean(normalizedDepositPhone);
   const canSubmitWithdrawal =
@@ -181,7 +180,7 @@ export default function WalletPage() {
     void loadWallet();
   }, [navigate, supabase, user]);
 
-    const handleTopUp = async () => {
+  const handleTopUp = async () => {
     if (!user || amount < paymentConfig.minDeposit) return;
 
     if (!normalizedDepositPhone) {
@@ -201,6 +200,8 @@ export default function WalletPage() {
           amount: Math.round(amount),
           phone: normalizedDepositPhone,
           method: "mobile_money",
+          country: countryCode,
+          provider: selectedNetwork?.shortName,
         },
         user.id
       );
@@ -224,7 +225,7 @@ export default function WalletPage() {
     }
   };
 
-    const handleWithdraw = async () => {
+  const handleWithdraw = async () => {
     if (!user) {
       toast({
         title: "Withdrawal unavailable",
@@ -407,6 +408,27 @@ export default function WalletPage() {
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-900">Payment method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {mobileNetworks.map((network) => (
+                    <button
+                      key={network.id}
+                      type="button"
+                      onClick={() => setSelectedNetwork(network)}
+                      className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                        selectedNetwork?.id === network.id
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                      }`}
+                    >
+                      {network.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">Detected region: {paymentConfig.country.flag} {paymentConfig.country.name}</p>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-900">Deposit from</label>
 
                 {normalizedProfilePhone ? (
@@ -452,13 +474,12 @@ export default function WalletPage() {
 
                 {!normalizedProfilePhone && (
                   <p className="text-xs text-gray-500">
-
                     Enter your mobile money number to deposit.
                   </p>
                 )}
               </div>
 
-              {amount >= 500 && (
+              {amount >= paymentConfig.minDeposit && (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-gray-500">Amount</span>

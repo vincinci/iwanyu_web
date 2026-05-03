@@ -284,23 +284,19 @@ If critical issues occur:
 # Step 1: Disable PawaPay temporarily
 supabase secrets set PAWAPAY_API_KEY=""
 
-# Step 2: Revert to Flutterwave (if needed)
-# Update Checkout.tsx to use old payment flow
-# OR direct users to support
-
-# Step 3: Investigate
+# Step 2: Investigate
 # Check function logs
 supabase functions logs wallet-deposit-callback --tail
 supabase functions logs pawapay-deposit-init --tail
 
-# Step 4: Fix and redeploy
+# Step 3: Fix and redeploy
 supabase functions deploy wallet-deposit-callback
 supabase functions deploy pawapay-deposit-init
 
-# Step 5: Restore credentials
+# Step 4: Restore credentials
 supabase secrets set PAWAPAY_API_KEY="new-key"
 
-# Step 6: Test again
+# Step 5: Test again
 # Run Test 1 from PAWAPAY_E2E_TESTING.md
 ```
 

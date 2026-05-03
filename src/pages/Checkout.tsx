@@ -16,6 +16,7 @@ import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { initializePawaPayDeposit } from "@/lib/pawapay";
 import { getUserWalletBalance } from "@/lib/liveSessions";
+import { getPaymentConfig, getUserCountry, detectCountryFromPhone, type CountryCode, type MobileNetwork } from "@/lib/region";
 import { usePreventDoubleClick } from "@/hooks/useRateLimit";
 import { validateEmail, validatePhone } from "@/lib/security";
 
@@ -35,6 +36,11 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "wallet">("momo");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [countryCode, setCountryCode] = useState<CountryCode>("RW");
+  const [paymentConfig, setPaymentConfig] = useState(() => getPaymentConfig("RW"));
+  const [mobileNetworks, setMobileNetworks] = useState<MobileNetwork[]>(paymentConfig.mobileNetworks);
+  const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(paymentConfig.mobileNetworks[0]);
+  const [isLoadingRegion, setIsLoadingRegion] = useState(true);
 
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<null | {
@@ -53,6 +59,40 @@ export default function CheckoutPage() {
       });
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    const loadRegion = async () => {
+      try {
+        const country = await getUserCountry();
+        setCountryCode(country);
+        const config = getPaymentConfig(country);
+        setPaymentConfig(config);
+        setMobileNetworks(config.mobileNetworks);
+        if (config.mobileNetworks.length > 0) {
+          setSelectedNetwork(config.mobileNetworks[0]);
+        }
+      } catch (error) {
+        console.error("Failed to detect region:", error);
+      } finally {
+        setIsLoadingRegion(false);
+      }
+    };
+
+    void loadRegion();
+  }, []);
+
+  useEffect(() => {
+    const detected = detectCountryFromPhone(phone);
+    if (detected && detected !== countryCode) {
+      const config = getPaymentConfig(detected);
+      setCountryCode(detected);
+      setPaymentConfig(config);
+      setMobileNetworks(config.mobileNetworks);
+      if (config.mobileNetworks.length > 0) {
+        setSelectedNetwork(config.mobileNetworks[0]);
+      }
+    }
+  }, [phone, countryCode]);
 
   const discountRwf = appliedDiscount?.discountRwf ?? 0;
   const discountedSubtotal = Math.max(0, Math.round(subtotal - discountRwf));
@@ -209,12 +249,14 @@ export default function CheckoutPage() {
         }
 
         // Mobile money payment via PawaPay
+        const paymentCountry = detectCountryFromPhone(trimmedPhone) ?? countryCode;
         const result = await initializePawaPayDeposit(
           {
             amount: serverTotal,
             currency: "RWF",
-            country: "RW",
+            country: paymentCountry,
             accountIdentifier: trimmedPhone,
+            provider: selectedNetwork?.shortName,
             correlationId: orderId, // Use orderId for idempotency
           },
           accessToken
@@ -447,6 +489,31 @@ export default function CheckoutPage() {
                       }
                     </p>
                   </div>
+
+                  {paymentMethod === "momo" && (
+                    <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-sm font-medium text-gray-900 mb-3">Available payment methods</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {mobileNetworks.map((network) => (
+                          <button
+                            key={network.id}
+                            type="button"
+                            onClick={() => setSelectedNetwork(network)}
+                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
+                              selectedNetwork?.id === network.id
+                                ? "border-amber-500 bg-amber-50 text-gray-900"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                            }`}
+                          >
+                            {network.name}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs text-gray-500">
+                        Detected region: {paymentConfig.country.flag} {paymentConfig.country.name}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

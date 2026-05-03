@@ -89,9 +89,10 @@ async function fetchWithPawaPayAuth(
 interface PawaPayDepositRequest {
   amount: number; // Amount in RWF
   currency: "RWF";
-  country: "RW";
+  country: string;
   correlationId: string; // Order ID for idempotency
   accountIdentifier?: string;
+  provider?: string;
   notificationUrl?: string;
   returnUrl?: string;
 }
@@ -240,44 +241,53 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    step = "provider.predict";
-    console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
-    const predictResponse = await fetchWithPawaPayAuth(
-      "/v2/predict-provider",
-      { phoneNumber: normalizedMsisdn },
-      pawaPayCredentials,
-      pawaPayEndpoints,
-    );
+    const requestedProvider = String(body?.provider ?? "").trim();
+    let provider = requestedProvider;
+    let predictedPhone = normalizedMsisdn;
+    let predictedCountry = alpha3Country;
 
-    if (!predictResponse) {
-      return new Response(
-        JSON.stringify({ error: "Failed to reach PawaPay provider prediction" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    if (!provider) {
+      step = "provider.predict";
+      console.log("PawaPay: Predicting provider for phone:", normalizedMsisdn);
+      const predictResponse = await fetchWithPawaPayAuth(
+        "/v2/predict-provider",
+        { phoneNumber: normalizedMsisdn },
+        pawaPayCredentials,
+        pawaPayEndpoints,
       );
-    }
 
-    const predictRaw = await predictResponse.text();
-    let predicted: PawaPayPredictProviderResponse = {};
-    try {
-      predicted = predictRaw ? (JSON.parse(predictRaw) as PawaPayPredictProviderResponse) : {};
-    } catch {
-      predicted = {};
-    }
+      if (!predictResponse) {
+        return new Response(
+          JSON.stringify({ error: "Failed to reach PawaPay provider prediction" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
-    if (!predictResponse.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "PawaPay provider prediction failed",
-          details: predictRaw || predicted,
-        }),
-        { status: predictResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const predictRaw = await predictResponse.text();
+      let predicted: PawaPayPredictProviderResponse = {};
+      try {
+        predicted = predictRaw ? (JSON.parse(predictRaw) as PawaPayPredictProviderResponse) : {};
+      } catch {
+        predicted = {};
+      }
+
+      if (!predictResponse.ok) {
+        return new Response(
+          JSON.stringify({
+            error: "PawaPay provider prediction failed",
+            details: predictRaw || predicted,
+          }),
+          { status: predictResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      provider = (predicted.provider ?? "").toString().trim();
+      predictedPhone = normalizeMsisdn(predicted.phoneNumber) || normalizedMsisdn;
+      predictedCountry = toAlpha3CountryCode(predicted.country || alpha3Country);
     }
 
     step = "deposit.init";
-    const provider = (predicted.provider ?? "").toString().trim();
-    const predictedPhone = normalizeMsisdn(predicted.phoneNumber) || normalizedMsisdn;
-    const predictedCountry = toAlpha3CountryCode(predicted.country || alpha3Country);
+    const phoneToUse = predictedPhone || normalizedMsisdn;
 
     if (!provider) {
       return new Response(
@@ -296,7 +306,7 @@ Deno.serve(async (req: Request) => {
       payer: {
         type: "MMO",
         accountDetails: {
-          phoneNumber: predictedPhone,
+          phoneNumber: phoneToUse,
           provider,
         },
       },

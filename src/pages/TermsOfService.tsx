@@ -72,7 +72,7 @@ const TermsOfService = () => {
             <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
               <li>All purchases are subject to product availability</li>
               <li>Prices are in Rwandan Francs (RWF) unless otherwise stated</li>
-              <li>Payment is processed securely through Flutterwave</li>
+              <li>Payment is processed securely through PawaPay</li>
               <li>You agree to pay all charges incurred by you or on your behalf</li>
             </ul>
 
@@ -110,8 +110,8 @@ const TermsOfService = () => {
           <section>
             <h2 className="text-2xl font-semibold mb-4">8. Payment Processing</h2>
             <p className="text-gray-700">
-              Payments are processed through Flutterwave, a third-party payment processor. By making a purchase, you agree to
-              Flutterwave's terms and conditions. We do not store full payment card details on our servers.
+              Payments are processed through PawaPay, a third-party payment processor. By making a purchase, you agree to
+              PawaPay's terms and conditions. We do not store full payment details on our servers.
             </p>
           </section>
 

@@ -8,29 +8,27 @@ import {
   PawaPayDepositParams,
   PawaPayDepositResponse,
 } from "./pawapay";
-import {
-  initializeFlutterwavePayment,
-  redirectToFlutterwave,
-  FlutterwavePaymentParams,
-} from "./flutterwave";
 import { getSupabaseClient } from "./supabaseClient";
+import { CountryCode } from "@/lib/region";
 
 // ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
 
-export type PaymentMethod = "card" | "mobile_money";
+export type PaymentMethod = "mobile_money";
 
 export interface WalletDepositRequest {
   amount: number;
   phone: string;
   method: PaymentMethod;
+  country?: CountryCode;
+  provider?: string;
 }
 
 export interface WalletWithdrawRequest {
   amount: number;
   phone: string;
-  network: "MTN" | "Airtel" | "Orange";
+  network: "MTN" | "Airtel" | "Orange" | string;
 }
 
 export interface PaymentResult {
@@ -192,8 +190,9 @@ export const paymentService = {
       const params: PawaPayDepositParams = {
         amount: Math.round(request.amount),
         currency: "RWF",
-        country: "RW",
+        country: request.country ?? "RW",
         accountIdentifier: request.phone,
+        provider: request.provider,
         correlationId,
         returnUrl: `${window.location.origin}/wallet-callback`,
       };
@@ -251,93 +250,6 @@ export const paymentService = {
       return {
         success: false,
         message: error instanceof Error ? error.message : "Deposit failed. Please try again.",
-      };
-    }
-  },
-
-  /**
-   * Deposit funds via Flutterwave card
-   */
-  async depositCard(
-    amount: number,
-    userEmail: string,
-    userName: string,
-    userId: string
-  ): Promise<PaymentResult> {
-    const supabase = getSupabaseClient();
-
-    // Check for duplicate
-    if (idempotencyManager.isDuplicate(userId, amount)) {
-      return {
-        success: false,
-        message: "A payment is already in progress. Please wait or try again.",
-      };
-    }
-
-    try {
-      const session = (await supabase.auth.getSession()).data.session;
-      const accessToken = session?.access_token;
-      if (!accessToken) {
-        throw new PaymentError("Please log in to continue.", "AUTH_REQUIRED", false);
-      }
-
-      idempotencyManager.markInProgress(userId, amount);
-
-      const txRef = `flw-${userId.substring(0, 8)}-${Date.now()}`;
-
-      const params: FlutterwavePaymentParams = {
-        txRef,
-        amount: Math.round(amount),
-        currency: "RWF",
-        customer: {
-          email: userEmail,
-          name: userName,
-        },
-        redirectUrl: `${window.location.origin}/wallet-callback`,
-        paymentOptions: "card",
-      };
-
-      const result = await initializeFlutterwavePayment(params, accessToken);
-
-      if (!result?.paymentLink) {
-        throw new PaymentError(
-          "Failed to initialize payment. Please try again.",
-          "INIT_FAILED",
-          true
-        );
-      }
-
-      // Create pending transaction
-      await supabase.from("wallet_transactions").insert({
-        user_id: userId,
-        type: "deposit",
-        amount_rwf: Math.round(amount),
-        external_transaction_id: txRef,
-        payment_method: "flutterwave_card",
-        status: "pending",
-        description: `Wallet top-up ${txRef}`,
-      });
-
-      sessionStorage.setItem("pendingFlutterwaveTx", txRef);
-
-      redirectToFlutterwave(result.paymentLink);
-
-      return {
-        success: true,
-        message: "Redirecting to payment...",
-        referenceId: txRef,
-        redirectUrl: result.paymentLink,
-      };
-    } catch (error) {
-      idempotencyManager.markComplete(userId, amount);
-
-      if (error instanceof PaymentError) {
-        return { success: false, message: error.message };
-      }
-
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "Payment failed. Please try again.",
       };
     }
   },

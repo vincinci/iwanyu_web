@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import StorefrontPage from "@/components/StorefrontPage";
 import { useToast } from "@/hooks/use-toast";
-import { useCart } from "@/context/cart";
 import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { checkDepositStatus } from "@/lib/pawapay";
@@ -13,7 +12,6 @@ export default function PaymentCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { clear } = useCart();
   const { user } = useAuth();
   const supabase = getSupabaseClient();
 
@@ -31,112 +29,23 @@ export default function PaymentCallbackPage() {
   useEffect(() => {
     const verifyPayment = async () => {
       try {
-        // Get transaction details from URL params (Flutterwave adds these)
-        const transactionId = searchParams.get("transaction_id") || searchParams.get("tx_id");
-        const flwStatus = searchParams.get("status");
         const orderId = searchParams.get("orderId") || sessionStorage.getItem("pendingOrderId");
+        const pawaStatus = (searchParams.get("status") || "").toLowerCase();
+        const depositId =
+          searchParams.get("depositId") ||
+          sessionStorage.getItem("pendingDepositId") ||
+          orderId ||
+          "";
 
-        // If this is not a Flutterwave callback, treat it as a pawaPay return.
-        if (!transactionId) {
-          const pawaStatus = (searchParams.get("status") || "").toLowerCase();
-          const depositId =
-            searchParams.get("depositId") ||
-            sessionStorage.getItem("pendingDepositId") ||
-            orderId ||
-            "";
-
-          if (pawaStatus === "cancelled" || pawaStatus === "failed") {
-            setStatus("failed");
-            setMessage("Payment failed or was cancelled. Your order is saved but not paid.");
-            return;
-          }
-
-          if (!orderId || !depositId) {
-            setStatus("failed");
-            setMessage("Missing payment information. Please check your orders.");
-            return;
-          }
-
-          if (!supabase || !user) {
-            setStatus("failed");
-            setMessage("Please log in to verify your payment.");
-            return;
-          }
-
-          const session = (await supabase.auth.getSession()).data.session;
-          const accessToken = session?.access_token;
-          if (!accessToken) {
-            setStatus("failed");
-            setMessage("Session expired. Please log in and check your orders.");
-            return;
-          }
-
-          setStatus("verifying");
-          setMessage("Confirming your Mobile Money payment...");
-
-          const pollOnce = async (): Promise<"completed" | "failed" | "pending"> => {
-            const res = await checkDepositStatus(depositId, accessToken);
-            const s = res?.status;
-            if (s === "COMPLETED") return "completed";
-            if (s === "FAILED") return "failed";
-
-            const authUrl = res?.authorizationUrl || res?.authenticationUrl;
-            if (authUrl) {
-              maybeRedirectToPawaPayAuth(depositId, authUrl);
-            }
-            return "pending";
-          };
-
-          // Poll for a short window. The edge function also reconciles the DB state when completed.
-          for (let attempt = 0; attempt < 10; attempt += 1) {
-            const state = await pollOnce();
-            if (state === "completed") {
-              sessionStorage.removeItem("pendingOrderId");
-              sessionStorage.removeItem("pendingDepositId");
-
-              setStatus("success");
-              setMessage("Payment successful! Your order is now being processed.");
-
-              toast({
-                title: "Payment successful",
-                description: `Order ${orderId} is now processing.`,
-              });
-
-              navigate(`/order-confirmation/${orderId}`);
-              return;
-            }
-
-            if (state === "failed") {
-              setStatus("failed");
-              setMessage("Payment failed. Please try again.");
-              return;
-            }
-
-            await new Promise((r) => window.setTimeout(r, 2000));
-          }
-
-          // Timed out waiting; order is saved and may still complete via webhook.
-          setStatus("pending");
-          setMessage("Payment is still pending. Please confirm the payment on your phone and check your orders in a few minutes.");
+        if (pawaStatus === "cancelled" || pawaStatus === "failed") {
+          setStatus("failed");
+          setMessage("Payment failed or was cancelled. Your order is saved but not paid.");
           return;
         }
 
-        // If payment was cancelled or failed at Flutterwave
-        if (flwStatus === "cancelled") {
+        if (!orderId || !depositId) {
           setStatus("failed");
-          setMessage("Payment was cancelled. Your order has been saved but not paid.");
-          return;
-        }
-
-        if (flwStatus === "failed") {
-          setStatus("failed");
-          setMessage("Payment failed. Please try again.");
-          return;
-        }
-
-        if (!transactionId || !orderId) {
-          setStatus("failed");
-          setMessage("Missing payment information. Please contact support.");
+          setMessage("Missing payment information. Please check your orders.");
           return;
         }
 
@@ -154,48 +63,53 @@ export default function PaymentCallbackPage() {
           return;
         }
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        if (!supabaseUrl || !supabaseAnonKey) {
-          throw new Error("Supabase configuration missing");
-        }
+        setStatus("verifying");
+        setMessage("Confirming your Mobile Money payment...");
 
-        // Call verification endpoint
-        const verifyRes = await fetch(
-          `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/flutterwave-verify`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              orderId,
-              transactionId,
-            }),
+        const pollOnce = async (): Promise<"completed" | "failed" | "pending"> => {
+          const res = await checkDepositStatus(depositId, accessToken);
+          const s = res?.status;
+          if (s === "COMPLETED") return "completed";
+          if (s === "FAILED") return "failed";
+
+          const authUrl = res?.authorizationUrl || res?.authenticationUrl;
+          if (authUrl) {
+            maybeRedirectToPawaPayAuth(depositId, authUrl);
           }
-        );
+          return "pending";
+        };
 
-        if (!verifyRes.ok) {
-          const errorText = await verifyRes.text();
-          console.error("Verification failed:", errorText);
-          setStatus("failed");
-          setMessage("Payment verification failed. Please contact support.");
-          return;
+        // Poll for a short window. The edge function also reconciles the DB state when completed.
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          const state = await pollOnce();
+          if (state === "completed") {
+            sessionStorage.removeItem("pendingOrderId");
+            sessionStorage.removeItem("pendingDepositId");
+
+            setStatus("success");
+            setMessage("Payment successful! Your order is now being processed.");
+
+            toast({
+              title: "Payment successful",
+              description: `Order ${orderId} is now processing.`,
+            });
+
+            navigate(`/order-confirmation/${orderId}`);
+            return;
+          }
+
+          if (state === "failed") {
+            setStatus("failed");
+            setMessage("Payment failed. Please try again.");
+            return;
+          }
+
+          await new Promise((r) => window.setTimeout(r, 2000));
         }
 
-        // Success!
-        clear(); // Clear cart
-        sessionStorage.removeItem("pendingOrderId");
-
-        setStatus("success");
-        setMessage("Payment successful! Your order is now being processed.");
-
-        toast({
-          title: "Payment successful",
-          description: `Order ${orderId} is now processing.`,
-        });
+        // Timed out waiting; order is saved and may still complete via webhook.
+        setStatus("pending");
+        setMessage("Payment is still pending. Please confirm the payment on your phone and check your orders in a few minutes.");
       } catch (error) {
         console.error("Payment verification error:", error);
         setStatus("failed");
@@ -204,7 +118,7 @@ export default function PaymentCallbackPage() {
     };
 
     verifyPayment();
-  }, [searchParams, supabase, user, clear, toast]);
+  }, [searchParams, supabase, user, toast, navigate]);
 
   return (
     <StorefrontPage>

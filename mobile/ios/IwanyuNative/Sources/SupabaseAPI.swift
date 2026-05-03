@@ -24,6 +24,11 @@ struct FunctionResult: Codable {
     let message: String?
 }
 
+struct PawaPayDepositResult: Codable {
+    let depositId: String?
+    let status: String?
+}
+
 final class SupabaseAPI {
     private let baseURL: URL
     private let anonKey: String
@@ -119,15 +124,9 @@ final class SupabaseAPI {
         return try JSONDecoder().decode(FunctionResult.self, from: data)
     }
 
-    func verifyFlutterwavePayment(accessToken: String, orderId: String, transactionId: String) async throws -> FunctionResult {
-        let payload: [String: Any] = ["orderId": orderId, "transactionId": transactionId]
-        let data = try await postRaw(path: "/functions/v1/flutterwave-verify", payload: payload, bearer: accessToken)
-        return try JSONDecoder().decode(FunctionResult.self, from: data)
-    }
-
-    func initFlutterwavePayment(accessToken: String, payload: [String: Any]) async throws -> [String: String] {
-        let data = try await postRaw(path: "/functions/v1/flutterwave-init", payload: payload, bearer: accessToken)
-        return (try JSONSerialization.jsonObject(with: data) as? [String: String]) ?? [:]
+    func initPawaPayDeposit(accessToken: String, payload: [String: Any]) async throws -> PawaPayDepositResult {
+        let data = try await postRaw(path: "/functions/v1/pawapay-deposit-init", payload: payload, bearer: accessToken)
+        return try JSONDecoder().decode(PawaPayDepositResult.self, from: data)
     }
 
     // MARK: - HTTP helpers

@@ -209,8 +209,8 @@ Deno.serve(async (req: Request) => {
     step = "order.create";
     // 3. Create the order with server-computed totals
     const paymentMeta = {
-      provider: "flutterwave",
-      mode: "redirect",
+      provider: "pawapay",
+      mode: "mobile_money",
       selected: paymentMethod,
       phone: phone.trim(),
       discount_code: discountCode ?? null,

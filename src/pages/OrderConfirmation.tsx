@@ -314,9 +314,9 @@ export default function OrderConfirmationPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Method</span>
                 <span className="font-medium text-gray-900">
-                  {order.payment_method === "wallet" ? "Wallet" : 
-                   order.payment_method === "pawapay_momo" ? "Mobile Money" : 
-                   order.payment_method === "flutterwave_card" ? "Card" : 
+                  {order.payment_method === "wallet" ? "Wallet" :
+                   order.payment_method === "pawapay_momo" ? "Mobile Money" :
+                   order.payment_method?.includes("card") ? "Card" :
                    order.payment_method || "N/A"}
                 </span>
               </div>

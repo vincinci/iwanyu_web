@@ -95,7 +95,7 @@ struct CheckoutScreen: View {
     @State private var address = ""
     @State private var paymentMethod = "momo"
     @State private var isSubmitting = false
-    @State private var paymentLink: String?
+    @State private var paymentStatus: String?
 
     var body: some View {
         Form {
@@ -108,17 +108,16 @@ struct CheckoutScreen: View {
             Section("Payment") {
                 Picker("Method", selection: $paymentMethod) {
                     Text("Mobile Money").tag("momo")
-                    Text("Card").tag("card")
                 }
                 .pickerStyle(.segmented)
             }
 
             Section {
-                Button(isSubmitting ? "Processing..." : "Create order and get payment link") {
+                Button(isSubmitting ? "Processing..." : "Create order and request payment") {
                     Task {
                         isSubmitting = true
                         defer { isSubmitting = false }
-                        paymentLink = await store.checkout(
+                        paymentStatus = await store.checkout(
                             email: email,
                             phone: phone,
                             address: address,
@@ -129,9 +128,9 @@ struct CheckoutScreen: View {
                 .disabled(isSubmitting || store.cart.isEmpty)
             }
 
-            if let link = paymentLink {
-                Section("Payment Link") {
-                    Link("Open Flutterwave Checkout", destination: URL(string: link)!)
+            if let status = paymentStatus {
+                Section("Payment Status") {
+                    Text(status)
                 }
             }
 

@@ -19,7 +19,7 @@ export interface CountryInfo {
   flag: string;
 }
 
-export type PaymentProvider = "pawapay" | "flutterwave";
+export type PaymentProvider = "pawapay";
 
 export interface MobileNetwork {
   id: string;
@@ -108,7 +108,7 @@ const COUNTRY_CONFIGS: Record<CountryCode, CountryPaymentConfig> = {
   },
   KE: {
     country: { code: "KE", name: "Kenya", currency: "KES", currencySymbol: "KSh", flag: "🇰🇪" },
-    providers: ["flutterwave"],
+    providers: ["pawapay"],
     mobileNetworks: [
       { id: "mpesa_ke", name: "M-Pesa", shortName: "M-Pesa" },
       { id: "airtel_ke", name: "Airtel Money", shortName: "Airtel" },
@@ -132,7 +132,7 @@ const COUNTRY_CONFIGS: Record<CountryCode, CountryPaymentConfig> = {
   },
   NG: {
     country: { code: "NG", name: "Nigeria", currency: "NGN", currencySymbol: "₦", flag: "🇳🇬" },
-    providers: ["flutterwave"],
+    providers: ["pawapay"],
     mobileNetworks: [
       { id: "mtn_ng", name: "MTN Nigeria", shortName: "MTN" },
       { id: "airtel_ng", name: "Airtel Nigeria", shortName: "Airtel" },
@@ -146,7 +146,7 @@ const COUNTRY_CONFIGS: Record<CountryCode, CountryPaymentConfig> = {
   },
   GH: {
     country: { code: "GH", name: "Ghana", currency: "GHS", currencySymbol: "₵", flag: "🇬🇭" },
-    providers: ["flutterwave"],
+    providers: ["pawapay"],
     mobileNetworks: [
       { id: "mtn_gh", name: "MTN Ghana", shortName: "MTN" },
       { id: "airtel_gh", name: "AirtelTigo", shortName: "AirtelTigo" },

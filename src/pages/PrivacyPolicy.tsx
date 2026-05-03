@@ -28,7 +28,7 @@ const PrivacyPolicy = () => {
               <li>Email address</li>
               <li>Phone number (for vendors)</li>
               <li>Business information (for vendors)</li>
-              <li>Payment information (processed securely through Flutterwave)</li>
+              <li>Payment information (processed securely through PawaPay)</li>
             </ul>
 
             <h3 className="text-xl font-medium mb-2 mt-4">2.2 Automatically Collected Information</h3>
@@ -57,7 +57,7 @@ const PrivacyPolicy = () => {
             <p className="text-gray-700 mb-4">We may share your information with:</p>
             <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
               <li><strong>Vendors:</strong> When you make a purchase, we share necessary information with the vendor</li>
-              <li><strong>Payment Processors:</strong> Flutterwave processes payments securely</li>
+              <li><strong>Payment Processors:</strong> PawaPay processes payments securely</li>
               <li><strong>Service Providers:</strong> Third-party services that help us operate our platform</li>
               <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
             </ul>

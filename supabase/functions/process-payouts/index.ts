@@ -6,9 +6,8 @@ import { TEMPLATES } from "../_shared/email-templates.ts";
  * Process pending vendor payouts.
  *
  * This function can be invoked manually by admins or via a cron/webhook.
- * It picks up all "pending" payout records and attempts to disburse via
- * Flutterwave Transfer API.  If FLUTTERWAVE_SECRET_KEY is missing, the
- * payout is logged as manual for the admin to process offline.
+ * It picks up all "pending" payout records and logs them for manual
+ * processing by the admin.
  *
  * POST body (optional):
  *   { payoutId?: string }   – process a single payout
@@ -18,7 +17,6 @@ import { TEMPLATES } from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const FLUTTERWAVE_SECRET_KEY = Deno.env.get("FLUTTERWAVE_SECRET_KEY") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
 Deno.serve(async (req: Request) => {
@@ -114,37 +112,8 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Vendor ${payout.vendor_id} not found`);
         }
 
-        let providerRef: string | null = null;
-        let provider = "manual";
-
-        // Attempt Flutterwave transfer if key is available and vendor has phone
-        if (FLUTTERWAVE_SECRET_KEY && vendor.phone) {
-          provider = "flutterwave_transfer";
-          const transferRes = await fetch("https://api.flutterwave.com/v3/transfers", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
-            },
-            body: JSON.stringify({
-              account_bank: "MPS",  // Mobile Money
-              account_number: vendor.phone,
-              amount: payout.amount_rwf,
-              currency: "RWF",
-              narration: `iwanyu payout for order ${payout.order_id}`,
-              reference: `payout-${payout.id}`,
-              beneficiary_name: vendor.name,
-            }),
-          });
-
-          const transferData = await transferRes.json();
-
-          if (transferData.status === "success") {
-            providerRef = transferData.data?.id?.toString() ?? null;
-          } else {
-            throw new Error(transferData.message || "Transfer failed");
-          }
-        }
+        const providerRef: string | null = null;
+        const provider = "manual";
 
         // Mark completed
         await supabase

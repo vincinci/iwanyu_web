@@ -3,11 +3,14 @@
  * Handles deposit initiation for African mobile money (MTN, Airtel, Orange)
  */
 
+import { CountryCode } from "@/lib/region";
+
 export type PawaPayDepositParams = {
-  amount: number; // Amount in RWF
+  amount: number; // Amount in smallest currency unit
   currency: "RWF";
-  country: "RW"; // Rwanda
+  country: CountryCode; // Supported country code for payment methods
   accountIdentifier?: string; // Phone number or wallet ID
+  provider?: string; // Optional selected mobile money provider
   correlationId: string; // Unique ID for idempotency (e.g., orderId)
   notificationUrl?: string; // Webhook callback URL
   returnUrl?: string; // Where the customer should be sent after payment page

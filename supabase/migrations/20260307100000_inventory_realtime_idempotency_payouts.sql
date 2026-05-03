@@ -91,7 +91,7 @@ create table if not exists public.vendor_payouts (
   amount_rwf integer not null check (amount_rwf > 0),
   status text not null default 'pending'
     check (status in ('pending', 'processing', 'completed', 'failed')),
-  provider text,               -- e.g. 'flutterwave_transfer', 'wave', 'manual'
+  provider text,               -- e.g. 'pawapay_transfer', 'wave', 'manual'
   provider_reference text,     -- external transfer ID
   initiated_at timestamptz,
   completed_at timestamptz,

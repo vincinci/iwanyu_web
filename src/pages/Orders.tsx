@@ -147,7 +147,6 @@ export default function OrdersPage() {
     switch (method) {
       case "wallet": return "Wallet";
       case "pawapay_momo": return "Mobile Money";
-      case "flutterwave_card": return "Card";
       default: return method;
     }
   };
