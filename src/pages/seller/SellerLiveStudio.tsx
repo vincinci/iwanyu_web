@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
+import type { Product } from "@/types/product";
 import {
   createLiveSession,
   endLiveSession,
@@ -121,7 +122,7 @@ export default function SellerLiveStudioPage() {
         vendorId: primaryVendor.id,
         vendorName: primaryVendor.name,
         sellerUserId: user?.id,
-        product: placeholderProduct as any,
+        product: placeholderProduct as Product,
         auctionEnabled: false,
       });
 
@@ -192,7 +193,7 @@ export default function SellerLiveStudioPage() {
         vendorId: primaryVendor.id,
         vendorName: primaryVendor.name,
         sellerUserId: user?.id,
-        product: syntheticProduct as any,
+        product: syntheticProduct as Product,
         auctionEnabled: true,
         auctionDurationHours: normalizedHours,
         productVariants: { sizes, colors },

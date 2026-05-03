@@ -124,16 +124,11 @@ export default function SellerDashboardPage() {
         let paidOrderCount = 0;
         let pendingOrderCount = 0;
         if (uniqueOrders.size > 0) {
-          let ordersQuery = supabase
+          const ordersQuery = supabase
             .from("orders")
-            .select("id, payment")
-            .in("id", Array.from(uniqueOrders));
+            .select("id, payment");
 
-          if (!isAdmin) {
-            ordersQuery = ordersQuery;
-          }
-
-          const { data: orderRows } = await ordersQuery.select("id, status, payment_verified_at, payment");
+          const { data: orderRows } = await ordersQuery.in("id", Array.from(uniqueOrders)).select("id, status, payment_verified_at, payment");
           const orderPayments = (orderRows ?? []) as Array<{ id: string; status: string; payment_verified_at?: string | null; payment: { payment_status?: string | null; verified?: boolean } | null }>;
           paidOrderCount = orderPayments.filter((o) =>
             o.payment?.payment_status === "wallet_paid" ||

@@ -41,7 +41,7 @@ function getPawaPayEndpoints(): string[] {
 function normalizePawaPayCredential(raw: string): string {
   let token = raw.trim();
   token = token.replace(/^bearer\s+/i, "");
-  token = token.replace(/^['\"]+|['\"]+$/g, "");
+  token = token.replace(/^['"]+|['"]+$/g, "");
   return token.trim();
 }
 

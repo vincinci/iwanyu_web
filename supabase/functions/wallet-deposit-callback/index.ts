@@ -22,6 +22,14 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function isFailureStatus(status: string): boolean {
+  return ["FAILED", "REJECTED", "CANCELLED", "DECLINED", "EXPIRED", "REVERSED"].some((term) => status.includes(term));
+}
+
+function isSuccessStatus(status: string): boolean {
+  return ["COMPLETED", "SUCCESS", "SETTLED", "PAID"].some((term) => status.includes(term));
+}
+
 async function sendOrderConfirmationEmail(
   supabase: ReturnType<typeof createClient>,
   recipient: string,
@@ -151,13 +159,17 @@ Deno.serve(async (req: Request) => {
     // - As a fallback, allow metadata.orderId.
     const orderId = (isUuid(depositId) ? depositId : null) || (metadata && typeof metadata.orderId === "string" && isUuid(metadata.orderId) ? metadata.orderId : null);
 
-    const failOrCancel = rawStatus === "FAILED" || rawStatus === "CANCELLED";
+    const failOrCancel = isFailureStatus(rawStatus);
 
     if (failOrCancel) {
       if (txnRecord && txnRecord.status !== "failed" && txnRecord.status !== "cancelled" && txnRecord.status !== "completed") {
+        const newStatus = rawStatus.includes("FAILED") || rawStatus.includes("REJECTED") || rawStatus.includes("DECLINED") || rawStatus.includes("EXPIRED") || rawStatus.includes("REVERSED")
+          ? "failed"
+          : "cancelled";
+
         await supabase
           .from("wallet_transactions")
-          .update({ status: rawStatus === "FAILED" ? "failed" : "cancelled", updated_at: new Date().toISOString() })
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
           .eq("id", txnRecord.id);
       }
 
@@ -168,7 +180,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (rawStatus !== "COMPLETED") {
+    if (!isSuccessStatus(rawStatus)) {
       console.log(`Deposit ${depositId} status: ${rawStatus} - waiting`);
       return new Response(JSON.stringify({ success: true, depositId, status: rawStatus }), {
         status: 200,

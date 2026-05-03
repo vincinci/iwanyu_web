@@ -131,7 +131,7 @@ function StreamProductCard({
             ) : msg?.type === "ok" ? (
               <><CheckCircle2 className="h-3.5 w-3.5" /> Purchased!</>
             ) : (
-              <><ShoppingCart className="h-3.5 w-3.5" /> Buy Now · {formatMoney(p.priceRwf)}</>
+              <><ShoppingCart className="h-3.5 w-3.5" /> Buy Now · {formatMoney(p.priceRwf)}</>
             )}
           </button>
         ) : (
