@@ -168,35 +168,40 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Determine correspondent (provider) from phone
-    let correspondent = (mobileNetwork || "").toUpperCase();
-    if (!correspondent) {
+    // Determine provider from phone number (Rwanda only)
+    // Normalize short names to PawaPay provider IDs
+    let provider = (mobileNetwork || "").toUpperCase();
+    if (provider === "MTN") provider = "MTN_MOMO_RWA";
+    else if (provider === "AIRTEL" || provider === "AIRTELMONEY" || provider === "AIRTEL_OAPI_RWA") provider = "AIRTEL_RWA";
+
+    if (!provider || !provider.includes("_")) {
+      // Auto-detect from phone prefix
       const digits = phoneNumber.replace(/\D/g, "");
-      if (digits.startsWith("25078") || digits.startsWith("25079")) correspondent = "MTN_MOMO_RWA";
-      else if (digits.startsWith("25073") || digits.startsWith("25072")) correspondent = "AIRTEL_OAPI_RWA";
-      else correspondent = "MTN_MOMO_RWA"; // default
+      if (digits.startsWith("25078") || digits.startsWith("25079")) provider = "MTN_MOMO_RWA";
+      else if (digits.startsWith("25073") || digits.startsWith("25072")) provider = "AIRTEL_RWA";
+      else provider = "MTN_MOMO_RWA"; // default Rwanda
     }
-    // Normalize short names to PawaPay correspondent IDs
-    if (correspondent === "MTN") correspondent = "MTN_MOMO_RWA";
-    if (correspondent === "AIRTEL" || correspondent === "AIRTELMONEY") correspondent = "AIRTEL_OAPI_RWA";
 
     const normalizedPhone = phoneNumber.replace(/\D/g, "");
 
+    // PawaPay V2 payout payload
     const payoutPayload = {
       payoutId,
       amount: String(Math.trunc(amountRwf)),
       currency: "RWF",
-      country: "RWA",
-      correspondent,
       recipient: {
-        type: "MSISDN",
-        address: { value: normalizedPhone },
+        type: "MMO",
+        accountDetails: {
+          phoneNumber: normalizedPhone,
+          provider,
+        },
       },
-      customerTimestamp: new Date().toISOString(),
-      statementDescription: "Wallet withdrawal",
+      customerMessage: "Wallet withdrawal",
     };
 
-    const payoutRes = await fetch(`${getPawaPayEndpoint()}/v1/payouts`, {
+    console.log(`Initiating PawaPay payout: ${payoutId}, provider: ${provider}, phone: ${normalizedPhone}, amount: ${amountRwf}`);
+
+    const payoutRes = await fetch(`${getPawaPayEndpoint()}/v2/payouts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -209,20 +214,27 @@ Deno.serve(async (req: Request) => {
     let payoutData: Record<string, unknown> = {};
     try { payoutData = payoutText ? JSON.parse(payoutText) : {}; } catch { /* ignore */ }
 
-    if (!payoutRes.ok) {
-      console.error("PawaPay payout failed:", payoutData);
+    console.log(`PawaPay payout response: HTTP ${payoutRes.status}, status=${payoutData.status}, body=${payoutText.slice(0, 300)}`);
+
+    // PawaPay returns HTTP 200 even for REJECTED payouts — must check body status
+    const isRejected = !payoutRes.ok || payoutData.status === "REJECTED";
+
+    if (isRejected) {
+      console.error("PawaPay payout rejected:", payoutData);
       // Refund balance
       await supabase
         .from("profiles")
         .update({ wallet_balance_rwf: currentBalance })
         .eq("id", user.id);
       if (txnId) {
+        const failureCode = (payoutData.failureReason as Record<string, unknown>)?.failureCode as string ?? "UNKNOWN";
         await supabase
           .from("wallet_transactions")
-          .update({ metadata: { status: "failed", payment_method: "pawapay_momo", phone: phoneNumber, correlationId } })
+          .update({ metadata: { status: "failed", payment_method: "pawapay_momo", phone: phoneNumber, correlationId, failureCode } })
           .eq("id", txnId);
       }
-      const errMsg = (payoutData.message || payoutData.error || "Payout failed") as string;
+      const failureReason = payoutData.failureReason as Record<string, unknown> | undefined;
+      const errMsg = (failureReason?.failureMessage || payoutData.message || payoutData.error || "Payout rejected by payment provider") as string;
       return new Response(
         JSON.stringify({ error: `Withdrawal failed: ${errMsg}`, details: payoutData }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
