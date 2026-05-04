@@ -44,6 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(SUPABASE_SERVICE_ROLE_KEY && { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }),
         // Forward any signature headers from PawaPay
         ...(req.headers['x-webhook-token'] && { 'x-webhook-token': String(req.headers['x-webhook-token']) }),
         ...(req.headers['x-pawapay-signature'] && { 'x-pawapay-signature': String(req.headers['x-pawapay-signature']) }),
