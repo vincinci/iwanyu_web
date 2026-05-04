@@ -793,13 +793,12 @@ function StreamView({
       </div>
 
       {/* ── DESKTOP: two-column ── */}
-      <div className="hidden md:flex min-h-screen bg-gray-950 text-white overflow-hidden">
-        {/* Left: Video — phone frame on mobile viewer, full-area on desktop */}
-        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
-          <div className="relative w-full max-w-[300px] lg:max-w-none" style={{ aspectRatio: "9/16" }} data-viewer-frame>
-            <style>{`@media (min-width: 1024px) { [data-viewer-frame] { position: absolute; inset: 0; aspect-ratio: auto; } }`}</style>
+      <div className="hidden md:flex h-screen bg-gray-950 text-white overflow-hidden">
+        {/* Left: Video — phone frame on md, proper 9/16 on lg */}
+        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden min-w-0">
+          <div className="relative w-full max-w-[300px] lg:w-auto lg:max-w-none lg:h-full" style={{ aspectRatio: "9/16" }}>
 
-            {/* Phone frame decoration — mobile only */}
+            {/* Phone frame decoration — tablet only */}
             <div className="absolute inset-0 rounded-[2.5rem] ring-[6px] ring-white/20 pointer-events-none z-20 lg:hidden" />
             <div className="absolute top-0 inset-x-0 flex justify-center pt-2 z-20 pointer-events-none lg:hidden">
               <div className="w-24 h-5 bg-black rounded-b-2xl" />

@@ -32,6 +32,7 @@ export default function LiveSessionPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cameraStatus, setCameraStatus] = useState<"idle" | "starting" | "live" | "error">("idle");
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const [viewerCount, setViewerCount] = useState(1);
   const [comments, setComments] = useState<LiveComment[]>([]);
   const [sellerComment, setSellerComment] = useState("");
@@ -331,10 +332,8 @@ export default function LiveSessionPage() {
         {/* ── Camera column — phone frame on mobile, full-area on desktop ── */}
         <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
 
-          {/* Inner frame: phone-shaped on mobile, fills full column on desktop */}
-          <div className="relative w-full max-w-[280px] lg:max-w-none" style={{ aspectRatio: "9/16" }} data-camera-frame>
-            {/* Swap to full-area on desktop via inline override */}
-            <style>{`@media (min-width: 1024px) { [data-camera-frame] { position: absolute; inset: 0; aspect-ratio: auto; } }`}</style>
+          {/* Inner frame: phone-shaped on mobile, proper 9/16 height-constrained on desktop */}
+          <div className="relative w-full max-w-[280px] lg:w-auto lg:max-w-none lg:h-full" style={{ aspectRatio: "9/16" }}>
 
             {/* Phone frame decoration — mobile only */}
             <div className="absolute inset-0 rounded-[2.5rem] ring-[6px] ring-white/20 pointer-events-none z-20 lg:hidden" />
@@ -401,11 +400,11 @@ export default function LiveSessionPage() {
                 {cameraEnabled ? "Pause" : "Resume"}
               </Button>
               <Button
-                onClick={handleEndSession}
+                onClick={() => setConfirmEnd(true)}
                 size="sm"
                 className="rounded-full bg-red-600 hover:bg-red-700 text-white border-0 h-8 px-3 text-xs"
               >
-                <StopCircle className="h-3.5 w-3.5 mr-1" /> End
+                <StopCircle className="h-3.5 w-3.5 mr-1" /> End Live
               </Button>
             </div>
           </div>
@@ -450,6 +449,33 @@ export default function LiveSessionPage() {
               Revenue: {formatMoney(totals.totalRevenue)}
             </span>
           </div>
+
+          {/* ── END LIVE CONFIRMATION OVERLAY ── */}
+          {confirmEnd && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl p-6 mx-4 text-center shadow-2xl max-w-xs w-full">
+                <div className="h-14 w-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                  <StopCircle className="h-7 w-7 text-red-600" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg mb-1">End your live?</h3>
+                <p className="text-gray-500 text-sm mb-6">Your viewers will be disconnected and the stream will end.</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmEnd(false)}
+                    className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEndSession}
+                    className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white py-3 text-sm font-bold transition-colors"
+                  >
+                    End Live
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           </div>{/* end content area */}
           </div>{/* end camera frame */}
         </div>{/* end camera column */}
