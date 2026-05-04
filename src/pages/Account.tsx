@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
+import { formatMoney } from "@/lib/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -15,6 +16,18 @@ type ProfileFormState = {
   address: string;
   city: string;
   country: string;
+};
+
+type WalletTx = {
+  id: string;
+  kind: string;
+  type: string | null;
+  description: string | null;
+  amount_rwf: number;
+  amount: number;
+  status: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
 };
 
 export default function AccountPage() {
@@ -36,6 +49,9 @@ export default function AccountPage() {
   const [wishlistCount, setWishlistCount] = useState<number | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [transactions, setTransactions] = useState<WalletTx[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
 
   const addressCount = useMemo(() => (form.address.trim() ? 1 : 0), [form.address]);
 
@@ -91,9 +107,31 @@ export default function AccountPage() {
     }
   }, [supabase, user]);
 
+  const loadTransactions = useCallback(async () => {
+    if (!user || !supabase) return;
+    setTxLoading(true);
+    try {
+      const { data } = await supabase
+        .from("wallet_transactions")
+        .select("id, kind, type, description, amount_rwf, amount, status, metadata, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setTransactions((data as WalletTx[]) ?? []);
+    } catch {
+      // silently ignore
+    } finally {
+      setTxLoading(false);
+    }
+  }, [supabase, user]);
+
   useEffect(() => {
     void loadAccountData();
   }, [loadAccountData, refreshNonce]);
+
+  useEffect(() => {
+    void loadTransactions();
+  }, [loadTransactions, refreshNonce]);
 
   const refreshAccount = useCallback(async () => {
     if (!user) return;
@@ -371,6 +409,67 @@ export default function AccountPage() {
                     <div className="text-sm text-gray-600 mt-1">{t("account.savedAddresses")}</div>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-iwanyu-border p-8">
+                <h3 className="text-2xl font-semibold text-iwanyu-foreground mb-6">Transaction History</h3>
+                {txLoading ? (
+                  <div className="text-sm text-gray-500">Loading...</div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-sm text-gray-500">No transactions yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left pb-3 text-gray-500 font-medium">Date</th>
+                          <th className="text-left pb-3 text-gray-500 font-medium">Description</th>
+                          <th className="text-left pb-3 text-gray-500 font-medium">Type</th>
+                          <th className="text-right pb-3 text-gray-500 font-medium">Amount</th>
+                          <th className="text-right pb-3 text-gray-500 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {transactions.map((tx) => {
+                          const txType = tx.type ?? tx.kind ?? "deposit";
+                          const isCredit = ["deposit", "topup", "refund", "credit"].some((k) => txType.toLowerCase().includes(k));
+                          const amountRwf = tx.amount_rwf > 0 ? tx.amount_rwf : tx.amount;
+                          const statusVal = tx.status || (tx.metadata?.status as string) || "pending";
+                          const statusColor =
+                            statusVal === "completed" ? "bg-green-100 text-green-700" :
+                            statusVal === "pending" ? "bg-yellow-100 text-yellow-700" :
+                            "bg-red-100 text-red-700";
+                          const desc = tx.description || (txType.charAt(0).toUpperCase() + txType.slice(1));
+                          return (
+                            <tr key={tx.id} className="py-3">
+                              <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">
+                                {new Date(tx.created_at).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}
+                              </td>
+                              <td className="py-3 pr-4 text-gray-800">{desc}</td>
+                              <td className="py-3 pr-4">
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  isCredit ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-700"
+                                }`}>
+                                  {isCredit ? "Credit" : "Debit"}
+                                </span>
+                              </td>
+                              <td className={`py-3 pr-4 text-right font-semibold whitespace-nowrap ${
+                                isCredit ? "text-green-600" : "text-gray-800"
+                              }`}>
+                                {isCredit ? "+" : "-"}{formatMoney(amountRwf)}
+                              </td>
+                              <td className="py-3 text-right">
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                                  {statusVal.charAt(0).toUpperCase() + statusVal.slice(1)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>
