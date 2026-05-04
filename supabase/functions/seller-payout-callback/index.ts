@@ -63,9 +63,63 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (withdrawalErr || !withdrawal) {
-      console.warn(`Withdrawal not found for payout ${payoutId}`);
-      // Return 200 OK for idempotency
-      return new Response(JSON.stringify({ success: true }), {
+      console.warn(`seller_withdrawals not found for payout ${payoutId}, checking wallet_transactions...`);
+
+      // Fallback: wallet withdrawal (user withdraw from wallet, stored in wallet_transactions)
+      const { data: walletTxn, error: walletTxnErr } = await supabase
+        .from("wallet_transactions")
+        .select("id, user_id, amount, metadata")
+        .eq("reference", payoutId)
+        .eq("kind", "withdrawal")
+        .maybeSingle();
+
+      if (walletTxnErr || !walletTxn) {
+        console.warn(`No wallet_transaction found for payout ${payoutId} either, ignoring`);
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Already processed
+      const currentMeta = (walletTxn.metadata as Record<string, unknown>) ?? {};
+      if (currentMeta.status === "completed" || currentMeta.status === "failed") {
+        return new Response(JSON.stringify({ success: true, reason: "Already processed" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const walletAmountRwf = Math.round(parseFloat(amount || String(walletTxn.amount || "0")));
+
+      if (status === "COMPLETED") {
+        await supabase
+          .from("wallet_transactions")
+          .update({ metadata: { ...currentMeta, status: "completed" } })
+          .eq("id", walletTxn.id);
+        console.log(`Wallet withdrawal COMPLETED: txn ${walletTxn.id}, amount ${walletAmountRwf} RWF`);
+      } else if (status === "FAILED") {
+        // Mark failed and refund balance
+        await supabase
+          .from("wallet_transactions")
+          .update({ metadata: { ...currentMeta, status: "failed" } })
+          .eq("id", walletTxn.id);
+
+        // Refund wallet balance
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("wallet_balance_rwf")
+          .eq("id", walletTxn.user_id)
+          .single();
+        const currentBal = Number((profile as Record<string, unknown> | null)?.wallet_balance_rwf ?? 0);
+        await supabase
+          .from("profiles")
+          .update({ wallet_balance_rwf: currentBal + walletAmountRwf })
+          .eq("id", walletTxn.user_id);
+        console.log(`Wallet withdrawal FAILED: txn ${walletTxn.id}, refunded ${walletAmountRwf} RWF to user ${walletTxn.user_id}`);
+      }
+
+      return new Response(JSON.stringify({ success: true, payoutId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
