@@ -189,246 +189,240 @@ export default function WalletPage() {
 
   return (
     <StorefrontPage>
-      <div className="min-h-screen bg-gray-50">
-        <div className="mx-auto max-w-sm px-4 pb-12 pt-6">
+      <div className="container mx-auto max-w-md px-4 py-6">
+        <button type="button" onClick={() => navigate(-1)} className="mb-4 text-sm font-medium text-gray-500 transition-colors hover:text-gray-900">
+          Back
+        </button>
 
-          {/* Back */}
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="mb-6 flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-gray-700"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back
-          </button>
-
-          {/* Balance card */}
-          <div className="relative overflow-hidden rounded-3xl bg-gray-950 px-6 py-7 text-white shadow-2xl shadow-gray-900/30">
-            {/* Subtle glow circles */}
-            <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/5" />
-            <div className="pointer-events-none absolute -bottom-8 -left-8 h-40 w-40 rounded-full bg-white/[0.03]" />
-
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">Available balance</p>
-            <p className="mt-2 text-[2.75rem] font-semibold leading-none tracking-tight">
-              {loadingBalance
-                ? <span className="inline-block h-9 w-36 animate-pulse rounded-xl bg-white/10" />
-                : formatMoney(balance ?? 0)}
-            </p>
-            <p className="mt-1.5 text-sm font-medium text-white/30">Rwandan Franc · RWF</p>
-
-            {/* Tab pills inside card */}
-            <div className="mt-6 inline-flex rounded-2xl bg-white/10 p-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("deposit")}
-                className={`h-8 rounded-xl px-5 text-xs font-semibold transition-all ${
-                  activeTab === "deposit" ? "bg-white text-gray-950 shadow-sm" : "text-white/60 hover:text-white/90"
-                }`}
-              >
-                Deposit
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("withdraw")}
-                className={`h-8 rounded-xl px-5 text-xs font-semibold transition-all ${
-                  activeTab === "withdraw" ? "bg-white text-gray-950 shadow-sm" : "text-white/60 hover:text-white/90"
-                }`}
-              >
-                Withdraw
-              </button>
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">My wallet</h1>
+              <p className="mt-1 text-sm text-gray-500">Deposit or withdraw funds via mobile money.</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400">Balance</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{loadingBalance ? "..." : formatMoney(balance ?? 0)}</p>
             </div>
           </div>
+        </div>
 
-          {/* Deposit form */}
-          {activeTab === "deposit" && (
-            <div className="mt-5 space-y-4">
+        {/* Tab switcher */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("deposit")}
+            className={`h-11 rounded-2xl border text-sm font-medium transition ${
+              activeTab === "deposit"
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+            }`}
+          >
+            Deposit
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("withdraw")}
+            className={`h-11 rounded-2xl border text-sm font-medium transition ${
+              activeTab === "withdraw"
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+            }`}
+          >
+            Withdraw
+          </button>
+        </div>
 
-              {/* Amount presets */}
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">Amount</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {[1000, 5000, 10000, 20000].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => { setSelectedPreset(preset); setCustomAmount(""); }}
-                      className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                        selectedPreset === preset
-                          ? "bg-gray-950 text-white shadow-sm"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {preset >= 1000 ? `${preset / 1000}k` : preset}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <Input
-                    type="number"
-                    placeholder={`Custom · min ${paymentConfig.minDeposit}`}
-                    value={customAmount}
-                    min={paymentConfig.minDeposit}
-                    onChange={(e) => { setCustomAmount(e.target.value); setSelectedPreset(null); }}
-                    className="h-11 rounded-xl border-0 bg-gray-100 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-gray-300"
-                  />
-                  {customAmount && Number(customAmount) < paymentConfig.minDeposit && (
-                    <p className="mt-1.5 text-xs text-gray-400">Minimum is {formatMoney(paymentConfig.minDeposit)}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Network */}
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-                  Network · {isLoadingRegion ? "detecting…" : `${paymentConfig.country.flag} ${paymentConfig.country.name}`}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {isLoadingRegion ? (
-                    <>
-                      <div className="h-11 animate-pulse rounded-xl bg-gray-100" />
-                      <div className="h-11 animate-pulse rounded-xl bg-gray-100" />
-                    </>
-                  ) : mobileNetworks.map((network) => (
-                    <button
-                      key={network.id}
-                      type="button"
-                      onClick={() => setSelectedNetwork(network)}
-                      className={`h-11 rounded-xl text-sm font-semibold transition-all ${
-                        selectedNetwork?.id === network.id
-                          ? "bg-gray-950 text-white shadow-sm"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {network.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">Charge number</p>
-                {normalizedProfilePhone && (
-                  <div className="mb-2 flex gap-2">
-                    {(["saved", "other"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setDepositPhoneMode(mode)}
-                        className={`h-8 rounded-lg px-3.5 text-xs font-semibold transition-all ${
-                          depositPhoneMode === mode
-                            ? "bg-gray-950 text-white"
-                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                        }`}
-                      >
-                        {mode === "saved" ? "Saved" : "Other"}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {depositPhoneMode === "saved" && normalizedProfilePhone ? (
-                  <div className="flex h-11 items-center rounded-xl bg-gray-100 px-4 text-sm font-medium text-gray-700">
-                    +{normalizedProfilePhone}
-                  </div>
-                ) : (
-                  <Input
-                    type="tel"
-                    placeholder="+250 788 123 456"
-                    value={depositPhoneInput}
-                    onChange={(e) => setDepositPhoneInput(e.target.value)}
-                    className="h-11 rounded-xl border-0 bg-gray-100 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-gray-300"
-                  />
-                )}
-              </div>
-
-              {/* Summary row */}
-              {amount >= paymentConfig.minDeposit && (
-                <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-100">
-                  <span className="text-sm text-gray-400">You deposit</span>
-                  <span className="text-sm font-bold text-gray-950">{formatMoney(Math.round(amount))}</span>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                onClick={handleTopUp}
-                disabled={isProcessing || !canSubmitDeposit || isLoadingRegion}
-                className="h-13 w-full rounded-2xl bg-gray-950 text-sm font-semibold text-white shadow-lg shadow-gray-900/20 hover:bg-gray-800 disabled:opacity-40"
-              >
-                {isProcessing ? "Starting…" : isLoadingRegion ? "Detecting region…" : `Deposit${amount >= paymentConfig.minDeposit ? ` ${formatMoney(Math.round(amount))}` : ""}`}
-              </Button>
-
-              <p className="text-center text-xs text-gray-400">
-                You'll confirm on your phone. Balance is used for bidding & live purchases.
-              </p>
+        {activeTab === "deposit" && (
+          <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="space-y-5">
+            <div>
+              <p className="text-base font-semibold text-gray-900">Deposit via Mobile Money</p>
+              <p className="mt-1 text-sm text-gray-500">Choose an amount and the phone number to charge.</p>
             </div>
-          )}
 
-          {/* Withdraw form */}
-          {activeTab === "withdraw" && (
-            <div className="mt-5 space-y-4">
+            <div className="grid grid-cols-4 gap-2">
+              {[1000, 5000, 10000, 20000].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => { setSelectedPreset(preset); setCustomAmount(""); }}
+                  className={`rounded-2xl border px-2 py-3 text-sm font-medium transition ${
+                    selectedPreset === preset ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                  }`}
+                >
+                  {preset / 1000}k
+                </button>
+              ))}
+            </div>
 
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">Amount · min 500 RWF</p>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  value={withdrawAmount}
-                  min={500}
-                  max={balance ?? 0}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="h-11 rounded-xl border-0 bg-gray-100 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-gray-300"
-                />
-                {withdrawAmount && withdrawAmountNum > (balance ?? 0) && (
-                  <p className="mt-1.5 text-xs text-red-400">Exceeds your balance of {formatMoney(balance ?? 0)}</p>
-                )}
-                {withdrawAmount && withdrawAmountNum > 0 && withdrawAmountNum < 500 && (
-                  <p className="mt-1.5 text-xs text-gray-400">Minimum is {formatMoney(500)}</p>
-                )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Custom amount</label>
+              <Input
+                type="number"
+                placeholder={`Min. ${paymentConfig.minDeposit} RWF`}
+                value={customAmount}
+                min={paymentConfig.minDeposit}
+                onChange={(e) => { setCustomAmount(e.target.value); setSelectedPreset(null); }}
+                className="h-12 rounded-2xl border-gray-200"
+              />
+              {customAmount && Number(customAmount) < paymentConfig.minDeposit && (
+                <p className="text-xs text-gray-500">Minimum is {formatMoney(paymentConfig.minDeposit)}.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Network</label>
+              <div className="grid grid-cols-2 gap-2">
+                {isLoadingRegion ? (
+                  <p className="col-span-2 text-xs text-gray-400">Detecting region...</p>
+                ) : mobileNetworks.map((network) => (
+                  <button
+                    key={network.id}
+                    type="button"
+                    onClick={() => setSelectedNetwork(network)}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                      selectedNetwork?.id === network.id ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                    }`}
+                  >
+                    {network.name}
+                  </button>
+                ))}
               </div>
+              <p className="text-xs text-gray-500">Region: {paymentConfig.country.flag} {paymentConfig.country.name}</p>
+            </div>
 
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">Send to</p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Deposit from</label>
+              {normalizedProfilePhone ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDepositPhoneMode("saved")}
+                    className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${depositPhoneMode === "saved" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 text-gray-700 hover:border-gray-400"}`}
+                  >
+                    Saved number
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDepositPhoneMode("other")}
+                    className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${depositPhoneMode === "other" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 text-gray-700 hover:border-gray-400"}`}
+                  >
+                    Another number
+                  </button>
+                </div>
+              ) : null}
+
+              {depositPhoneMode === "saved" && normalizedProfilePhone ? (
+                <div className="flex h-12 items-center rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm text-gray-700">
+                  +{normalizedProfilePhone}
+                </div>
+              ) : (
                 <Input
                   type="tel"
-                  placeholder="+250 788 123 456"
-                  value={withdrawPhone}
-                  onChange={(e) => setWithdrawPhone(e.target.value)}
-                  className="h-11 rounded-xl border-0 bg-gray-100 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-gray-300"
+                  placeholder="+250788123456"
+                  value={depositPhoneInput}
+                  onChange={(e) => setDepositPhoneInput(e.target.value)}
+                  className="h-12 rounded-2xl border-gray-200"
                 />
-              </div>
-
-              {canSubmitWithdraw && (
-                <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">You receive</span>
-                    <span className="text-sm font-bold text-gray-950">{formatMoney(withdrawAmountNum)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Remaining</span>
-                    <span className="text-sm font-medium text-gray-600">{formatMoney((balance ?? 0) - withdrawAmountNum)}</span>
-                  </div>
-                </div>
               )}
-
-              <Button
-                type="button"
-                onClick={handleWithdraw}
-                disabled={isWithdrawing || !canSubmitWithdraw}
-                className="h-13 w-full rounded-2xl bg-gray-950 text-sm font-semibold text-white shadow-lg shadow-gray-900/20 hover:bg-gray-800 disabled:opacity-40"
-              >
-                {isWithdrawing ? "Processing…" : `Withdraw${canSubmitWithdraw ? ` ${formatMoney(withdrawAmountNum)}` : ""}`}
-              </Button>
-
-              <p className="text-center text-xs text-gray-400">
-                Sent directly to your mobile money. Allow a few minutes.
-              </p>
             </div>
-          )}
 
-        </div>
+            {amount >= paymentConfig.minDeposit && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-gray-500">Amount</span>
+                  <span className="font-medium text-gray-900">{formatMoney(Math.round(amount))}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-gray-500">Number</span>
+                  <span className="font-medium text-gray-900">{normalizedDepositPhone ? `+${normalizedDepositPhone}` : "Add number"}</span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleTopUp}
+              disabled={isProcessing || !canSubmitDeposit || isLoadingRegion}
+              className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              {isProcessing ? "Starting deposit..." : isLoadingRegion ? "Detecting region..." : `Deposit ${amount >= paymentConfig.minDeposit ? formatMoney(Math.round(amount)) : ""}`}
+            </Button>
+
+            <p className="text-xs text-gray-500">
+              Your wallet balance is used for bidding and live stream purchases only. You will confirm the payment on your phone.
+            </p>
+          </div>
+          </div>
+        )}
+
+        {activeTab === "withdraw" && (
+          <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="space-y-5">
+            <div>
+              <p className="text-base font-semibold text-gray-900">Withdraw to Mobile Money</p>
+              <p className="mt-1 text-sm text-gray-500">Send your wallet balance to your mobile money account.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Amount (RWF)</label>
+              <Input
+                type="number"
+                placeholder="Min. 500 RWF"
+                value={withdrawAmount}
+                min={500}
+                max={balance ?? 0}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                className="h-12 rounded-2xl border-gray-200"
+              />
+              {withdrawAmount && withdrawAmountNum > (balance ?? 0) && (
+                <p className="text-xs text-red-500">Exceeds your balance of {formatMoney(balance ?? 0)}.</p>
+              )}
+              {withdrawAmount && withdrawAmountNum < 500 && (
+                <p className="text-xs text-gray-500">Minimum withdrawal is {formatMoney(500)}.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Send to phone</label>
+              <Input
+                type="tel"
+                placeholder="+250788123456"
+                value={withdrawPhone}
+                onChange={(e) => setWithdrawPhone(e.target.value)}
+                className="h-12 rounded-2xl border-gray-200"
+              />
+            </div>
+
+            {canSubmitWithdraw && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-gray-500">You receive</span>
+                  <span className="font-medium text-gray-900">{formatMoney(withdrawAmountNum)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-gray-500">Remaining balance</span>
+                  <span className="font-medium text-gray-900">{formatMoney((balance ?? 0) - withdrawAmountNum)}</span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={isWithdrawing || !canSubmitWithdraw}
+              className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              {isWithdrawing ? "Processing..." : `Withdraw ${canSubmitWithdraw ? formatMoney(withdrawAmountNum) : ""}`}
+            </Button>
+
+            <p className="text-xs text-gray-500">
+              Withdrawals are sent directly to your mobile money number. Allow a few minutes for processing.
+            </p>
+          </div>
+          </div>
+        )}
       </div>
     </StorefrontPage>
   );
