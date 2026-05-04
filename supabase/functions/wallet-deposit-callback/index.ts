@@ -150,7 +150,7 @@ Deno.serve(async (req: Request) => {
     // Try to link the deposit to a wallet transaction (top-up) or an order payment.
     const { data: txnRecord } = await supabase
       .from("wallet_transactions")
-      .select("id, user_id, status, type")
+      .select("id, user_id, metadata")
       .eq("external_transaction_id", depositId)
       .maybeSingle();
 
@@ -170,15 +170,23 @@ Deno.serve(async (req: Request) => {
     const failOrCancel = isFailureStatus(rawStatus);
 
     if (failOrCancel) {
-      if (txnRecord && txnRecord.status !== "failed" && txnRecord.status !== "cancelled" && txnRecord.status !== "completed") {
+      const txnMetaStatus = typeof txnRecord?.metadata?.status === "string" ? txnRecord.metadata.status : null;
+      if (txnRecord && txnMetaStatus !== "failed" && txnMetaStatus !== "cancelled" && txnMetaStatus !== "completed") {
         const newStatus = rawStatus.includes("FAILED") || rawStatus.includes("REJECTED") || rawStatus.includes("DECLINED") || rawStatus.includes("EXPIRED") || rawStatus.includes("REVERSED")
           ? "failed"
           : "cancelled";
 
         await supabase
           .from("wallet_transactions")
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
-          .eq("id", txnRecord.id);
+          .update({
+            metadata: {
+              ...(txnRecord.metadata ?? {}),
+              status: newStatus,
+              updated_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", txnRecord.id)
+          .catch(() => null);
       } else if (legacyTxn) {
         const newStatus = rawStatus.includes("FAILED") || rawStatus.includes("REJECTED") || rawStatus.includes("DECLINED") || rawStatus.includes("EXPIRED") || rawStatus.includes("REVERSED")
           ? "failed"
@@ -317,12 +325,21 @@ Deno.serve(async (req: Request) => {
         }
 
         // Mark linked wallet transaction as completed (do NOT credit wallet for order payments)
-        if (txnRecord && txnRecord.status !== "completed") {
-          await supabase
-            .from("wallet_transactions")
-            .update({ status: "completed", updated_at: new Date().toISOString() })
-            .eq("id", txnRecord.id)
-            .catch(() => null);
+        if (txnRecord) {
+          const txnMetaStatus = typeof txnRecord?.metadata?.status === "string" ? txnRecord.metadata.status : null;
+          if (txnMetaStatus !== "completed") {
+            await supabase
+              .from("wallet_transactions")
+              .update({
+                metadata: {
+                  ...(txnRecord.metadata ?? {}),
+                  status: "completed",
+                  updated_at: new Date().toISOString(),
+                },
+              })
+              .eq("id", txnRecord.id)
+              .catch(() => null);
+          }
         }
 
         return new Response(JSON.stringify({ success: true, depositId, orderId }), {
@@ -341,11 +358,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const txnMetaStatus = typeof txnRecord?.metadata?.status === "string"
+      ? txnRecord.metadata.status
+      : null;
+
     const legacyStatus = typeof legacyTxn?.metadata?.status === "string"
       ? legacyTxn.metadata.status
       : null;
 
-    if (txnRecord?.status === "completed" || legacyStatus === "completed") {
+    if (txnMetaStatus === "completed" || legacyStatus === "completed") {
       return new Response(JSON.stringify({ success: true, reason: "Already processed", depositId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -400,7 +421,20 @@ Deno.serve(async (req: Request) => {
         .eq("id", txnRecord.id);
 
       if (updateTxnErr) {
-        console.warn("Failed to update transaction status:", updateTxnErr);
+        console.warn("Failed to update transaction status (column may not exist), falling back to metadata:", updateTxnErr);
+        // Fallback: store status in metadata JSONB (works on legacy schema)
+        await supabase
+          .from("wallet_transactions")
+          .update({
+            metadata: {
+              status: "completed",
+              amount_rwf: creditAmount,
+              new_balance_rwf: newBalance,
+              updated_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", txnRecord.id)
+          .catch(() => null);
       }
     } else if (legacyTxn) {
       await supabase
