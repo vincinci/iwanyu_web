@@ -154,6 +154,14 @@ Deno.serve(async (req: Request) => {
       .eq("external_transaction_id", depositId)
       .maybeSingle();
 
+    const { data: legacyTxn } = txnRecord
+      ? { data: null }
+      : await supabase
+        .from("wallet_transactions")
+        .select("id, user_id, metadata")
+        .eq("reference", depositId)
+        .maybeSingle();
+
     // Preferred order mapping:
     // - We set depositId = orderId for idempotency.
     // - As a fallback, allow metadata.orderId.
@@ -171,6 +179,22 @@ Deno.serve(async (req: Request) => {
           .from("wallet_transactions")
           .update({ status: newStatus, updated_at: new Date().toISOString() })
           .eq("id", txnRecord.id);
+      } else if (legacyTxn) {
+        const newStatus = rawStatus.includes("FAILED") || rawStatus.includes("REJECTED") || rawStatus.includes("DECLINED") || rawStatus.includes("EXPIRED") || rawStatus.includes("REVERSED")
+          ? "failed"
+          : "cancelled";
+
+        await supabase
+          .from("wallet_transactions")
+          .update({
+            metadata: {
+              ...(legacyTxn.metadata ?? {}),
+              status: newStatus,
+              updated_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", legacyTxn.id)
+          .catch(() => null);
       }
 
       // Do not return non-2xx: pawaPay would keep retrying.
@@ -309,7 +333,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2) Otherwise treat as a wallet top-up (requires an existing pending deposit transaction).
-    if (!txnRecord) {
+    if (!txnRecord && !legacyTxn) {
       console.warn(`No wallet transaction or order found for deposit ${depositId}`);
       return new Response(JSON.stringify({ success: true, depositId }), {
         status: 200,
@@ -317,14 +341,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (txnRecord.status === "completed") {
+    const legacyStatus = typeof legacyTxn?.metadata?.status === "string"
+      ? legacyTxn.metadata.status
+      : null;
+
+    if (txnRecord?.status === "completed" || legacyStatus === "completed") {
       return new Response(JSON.stringify({ success: true, reason: "Already processed", depositId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = txnRecord.user_id;
+    const userId = txnRecord?.user_id ?? legacyTxn!.user_id;
     const creditAmount = amountRwf ?? 0;
 
     // Fetch user profile
@@ -360,18 +388,34 @@ Deno.serve(async (req: Request) => {
     }
 
     // Update transaction status to completed
-    const { error: updateTxnErr } = await supabase
-      .from("wallet_transactions")
-      .update({
-        status: "completed",
-        previous_balance_rwf: previousBalance,
-        new_balance_rwf: newBalance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", txnRecord.id);
+    if (txnRecord) {
+      const { error: updateTxnErr } = await supabase
+        .from("wallet_transactions")
+        .update({
+          status: "completed",
+          previous_balance_rwf: previousBalance,
+          new_balance_rwf: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", txnRecord.id);
 
-    if (updateTxnErr) {
-      console.warn("Failed to update transaction status:", updateTxnErr);
+      if (updateTxnErr) {
+        console.warn("Failed to update transaction status:", updateTxnErr);
+      }
+    } else if (legacyTxn) {
+      await supabase
+        .from("wallet_transactions")
+        .update({
+          metadata: {
+            ...(legacyTxn.metadata ?? {}),
+            status: "completed",
+            amount_rwf: creditAmount,
+            new_balance_rwf: newBalance,
+            updated_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", legacyTxn.id)
+        .catch(() => null);
     }
 
     console.log(`Wallet credited via PawaPay: User ${userId}, Amount: ${creditAmount} RWF, Deposit: ${depositId}`);

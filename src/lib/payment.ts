@@ -220,7 +220,25 @@ export const paymentService = {
         });
 
       if (txnError) {
-        console.error("Failed to create pending transaction:", txnError);
+        console.error("Failed to create pending transaction (modern schema):", txnError);
+
+        const { error: legacyError } = await supabase
+          .from("wallet_transactions")
+          .insert({
+            user_id: userId,
+            kind: "deposit",
+            amount: Math.round(request.amount),
+            reference: result.depositId,
+            metadata: {
+              status: "pending",
+              payment_method: "pawapay_momo",
+              correlationId,
+            },
+          });
+
+        if (legacyError) {
+          console.error("Failed to create pending transaction (legacy schema):", legacyError);
+        }
         // Continue anyway - transaction can be reconciled later
       }
 
