@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Smartphone, Hammer, StopCircle, AlertCircle, CheckCircle2, Clock, ImagePlus, X, Plus } from "lucide-react";
+import { Video, Gavel, StopCircle, AlertCircle, ImagePlus, X, ArrowLeft, Radio, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -211,145 +210,190 @@ export default function SellerLiveStudioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
-      <div className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Live Studio</h1>
-              <p className="mt-1 text-sm text-gray-600">Stream and auction your products in real-time</p>
+      <div className="border-b border-gray-800">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[11px] font-semibold tracking-widest text-gray-400 uppercase">Live Studio</span>
             </div>
-            <Link to="/seller">
-              <Button variant="outline" className="rounded-lg">← Back to Dashboard</Button>
-            </Link>
           </div>
+          <Link to="/seller">
+            <button className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+              <ArrowLeft className="h-4 w-4" /> Dashboard
+            </button>
+          </Link>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+        {/* Page title */}
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold tracking-tight">Go Live</h1>
+          <p className="mt-1.5 text-gray-400">Stream your products or run a live auction — your choice.</p>
+        </div>
+
         {!primaryVendor ? (
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardContent className="py-12 text-center">
-              <AlertCircle className="mx-auto h-12 w-12 text-yellow-600 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Seller Store Required</h3>
-              <p className="text-sm text-gray-700 mb-4">You need an approved seller store before going live.</p>
-              <Link to="/seller/onboarding">
-                <Button className="rounded-lg">Start Seller Application</Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border border-yellow-900/60 bg-yellow-950/30 p-10 text-center">
+            <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Seller Store Required</h3>
+            <p className="text-sm text-gray-400 mb-5">You need an approved seller store before going live.</p>
+            <Link to="/seller/onboarding">
+              <Button className="rounded-full bg-white text-gray-900 hover:bg-gray-100 font-semibold px-6">
+                Start Seller Application
+              </Button>
+            </Link>
+          </div>
         ) : (
-          <div className="space-y-8">
-            {/* Error Message */}
+          <div className="space-y-6">
+            {/* Error */}
             {error && (
-              <Card className="border-red-200 bg-red-50">
-                <CardContent className="py-3 px-4 flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-800">{error}</p>
-                </CardContent>
-              </Card>
+              <div className="flex items-start gap-3 rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3">
+                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-300">{error}</p>
+              </div>
             )}
 
-            {/* Main Options Grid */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Live Streaming */}
-              <Card className="border-2 border-blue-300 overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600" />
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-blue-900 text-xl">
-                        <Smartphone className="h-6 w-6" /> Live Stream
-                      </CardTitle>
-                      <p className="text-sm text-blue-700 mt-2">Broadcast your products live with instant purchases</p>
-                    </div>
+            {/* Two panels */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* ── Live Stream ── */}
+              <div className="rounded-2xl bg-gray-900 p-7 flex flex-col gap-6 border border-gray-800 hover:border-gray-700 transition-colors">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-950 px-3 py-1 text-[11px] font-semibold tracking-wider text-blue-400 uppercase mb-4">
+                    <Video className="h-3 w-3" /> Live Stream
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="rounded-lg bg-blue-50 p-4 space-y-2">
-                    <div className="text-sm font-semibold text-gray-900">What happens:</div>
-                    <ul className="space-y-1 text-xs text-gray-700">
-                      <li>✓ Camera & mic enable → you're live</li>
-                      <li>✓ Showcase multiple products</li>
-                      <li>✓ Add items, set prices & inventory</li>
-                      <li>✓ Buyers purchase in real-time</li>
-                      <li>✓ Auto sold-out when inventory hits 0</li>
-                    </ul>
-                  </div>
+                  <h2 className="text-xl font-bold">Broadcast your store</h2>
+                  <p className="mt-1 text-sm text-gray-400">Camera on, products visible, buyers purchase instantly.</p>
+                </div>
 
-                  <div className="rounded-lg bg-white border border-blue-200 p-3">
-                    <div className="text-xs font-medium text-gray-500">Your Store</div>
-                    <div className="text-sm font-semibold text-gray-900 mt-1">{primaryVendor.name}</div>
-                  </div>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  {["Camera & mic enable — you're live", "Showcase multiple products", "Set prices & inventory live", "Buyers purchase in real-time", "Auto sold-out when stock hits 0"].map((item) => (
+                    <li key={item} className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-blue-500 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
 
-                  <Button 
+                <div className="mt-auto space-y-3">
+                  <div className="rounded-xl border border-gray-800 bg-gray-950/60 px-4 py-2.5 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Your store</span>
+                    <span className="text-sm font-medium">{primaryVendor.name}</span>
+                  </div>
+                  <Button
                     onClick={handleStartLiveStream}
                     disabled={streamLoading}
-                    size="lg" 
-                    className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                    size="lg"
+                    className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold h-12 disabled:opacity-50"
                   >
-                    {streamLoading ? "Starting..." : "Start Live Stream"}
+                    {streamLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Radio className="h-4 w-4 mr-2" />}
+                    {streamLoading ? "Starting…" : "Start Live Stream"}
                   </Button>
-                  <p className="text-xs text-gray-500 text-center">We'll request camera & mic access</p>
-                </CardContent>
-              </Card>
+                  <p className="text-center text-xs text-gray-600">Camera & mic access required</p>
+                </div>
+              </div>
 
-              {/* Live Auction */}
-              <Card className="border-2 border-purple-300 overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="h-2 bg-gradient-to-r from-purple-500 to-purple-600" />
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
+              {/* ── Live Auction ── */}
+              <div className="rounded-2xl bg-gray-900 p-7 flex flex-col gap-5 border border-gray-800 hover:border-gray-700 transition-colors">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-950 px-3 py-1 text-[11px] font-semibold tracking-wider text-violet-400 uppercase mb-4">
+                    <Gavel className="h-3 w-3" /> Live Auction
+                  </div>
+                  <h2 className="text-xl font-bold">Sell one item fast</h2>
+                  <p className="mt-1 text-sm text-gray-400">No listing needed. Buyers bid, highest bidder wins.</p>
+                </div>
+
+                {/* Form */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label htmlFor="auction-name" className="text-xs font-medium text-gray-400 mb-1.5 block">
+                        Product Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="auction-name"
+                        placeholder="e.g. Vintage leather jacket"
+                        value={auctionProductName}
+                        onChange={(e) => setAuctionProductName(e.target.value)}
+                        className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:border-violet-500 rounded-xl h-10"
+                      />
+                    </div>
                     <div>
-                      <CardTitle className="flex items-center gap-2 text-purple-900 text-xl">
-                        <Hammer className="h-6 w-6" /> Live Auction
-                      </CardTitle>
-                      <p className="text-sm text-purple-700 mt-2">
-                        Got one item you want to sell fast? Set it up right here — no listing needed.
-                      </p>
+                      <Label htmlFor="auction-bid" className="text-xs font-medium text-gray-400 mb-1.5 block">
+                        Starting Bid (RWF) <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="auction-bid"
+                        type="number"
+                        min={1}
+                        placeholder="15000"
+                        value={auctionStartingBid}
+                        onChange={(e) => setAuctionStartingBid(e.target.value)}
+                        className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:border-violet-500 rounded-xl h-10"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="auction-duration" className="text-xs font-medium text-gray-400 mb-1.5 block">Duration (hrs)</Label>
+                      <Input
+                        id="auction-duration"
+                        type="number"
+                        min={1}
+                        max={24}
+                        value={auctionDurationHours}
+                        onChange={(e) => setAuctionDurationHours(Math.min(24, Math.max(1, Number(e.target.value || 1))))}
+                        className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:border-violet-500 rounded-xl h-10"
+                      />
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
 
-                  {/* Product Name */}
                   <div>
-                    <Label htmlFor="auction-name" className="text-sm font-semibold">
-                      Product Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="auction-name"
-                      className="mt-2"
-                      placeholder="e.g. Vintage leather jacket"
-                      value={auctionProductName}
-                      onChange={(e) => setAuctionProductName(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <Label htmlFor="auction-description" className="text-sm font-semibold">Description</Label>
+                    <Label htmlFor="auction-description" className="text-xs font-medium text-gray-400 mb-1.5 block">Description</Label>
                     <Textarea
                       id="auction-description"
-                      className="mt-2 resize-none"
-                      rows={3}
-                      placeholder="Describe what you're auctioning — condition, material, size details…"
+                      rows={2}
+                      placeholder="Condition, material, size details…"
                       value={auctionDescription}
                       onChange={(e) => setAuctionDescription(e.target.value)}
+                      className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:border-violet-500 rounded-xl resize-none"
                     />
                   </div>
 
-                  {/* Images */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="auction-sizes" className="text-xs font-medium text-gray-400 mb-1.5 block">Sizes</Label>
+                      <Input
+                        id="auction-sizes"
+                        placeholder="S, M, L, XL"
+                        value={auctionSizesRaw}
+                        onChange={(e) => setAuctionSizesRaw(e.target.value)}
+                        className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:border-violet-500 rounded-xl h-10"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="auction-colors" className="text-xs font-medium text-gray-400 mb-1.5 block">Colors</Label>
+                      <Input
+                        id="auction-colors"
+                        placeholder="Black, Red"
+                        value={auctionColors}
+                        onChange={(e) => setAuctionColors(e.target.value)}
+                        className="bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:border-violet-500 rounded-xl h-10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Photos */}
                   <div>
-                    <Label className="text-sm font-semibold">Photos (up to 5)</Label>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <Label className="text-xs font-medium text-gray-400 mb-1.5 block">Photos (up to 5)</Label>
+                    <div className="flex flex-wrap gap-2">
                       {auctionImagePreviews.map((src, i) => (
-                        <div key={i} className="relative h-20 w-20 rounded-lg overflow-hidden border border-gray-200">
+                        <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border border-gray-700">
                           <img src={src} alt="" className="h-full w-full object-cover" />
                           <button
                             type="button"
                             onClick={() => removeAuctionImage(i)}
-                            className="absolute top-0.5 right-0.5 rounded-full bg-black/60 p-0.5 text-white hover:bg-black"
+                            className="absolute top-0.5 right-0.5 rounded-full bg-black/70 p-0.5 text-white hover:bg-black"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -359,10 +403,10 @@ export default function SellerLiveStudioPage() {
                         <button
                           type="button"
                           onClick={() => auctionFileInputRef.current?.click()}
-                          className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-purple-300 text-purple-500 hover:border-purple-500 hover:bg-purple-50 transition-colors"
+                          className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-700 text-gray-500 hover:border-violet-600 hover:text-violet-400 transition-colors"
                         >
-                          <ImagePlus className="h-5 w-5" />
-                          <span className="text-[10px]">Add photo</span>
+                          <ImagePlus className="h-4 w-4" />
+                          <span className="text-[9px]">Add</span>
                         </button>
                       )}
                     </div>
@@ -375,166 +419,85 @@ export default function SellerLiveStudioPage() {
                       onChange={handleAuctionImageSelect}
                     />
                   </div>
+                </div>
 
-                  {/* Variants row */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="auction-sizes" className="text-sm font-semibold">Sizes</Label>
-                      <Input
-                        id="auction-sizes"
-                        className="mt-2"
-                        placeholder="S, M, L, XL"
-                        value={auctionSizesRaw}
-                        onChange={(e) => setAuctionSizesRaw(e.target.value)}
-                      />
-                      <p className="text-[11px] text-gray-400 mt-1">Comma-separated</p>
+                {/* Upload progress */}
+                {auctionLoading && auctionUploadProgress > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Uploading image…</span><span>{auctionUploadProgress}%</span>
                     </div>
-                    <div>
-                      <Label htmlFor="auction-colors" className="text-sm font-semibold">Colors</Label>
-                      <Input
-                        id="auction-colors"
-                        className="mt-2"
-                        placeholder="Black, Red"
-                        value={auctionColors}
-                        onChange={(e) => setAuctionColors(e.target.value)}
-                      />
-                      <p className="text-[11px] text-gray-400 mt-1">Comma-separated</p>
+                    <div className="h-1 w-full rounded-full bg-gray-800">
+                      <div className="h-1 rounded-full bg-violet-500 transition-all" style={{ width: `${auctionUploadProgress}%` }} />
                     </div>
                   </div>
+                )}
 
-                  {/* Starting bid + duration */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="auction-bid" className="text-sm font-semibold">
-                        Starting Bid (RWF) <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="auction-bid"
-                        type="number"
-                        min={1}
-                        className="mt-2"
-                        placeholder="e.g. 15000"
-                        value={auctionStartingBid}
-                        onChange={(e) => setAuctionStartingBid(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="auction-duration" className="text-sm font-semibold">Duration (hours)</Label>
-                      <Input
-                        id="auction-duration"
-                        type="number"
-                        min={1}
-                        max={24}
-                        value={auctionDurationHours}
-                        onChange={(e) => setAuctionDurationHours(Math.min(24, Math.max(1, Number(e.target.value || 1))))}
-                        className="mt-2"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg bg-purple-50 p-4 space-y-1.5">
-                    <div className="text-sm font-semibold text-gray-900">How it works:</div>
-                    <ul className="space-y-1 text-xs text-gray-700">
-                      <li>✓ Buyers' bid amounts are <strong>locked</strong> from their wallet instantly</li>
-                      <li>✓ When outbid, the previous bidder's funds are <strong>released</strong> automatically</li>
-                      <li>✓ Highest bidder at the end wins — their locked funds are charged</li>
-                      <li>✓ Auction runs for the selected hours then closes automatically</li>
-                    </ul>
-                  </div>
-
-                  {auctionLoading && auctionUploadProgress > 0 && (
-                    <div className="space-y-1">
-                      <div className="text-xs text-gray-500">Uploading image… {auctionUploadProgress}%</div>
-                      <div className="h-1.5 w-full rounded-full bg-gray-200">
-                        <div
-                          className="h-1.5 rounded-full bg-purple-500 transition-all"
-                          style={{ width: `${auctionUploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
+                <div className="mt-auto space-y-3">
                   <Button
                     onClick={handleCreateLiveAuction}
                     disabled={auctionLoading || !auctionProductName.trim() || !auctionStartingBid}
                     size="lg"
-                    className="w-full rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold disabled:opacity-50"
+                    className="w-full rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold h-12 disabled:opacity-40"
                   >
-                    {auctionLoading ? (
-                      <><span className="animate-spin mr-2">⏳</span> {auctionUploadProgress > 0 ? "Uploading…" : "Creating…"}</>
-                    ) : (
-                      <><Plus className="h-4 w-4 mr-2" /> Go Live with Auction</>
-                    )}
+                    {auctionLoading
+                      ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{auctionUploadProgress > 0 ? "Uploading…" : "Creating…"}</>
+                      : <><Gavel className="h-4 w-4 mr-2" /> Go Live with Auction</>
+                    }
                   </Button>
-                  <p className="text-xs text-gray-500 text-center">No camera needed — buyers bid directly on your product</p>
-                </CardContent>
-              </Card>
+                  <p className="text-center text-xs text-gray-600">No camera needed</p>
+                </div>
+              </div>
             </div>
 
             {/* Currently Live */}
-            <Card className="border-gray-200">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-green-600" /> Currently Live
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {activeSessions.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <p className="text-gray-600 mb-3">No live sessions yet</p>
-                    <p className="text-sm text-gray-500">Start streaming or create an auction above to go live</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {activeSessions.map((session) => (
-                      <div key={session.id} className="rounded-lg border border-gray-200 p-4 flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            <span className="font-semibold text-gray-900">{session.productTitle}</span>
-                          </div>
-                          <div className="text-sm text-gray-600 mt-1">
-                            {session.auctionEnabled ? (
-                              <>
-                                <span className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium mr-2">Auction</span>
-                                <span>Current bid: <span className="font-semibold text-purple-600">{formatMoney(session.currentBidRwf)}</span></span>
-                                {session.auctionDurationHours ? <span className="ml-2">· {session.auctionDurationHours}h duration</span> : null}
-                              </>
-                            ) : (
-                              <>
-                                <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium mr-2">Stream</span>
-                                <span>{session.watchers} viewers</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={async () => {
-                            await endLiveSession(session.id);
-                            await refreshSessions();
-                          }}
-                        >
-                          <StopCircle className="h-4 w-4 mr-1" /> End
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Info Box */}
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="py-4 px-4 flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-900">
-                  <strong>Pro tip:</strong> Make sure your camera and microphone work before going live. Test them in your browser settings first.
+            {activeSessions.length > 0 && (
+              <div className="rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-800 flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-sm font-semibold">Live Now</span>
+                  <span className="ml-auto text-xs text-gray-500">{activeSessions.length} session{activeSessions.length !== 1 ? "s" : ""}</span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="divide-y divide-gray-800">
+                  {activeSessions.map((session) => (
+                    <div key={session.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${session.auctionEnabled ? "bg-violet-950 text-violet-400" : "bg-blue-950 text-blue-400"}`}>
+                          {session.auctionEnabled ? "Auction" : "Stream"}
+                        </div>
+                        <span className="font-medium text-sm truncate">{session.productTitle}</span>
+                        <span className="text-xs text-gray-500 shrink-0">
+                          {session.auctionEnabled
+                            ? `Bid: ${formatMoney(session.currentBidRwf)}`
+                            : `${session.watchers} watching`}
+                        </span>
+                      </div>
+                      <button
+                        onClick={async () => { await endLiveSession(session.id); await refreshSessions(); }}
+                        className="shrink-0 flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors px-3 py-1.5 rounded-lg border border-red-900/50 hover:border-red-800"
+                      >
+                        <StopCircle className="h-3.5 w-3.5" /> End
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* How auctions work — minimal */}
+            <div className="rounded-2xl border border-gray-800 px-6 py-5 grid sm:grid-cols-4 gap-4 text-center">
+              {[
+                { step: "01", text: "Buyer bids — funds locked instantly" },
+                { step: "02", text: "Outbid? Funds released automatically" },
+                { step: "03", text: "Auction closes after set duration" },
+                { step: "04", text: "Winner charged, item is theirs" },
+              ].map(({ step, text }) => (
+                <div key={step} className="space-y-1">
+                  <div className="text-xs font-bold text-gray-700">{step}</div>
+                  <div className="text-xs text-gray-400 leading-relaxed">{text}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
