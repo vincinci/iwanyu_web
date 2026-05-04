@@ -4,6 +4,7 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { checkDepositStatus } from "@/lib/pawapay";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth";
 
 type PollState = "pending" | "success" | "failed" | "timeout";
 
@@ -15,6 +16,8 @@ export default function PaymentCallbackPage() {
   const [params] = useSearchParams();
   const orderId = params.get("orderId");
   const depositId = params.get("depositId");
+  const { user } = useAuth();
+  const _ = user; // accessed via supabase.auth.getSession()
 
   const [pollState, setPollState] = useState<PollState>("pending");
   const [countdown, setCountdown] = useState(0);
@@ -39,41 +42,49 @@ export default function PaymentCallbackPage() {
 
       try {
         // Check wallet_transactions table for completion signal from webhook
+        // depositId is stored in external_transaction_id (modern) or reference (legacy)
         const { data: txRow } = await supabase
           .from("wallet_transactions")
-          .select("status")
-          .eq("metadata->>depositId", depositId)
+          .select("id, status, metadata")
+          .or(`external_transaction_id.eq.${depositId},reference.eq.${depositId}`)
           .maybeSingle();
 
-        if (txRow?.status === "completed") {
+        const txStatus = txRow?.status || (txRow?.metadata as Record<string, unknown> | null)?.status as string | undefined;
+
+        if (txStatus === "completed") {
           setPollState("success");
           // Mark order as Processing now that payment is confirmed
           await supabase
             .from("orders")
             .update({ status: "Processing", payment_status: "paid" })
-            .eq("id", orderId);
+            .eq("id", orderId!);
           setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
           return;
         }
-        if (txRow?.status === "failed") {
+        if (txStatus === "failed" || txStatus === "cancelled") {
           setPollState("failed");
           return;
         }
 
         // Fall back to direct PawaPay status check
-        const status = await checkDepositStatus(depositId);
-        if (status === "COMPLETED") {
-          setPollState("success");
-          await supabase
-            .from("orders")
-            .update({ status: "Processing", payment_status: "paid" })
-            .eq("id", orderId);
-          setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
-          return;
-        }
-        if (status === "FAILED" || status === "CANCELLED") {
-          setPollState("failed");
-          return;
+        const session = (await supabase.auth.getSession()).data.session;
+        const accessToken = session?.access_token;
+        if (accessToken) {
+          const pawaResult = await checkDepositStatus(depositId!, accessToken);
+          const pawaStatus = pawaResult?.status;
+          if (pawaStatus === "COMPLETED") {
+            setPollState("success");
+            await supabase
+              .from("orders")
+              .update({ status: "Processing", payment_status: "paid" })
+              .eq("id", orderId!);
+            setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
+            return;
+          }
+          if (pawaStatus === "FAILED" || pawaStatus === "REJECTED" || pawaStatus === "CANCELLED") {
+            setPollState("failed");
+            return;
+          }
         }
       } catch (e) {
         console.error("Poll error:", e);

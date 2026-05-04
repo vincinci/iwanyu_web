@@ -4,6 +4,7 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { checkDepositStatus } from "@/lib/pawapay";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth";
 
 type PollState = "pending" | "success" | "failed" | "timeout";
 
@@ -13,6 +14,7 @@ const MAX_POLLS = 75; // 5 minutes
 export default function WalletCallbackPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { user } = useAuth();
 
   const depositIdFromUrl = params.get("depositId");
   const depositId = depositIdFromUrl || sessionStorage.getItem("pendingWalletDepositId");
@@ -21,6 +23,35 @@ export default function WalletCallbackPage() {
   const [countdown, setCountdown] = useState(0);
   const pollCount = useRef(0);
   const supabase = getSupabaseClient();
+
+  // Realtime subscription — instantly catches webhook update from Supabase
+  useEffect(() => {
+    if (!depositId) return;
+    const channel = supabase
+      .channel(`wallet-tx-${depositId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "wallet_transactions",
+          filter: `external_transaction_id=eq.${depositId}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as Record<string, unknown>)?.status as string | undefined;
+          if (newStatus === "completed") {
+            setPollState("success");
+            sessionStorage.removeItem("pendingWalletDepositId");
+            setTimeout(() => navigate("/wallet", { replace: true }), 2000);
+          } else if (newStatus === "failed" || newStatus === "cancelled") {
+            setPollState("failed");
+            sessionStorage.removeItem("pendingWalletDepositId");
+          }
+        }
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [depositId, navigate, supabase]);
 
   useEffect(() => {
     if (!depositId) {
@@ -44,36 +75,44 @@ export default function WalletCallbackPage() {
 
       try {
         // Check wallet_transactions table for webhook signal
+        // depositId is stored in external_transaction_id (modern) or reference (legacy)
         const { data: txRow } = await supabase
           .from("wallet_transactions")
-          .select("status")
-          .eq("metadata->>depositId", depositId)
+          .select("id, status, metadata")
+          .or(`external_transaction_id.eq.${depositId},reference.eq.${depositId}`)
           .maybeSingle();
 
-        if (txRow?.status === "completed") {
+        const txStatus = txRow?.status || (txRow?.metadata as Record<string, unknown> | null)?.status as string | undefined;
+
+        if (txStatus === "completed") {
           setPollState("success");
           sessionStorage.removeItem("pendingWalletDepositId");
           setTimeout(() => navigate("/wallet", { replace: true }), 2000);
           return;
         }
-        if (txRow?.status === "failed") {
+        if (txStatus === "failed" || txStatus === "cancelled") {
           setPollState("failed");
           sessionStorage.removeItem("pendingWalletDepositId");
           return;
         }
 
-        // Fall back to direct PawaPay status check
-        const status = await checkDepositStatus(depositId);
-        if (status === "COMPLETED") {
-          setPollState("success");
-          sessionStorage.removeItem("pendingWalletDepositId");
-          setTimeout(() => navigate("/wallet", { replace: true }), 2000);
-          return;
-        }
-        if (status === "FAILED" || status === "CANCELLED") {
-          setPollState("failed");
-          sessionStorage.removeItem("pendingWalletDepositId");
-          return;
+        // Fall back to direct PawaPay status check (requires auth token)
+        const session = (await supabase.auth.getSession()).data.session;
+        const accessToken = session?.access_token;
+        if (accessToken) {
+          const pawaResult = await checkDepositStatus(depositId, accessToken);
+          const pawaStatus = pawaResult?.status;
+          if (pawaStatus === "COMPLETED") {
+            setPollState("success");
+            sessionStorage.removeItem("pendingWalletDepositId");
+            setTimeout(() => navigate("/wallet", { replace: true }), 2000);
+            return;
+          }
+          if (pawaStatus === "FAILED" || pawaStatus === "REJECTED" || pawaStatus === "CANCELLED") {
+            setPollState("failed");
+            sessionStorage.removeItem("pendingWalletDepositId");
+            return;
+          }
         }
       } catch (e) {
         console.error("Poll error:", e);
