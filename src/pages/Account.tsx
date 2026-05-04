@@ -21,11 +21,8 @@ type ProfileFormState = {
 type WalletTx = {
   id: string;
   kind: string;
-  type: string | null;
-  description: string | null;
-  amount_rwf: number;
   amount: number;
-  status: string;
+  reference: string;
   metadata: Record<string, unknown>;
   created_at: string;
 };
@@ -113,7 +110,7 @@ export default function AccountPage() {
     try {
       const { data } = await supabase
         .from("wallet_transactions")
-        .select("id, kind, type, description, amount_rwf, amount, status, metadata, created_at")
+        .select("id, kind, amount, reference, metadata, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(20);
@@ -431,15 +428,15 @@ export default function AccountPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {transactions.map((tx) => {
-                          const txType = tx.type ?? tx.kind ?? "deposit";
+                          const txType = (tx.metadata?.type as string) ?? tx.kind ?? "deposit";
                           const isCredit = ["deposit", "topup", "refund", "credit"].some((k) => txType.toLowerCase().includes(k));
-                          const amountRwf = tx.amount_rwf > 0 ? tx.amount_rwf : tx.amount;
-                          const statusVal = tx.status || (tx.metadata?.status as string) || "pending";
+                          const amountRwf = (tx.metadata?.amount_rwf as number) || tx.amount;
+                          const statusVal = (tx.metadata?.status as string) || "completed";
                           const statusColor =
                             statusVal === "completed" ? "bg-green-100 text-green-700" :
                             statusVal === "pending" ? "bg-yellow-100 text-yellow-700" :
                             "bg-red-100 text-red-700";
-                          const desc = tx.description || (txType.charAt(0).toUpperCase() + txType.slice(1));
+                          const desc = (tx.metadata?.description as string) || (txType.charAt(0).toUpperCase() + txType.slice(1));
                           return (
                             <tr key={tx.id} className="py-3">
                               <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">
