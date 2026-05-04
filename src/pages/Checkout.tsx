@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { 
-  ShoppingBag, ArrowLeft, Lock, Truck, 
+  ShoppingBag, Smartphone, ArrowLeft, Lock, Truck, 
   ChevronRight, Shield, Loader2
 } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
@@ -14,6 +14,8 @@ import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { initializePawaPayDeposit } from "@/lib/pawapay";
+import { getPaymentConfig, getUserCountry, detectCountryFromPhone, type CountryCode, type MobileNetwork } from "@/lib/region";
 import { usePreventDoubleClick } from "@/hooks/useRateLimit";
 import { validateEmail, validatePhone } from "@/lib/security";
 
@@ -31,6 +33,11 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  const [countryCode, setCountryCode] = useState<CountryCode>("RW");
+  const [paymentConfig, setPaymentConfig] = useState(() => getPaymentConfig("RW"));
+  const [mobileNetworks, setMobileNetworks] = useState<MobileNetwork[]>(paymentConfig.mobileNetworks);
+  const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(paymentConfig.mobileNetworks[0]);
+  const [isLoadingRegion, setIsLoadingRegion] = useState(true);
 
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<null | {
@@ -38,6 +45,35 @@ export default function CheckoutPage() {
     discountRwf: number;
   }>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+
+  useEffect(() => {
+    const loadRegion = async () => {
+      try {
+        const country = await getUserCountry();
+        setCountryCode(country);
+        const config = getPaymentConfig(country);
+        setPaymentConfig(config);
+        setMobileNetworks(config.mobileNetworks);
+        if (config.mobileNetworks.length > 0) setSelectedNetwork(config.mobileNetworks[0]);
+      } catch {
+        // keep defaults
+      } finally {
+        setIsLoadingRegion(false);
+      }
+    };
+    void loadRegion();
+  }, []);
+
+  useEffect(() => {
+    const detected = detectCountryFromPhone(phone);
+    if (detected && detected !== countryCode) {
+      const config = getPaymentConfig(detected);
+      setCountryCode(detected);
+      setPaymentConfig(config);
+      setMobileNetworks(config.mobileNetworks);
+      if (config.mobileNetworks.length > 0) setSelectedNetwork(config.mobileNetworks[0]);
+    }
+  }, [phone, countryCode]);
 
   const discountRwf = appliedDiscount?.discountRwf ?? 0;
   const discountedSubtotal = Math.max(0, Math.round(subtotal - discountRwf));
@@ -148,7 +184,7 @@ export default function CheckoutPage() {
               email: trimmedEmail,
               phone: trimmedPhone,
               address: trimmedAddress,
-              paymentMethod: "cod",
+              paymentMethod: "momo",
               discountCode: appliedDiscount?.code ?? null,
             }),
           }
@@ -173,11 +209,49 @@ export default function CheckoutPage() {
           throw new Error(errorMessage);
         }
 
-        const { orderId } = await createOrderRes.json();
+        const { orderId, total: serverTotal } = await createOrderRes.json();
 
-        // Order is persisted server-side; clear local cart and go to confirmation.
+        // Order is persisted; clear cart.
         clear();
-        navigate(`/order-confirmation/${orderId}`);
+
+        // Initialize PawaPay mobile money deposit
+        const paymentCountry = detectCountryFromPhone(trimmedPhone) ?? countryCode;
+        const result = await initializePawaPayDeposit(
+          {
+            amount: serverTotal,
+            currency: "RWF",
+            country: paymentCountry,
+            accountIdentifier: trimmedPhone,
+            provider: selectedNetwork?.shortName,
+            correlationId: orderId,
+          },
+          accessToken
+        );
+
+        if (!result?.depositId) {
+          throw new Error("Failed to initialize payment. Please try again.");
+        }
+
+        // Record pending transaction
+        await supabase
+          .from("wallet_transactions")
+          .insert({
+            user_id: user.id,
+            type: "purchase",
+            amount_rwf: serverTotal,
+            external_transaction_id: result.depositId,
+            payment_method: "pawapay_momo",
+            status: "pending",
+            description: `PawaPay payment for order ${orderId}`,
+          })
+          .then(({ error }) => { if (error) console.warn("Failed to create pending txn:", error); });
+
+        sessionStorage.setItem("pendingOrderId", orderId);
+        sessionStorage.setItem("pendingDepositId", result.depositId);
+
+        navigate(
+          `/payment-callback?orderId=${encodeURIComponent(orderId)}&depositId=${encodeURIComponent(result.depositId)}`,
+        );
       } catch (e) {
         toast({
           title: t("checkout.checkoutFailed"),
@@ -292,6 +366,59 @@ export default function CheckoutPage() {
                         className="h-12 rounded-xl border-gray-200 focus:border-amber-500 focus:ring-amber-500"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Payment Method */}
+                <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Payment</h2>
+                      <p className="text-sm text-gray-500">{t("checkout.paymentSubtitle")}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
+                    <div className="h-12 w-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+                      <Smartphone className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">{t("checkout.mobileMoney")}</div>
+                      <div className="text-xs text-gray-500">{t("checkout.mobileMoneyHint")}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-sm font-medium text-gray-900 mb-3">Select network</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {isLoadingRegion ? (
+                        <p className="col-span-2 text-xs text-gray-400">Detecting region...</p>
+                      ) : mobileNetworks.map((network) => (
+                        <button
+                          key={network.id}
+                          type="button"
+                          onClick={() => setSelectedNetwork(network)}
+                          className={`rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
+                            selectedNetwork?.id === network.id
+                              ? "border-amber-500 bg-amber-50 text-gray-900"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {network.name}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-gray-500">
+                      Region: {paymentConfig.country.flag} {paymentConfig.country.name}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
+                    <Lock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-blue-700">{t("checkout.redirectHint")}</p>
                   </div>
                 </div>
 
@@ -413,7 +540,7 @@ export default function CheckoutPage() {
                       </>
                     ) : (
                       <>
-                        Place Order — {formatMoney(total)}
+                        {t("checkout.pay")} {formatMoney(total)}
                         <ChevronRight className="ml-2 h-5 w-5" />
                       </>
                     )}
