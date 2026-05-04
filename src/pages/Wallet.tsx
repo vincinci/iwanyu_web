@@ -70,6 +70,9 @@ export default function WalletPage() {
   const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(mobileNetworks[0]);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
+
   // Withdrawal state
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawPhone, setWithdrawPhone] = useState("");
@@ -195,7 +198,7 @@ export default function WalletPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">My wallet</h1>
-              <p className="mt-1 text-sm text-gray-500">Deposit funds to use for bidding and live stream purchases.</p>
+              <p className="mt-1 text-sm text-gray-500">Deposit or withdraw funds via mobile money.</p>
             </div>
             <div className="text-right">
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400">Balance</p>
@@ -204,7 +207,34 @@ export default function WalletPage() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+        {/* Tab switcher */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("deposit")}
+            className={`h-11 rounded-2xl border text-sm font-medium transition ${
+              activeTab === "deposit"
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+            }`}
+          >
+            Deposit
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("withdraw")}
+            className={`h-11 rounded-2xl border text-sm font-medium transition ${
+              activeTab === "withdraw"
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+            }`}
+          >
+            Withdraw
+          </button>
+        </div>
+
+        {activeTab === "deposit" && (
+          <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="space-y-5">
             <div>
               <p className="text-base font-semibold text-gray-900">Deposit via Mobile Money</p>
@@ -324,10 +354,11 @@ export default function WalletPage() {
               Your wallet balance is used for bidding and live stream purchases only. You will confirm the payment on your phone.
             </p>
           </div>
-        </div>
+          </div>
+        )}
 
-        {/* Withdraw section */}
-        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+        {activeTab === "withdraw" && (
+          <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="space-y-5">
             <div>
               <p className="text-base font-semibold text-gray-900">Withdraw to Mobile Money</p>
@@ -390,7 +421,8 @@ export default function WalletPage() {
               Withdrawals are sent directly to your mobile money number. Allow a few minutes for processing.
             </p>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </StorefrontPage>
   );
