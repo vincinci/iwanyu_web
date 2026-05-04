@@ -211,7 +211,7 @@ export default function CartPage() {
                 {t("cart.noRecommendations")}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                 {recommended.slice(0, 8).map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

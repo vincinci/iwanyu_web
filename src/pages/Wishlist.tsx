@@ -69,7 +69,7 @@ export default function WishlistPage() {
                   <Sparkles className="h-5 w-5 text-gray-700" />
                   <h3 className="text-xl font-semibold text-gray-900">You might like</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                   {recommended.map((p) => (
                     <ProductCard key={p.id} product={p} />
                   ))}
@@ -79,7 +79,7 @@ export default function WishlistPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
               {wishlistProducts.map((p) => (
                 <ProductCard key={p!.id} product={p!} />
               ))}
@@ -92,7 +92,7 @@ export default function WishlistPage() {
                   <Sparkles className="h-5 w-5 text-gray-700" />
                   <h2 className="text-xl font-semibold text-gray-900">You might also like</h2>
                 </div>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                   {recommended.map((p) => (
                     <ProductCard key={p.id} product={p} />
                   ))}

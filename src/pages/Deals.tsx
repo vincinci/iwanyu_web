@@ -105,7 +105,7 @@ export default function Deals() {
           {loading ? (
             <div className="space-y-12">
               <div className="h-8 bg-gray-200 rounded-xl w-48 animate-pulse"></div>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                 {[...Array(10)].map((_, i) => (
                   <div key={i} className="animate-pulse">
                     <div className="bg-gray-200 aspect-[4/5] rounded-2xl mb-2"></div>
@@ -187,7 +187,7 @@ export default function Deals() {
                       {flashDeals.length} deals
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                     {flashDeals.map((product) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
@@ -210,7 +210,7 @@ export default function Deals() {
                       {hotDeals.length} deals
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                     {hotDeals.map((product) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
@@ -233,7 +233,7 @@ export default function Deals() {
                       {regularDeals.length} deals
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                     {regularDeals.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

@@ -541,7 +541,7 @@ export default function ProductPage() {
         <div className="mt-16 pt-8 border-t">
           <h2 className="text-xl font-semibold mb-6">Recommended products</h2>
           {products.filter((p) => p.category === product.category && p.id !== product.id).length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
               {products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 12).map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -558,7 +558,7 @@ export default function ProductPage() {
               <Clock size={20} className="text-gray-500" />
               <h2 className="text-xl font-semibold">Recently viewed</h2>
             </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
               {recentlyViewedIds.filter((id) => id !== product.id).slice(0, 6).map((id) => {
                 const p = products.find((pr) => pr.id === id);
                 return p ? <ProductCard key={p.id} product={p} /> : null;
