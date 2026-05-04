@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth";
 
 type PollState = "pending" | "success" | "failed" | "timeout";
+type FailureReason = "insufficient_funds" | "declined" | "expired" | "generic";
+
+function mapFailureCode(code?: string): FailureReason {
+  if (!code) return "generic";
+  const c = code.toUpperCase();
+  if (c.includes("INSUFFICIENT") || c.includes("BALANCE")) return "insufficient_funds";
+  if (c.includes("TIMEOUT") || c.includes("EXPIRED")) return "expired";
+  if (c.includes("DECLINED") || c.includes("CANCELLED") || c.includes("REJECTED") || c.includes("PAYER")) return "declined";
+  return "generic";
+}
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLLS = 75; // 5 minutes
@@ -21,6 +31,7 @@ export default function PaymentCallbackPage() {
 
   const [pollState, setPollState] = useState<PollState>("pending");
   const [countdown, setCountdown] = useState(0);
+  const [failureReason, setFailureReason] = useState<FailureReason>("generic");
   const pollCount = useRef(0);
   const supabase = getSupabaseClient();
 
@@ -68,7 +79,13 @@ export default function PaymentCallbackPage() {
           setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
           return;
         }
-        if (txStatus === "failed" || txStatus === "cancelled") {
+        if (txStatus === "failed") {
+          setFailureReason("generic");
+          setPollState("failed");
+          return;
+        }
+        if (txStatus === "cancelled") {
+          setFailureReason("declined");
           setPollState("failed");
           return;
         }
@@ -85,6 +102,7 @@ export default function PaymentCallbackPage() {
             return;
           }
           if (pawaStatus === "FAILED" || pawaStatus === "REJECTED" || pawaStatus === "CANCELLED") {
+            setFailureReason(mapFailureCode(pawaResult?.failureReason?.failureCode));
             setPollState("failed");
             return;
           }
@@ -122,17 +140,40 @@ export default function PaymentCallbackPage() {
   }
 
   if (pollState === "failed" || pollState === "timeout") {
+    const FAILURE_COPY: Record<FailureReason, { title: string; body: string }> = {
+      insufficient_funds: {
+        title: "Insufficient funds",
+        body: "Your mobile money account doesn't have enough balance. Please top up and try again.",
+      },
+      declined: {
+        title: "Payment declined",
+        body: "You cancelled or declined the payment on your phone. No money was taken. You can try again.",
+      },
+      expired: {
+        title: "Payment timed out",
+        body: "You didn't confirm the payment on your phone in time. No money was taken.",
+      },
+      generic: {
+        title: "Payment failed",
+        body: "The payment could not be completed. You can try again.",
+      },
+    };
+    const reason = pollState === "timeout" ? "expired" : failureReason;
+    const copy = FAILURE_COPY[reason];
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-center p-6">
-        <XCircle className="h-16 w-16 text-red-400" />
-        <h1 className="text-2xl font-semibold text-gray-900">
-          {pollState === "timeout" ? "Payment timed out" : "Payment failed"}
-        </h1>
-        <p className="text-gray-500">
-          {pollState === "timeout"
-            ? "We didn't receive confirmation in time. Please check your orders."
-            : "The payment was not completed. You can try again."}
-        </p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 p-6 text-center">
+        <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-red-200 bg-red-50">
+          <XCircle className="h-12 w-12 text-red-500" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{copy.title}</h1>
+          <p className="mt-2 max-w-sm text-gray-500">{copy.body}</p>
+        </div>
+        {reason === "insufficient_funds" && (
+          <div className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Make sure your mobile money account has enough balance before trying again.
+          </div>
+        )}
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => navigate("/orders")}>My orders</Button>
           <Button onClick={() => navigate("/checkout")}>Try again</Button>

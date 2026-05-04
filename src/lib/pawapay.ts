@@ -24,6 +24,7 @@ export type PawaPayDepositResponse = {
   authenticationUrl?: string; // Redirect URL for user authentication
   authorizationUrl?: string; // Redirect-auth URL (some providers)
   country: string;
+  failureReason?: { failureCode?: string; failureMessage?: string };
 };
 
 /**

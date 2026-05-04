@@ -21,6 +21,7 @@ type DepositStatusResponse = {
   currency: string;
   country: string;
   authorizationUrl?: string;
+  failureReason?: { failureCode?: string; failureMessage?: string };
 };
 
 function isUuid(value: string): boolean {
@@ -422,6 +423,7 @@ Deno.serve(async (req: Request) => {
         authorizationUrl?: string;
         authenticationUrl?: string;
         auhtorizationUrl?: string;
+        failureReason?: { failureCode?: string; failureMessage?: string };
       };
     };
 
@@ -455,6 +457,13 @@ Deno.serve(async (req: Request) => {
 
     if (authorizationUrl) {
       responseBody.authorizationUrl = authorizationUrl;
+    }
+
+    if (mappedStatus === "FAILED" && data.failureReason) {
+      responseBody.failureReason = {
+        failureCode: data.failureReason.failureCode,
+        failureMessage: data.failureReason.failureMessage,
+      };
     }
 
     // Optional reconciliation: if completed, mark order/wallet state.
