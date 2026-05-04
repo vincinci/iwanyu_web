@@ -3,6 +3,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+const PAWAPAY_API_TOKEN = Deno.env.get("PAWAPAY_API_TOKEN") || "";
 const PAWAPAY_API_KEY = Deno.env.get("PAWAPAY_API_KEY") || "";
 const PAWAPAY_ENV = (Deno.env.get("PAWAPAY_ENV") || "live").trim().toLowerCase();
 const PAWAPAY_ENDPOINT = Deno.env.get("PAWAPAY_ENDPOINT") || "https://api.pawapay.io";
@@ -23,26 +25,20 @@ function getPawaPayEndpoint(): string {
   }
 }
 
+function getPawaPayCredential(): string {
+  const token = (PAWAPAY_API_TOKEN || PAWAPAY_API_KEY).trim().replace(/^bearer\s+/i, "").replace(/^['"]+|['"]+$/g, "");
+  return token;
+}
+
 /**
  * Wallet Withdrawal (PawaPay)
  *
- * Called when a user requests to withdraw their wallet balance to mobile money.
- * This is triggered from the wallet page.
- *
  * POST body (called with user JWT token):
  * {
- *   walletId: string,
  *   amountRwf: number,
- *   mobileNetwork: "MTN" | "Airtel" | "Orange",
- *   phoneNumber: string
+ *   phoneNumber: string,
+ *   mobileNetwork?: string
  * }
- *
- * This function:
- * 1. Verifies user authorization (via JWT)
- * 2. Checks if wallet has sufficient balance
- * 3. Deducts from wallet available_rwf
- * 4. Creates withdrawal transaction record
- * 5. Initiates mobile money payout via PawaPay API
  */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -67,7 +63,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || "", {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
 
@@ -80,165 +76,168 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json() as {
-      walletId: string;
       amountRwf: number;
-      mobileNetwork: "MTN" | "Airtel" | "Orange";
       phoneNumber: string;
+      mobileNetwork?: string;
     };
 
-    const { walletId, amountRwf, mobileNetwork, phoneNumber } = body;
+    const { amountRwf, phoneNumber, mobileNetwork } = body;
 
-    if (!walletId || !amountRwf || amountRwf <= 0 || !phoneNumber) {
+    if (!amountRwf || amountRwf <= 0 || !phoneNumber?.trim()) {
       return new Response(
-        JSON.stringify({ error: "Invalid request data" }),
+        JSON.stringify({ error: "amountRwf and phoneNumber are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Verify wallet ownership
-    const { data: wallet, error: walletErr } = await supabase
-      .from("wallets")
-      .select("id, user_id, available_rwf")
-      .eq("id", walletId)
+    // Fetch current balance from profiles
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("wallet_balance_rwf")
+      .eq("id", user.id)
       .single();
 
-    if (walletErr || !wallet || wallet.user_id !== user.id) {
+    if (profileErr || !profile) {
       return new Response(
-        JSON.stringify({ error: "Wallet not found or unauthorized" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Profile not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const currentBalance = Number(wallet.available_rwf || 0);
+    const currentBalance = Number(profile.wallet_balance_rwf || 0);
 
-    // Check sufficient balance
     if (currentBalance < amountRwf) {
       return new Response(
-        JSON.stringify({ error: `Insufficient balance. Available: ${currentBalance}, Requested: ${amountRwf}` }),
+        JSON.stringify({ error: `Insufficient balance. Available: ${currentBalance} RWF, Requested: ${amountRwf} RWF` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const newBalance = currentBalance - amountRwf;
-    const withdrawalId = `wallet_withdraw_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const payoutId = crypto.randomUUID();
+    const correlationId = `withdrawal-${user.id}-${Date.now()}`;
 
-    // Create withdrawal transaction record
-    const { data: transaction, error: insertErr } = await supabase
+    // ATOMIC DEDUCT: only deduct if balance is still sufficient (prevents race conditions)
+    const { data: deductedRows, error: deductErr } = await supabase
+      .from("profiles")
+      .update({ wallet_balance_rwf: currentBalance - amountRwf })
+      .eq("id", user.id)
+      .gte("wallet_balance_rwf", amountRwf)
+      .select("id");
+
+    if (deductErr || !deductedRows || deductedRows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient balance or concurrent update. Please try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create withdrawal record using legacy schema
+    const { data: txnRow, error: txnErr } = await supabase
       .from("wallet_transactions")
       .insert({
         user_id: user.id,
-        type: "withdrawal",
-        amount_rwf: amountRwf,
-        external_transaction_id: withdrawalId,
-        payment_method: "pawapay_momo",
-        status: "pending",
-        description: `Wallet withdrawal to ${phoneNumber}`,
+        kind: "withdrawal",
+        amount: amountRwf,
+        reference: payoutId,
+        metadata: {
+          status: "processing",
+          payment_method: "pawapay_momo",
+          phone: phoneNumber,
+          correlationId,
+        },
       })
       .select("id")
       .single();
 
-    if (insertErr) {
-      console.error("Failed to create withdrawal transaction:", insertErr);
+    if (txnErr) {
+      console.warn("Failed to create withdrawal transaction record:", txnErr);
+    }
+
+    const txnId = txnRow?.id ?? null;
+    const credential = getPawaPayCredential();
+
+    if (!credential) {
+      // Refund — no PawaPay credentials
+      await supabase
+        .from("profiles")
+        .update({ wallet_balance_rwf: currentBalance })
+        .eq("id", user.id);
       return new Response(
-        JSON.stringify({ error: "Failed to create withdrawal request" }),
+        JSON.stringify({ error: "Payment gateway not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Deduct from available balance
-    const { error: updateErr } = await supabase
-      .from("wallets")
-      .update({ available_rwf: newBalance })
-      .eq("id", walletId);
-
-    if (updateErr) {
-      console.error("Failed to update wallet balance:", updateErr);
-      return new Response(
-        JSON.stringify({ error: "Failed to process withdrawal" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Determine correspondent (provider) from phone
+    let correspondent = (mobileNetwork || "").toUpperCase();
+    if (!correspondent) {
+      const digits = phoneNumber.replace(/\D/g, "");
+      if (digits.startsWith("25078") || digits.startsWith("25079")) correspondent = "MTN_MOMO_RWA";
+      else if (digits.startsWith("25073") || digits.startsWith("25072")) correspondent = "AIRTEL_OAPI_RWA";
+      else correspondent = "MTN_MOMO_RWA"; // default
     }
+    // Normalize short names to PawaPay correspondent IDs
+    if (correspondent === "MTN") correspondent = "MTN_MOMO_RWA";
+    if (correspondent === "AIRTEL" || correspondent === "AIRTELMONEY") correspondent = "AIRTEL_OAPI_RWA";
 
-    console.log(`Wallet withdrawal initiated: Wallet ${walletId}, Amount: ${amountRwf} RWF, Phone: ${phoneNumber}`);
+    const normalizedPhone = phoneNumber.replace(/\D/g, "");
 
-    // Initiate PawaPay Payout
-    try {
-      const payoutResponse = await fetch(`${getPawaPayEndpoint()}/payouts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${PAWAPAY_API_KEY}`,
-        },
-        body: JSON.stringify({
-          payoutId: withdrawalId,
-          amount: amountRwf.toString(),
-          currency: "RWF",
-          country: "RW",
-          correspondent: mobileNetwork,
-          accountIdentifier: phoneNumber,
-          description: `Wallet withdrawal to ${phoneNumber}`,
-          correlationId: `wallet_withdrawal_${walletId}`,
-          notificationUrl: `${SUPABASE_URL}/functions/v1/wallet-withdrawal-callback`,
-        }),
-      });
+    const payoutPayload = {
+      payoutId,
+      amount: String(Math.trunc(amountRwf)),
+      currency: "RWF",
+      country: "RWA",
+      correspondent,
+      recipient: {
+        type: "MSISDN",
+        address: { value: normalizedPhone },
+      },
+      customerTimestamp: new Date().toISOString(),
+      statementDescription: "Wallet withdrawal",
+    };
 
-      if (payoutResponse.ok) {
-        const payoutData = await payoutResponse.json();
-        console.log(`PawaPay payout initiated: ${payoutData.payoutId}`);
+    const payoutRes = await fetch(`${getPawaPayEndpoint()}/v1/payouts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${credential}`,
+      },
+      body: JSON.stringify(payoutPayload),
+    });
 
-        // Update transaction status to "processing"
-        const { error: updateErr } = await supabase
+    const payoutText = await payoutRes.text();
+    let payoutData: Record<string, unknown> = {};
+    try { payoutData = payoutText ? JSON.parse(payoutText) : {}; } catch { /* ignore */ }
+
+    if (!payoutRes.ok) {
+      console.error("PawaPay payout failed:", payoutData);
+      // Refund balance
+      await supabase
+        .from("profiles")
+        .update({ wallet_balance_rwf: currentBalance })
+        .eq("id", user.id);
+      if (txnId) {
+        await supabase
           .from("wallet_transactions")
-          .update({ status: "processing" })
-          .eq("id", transaction.id);
-
-        if (updateErr) {
-          console.warn("Failed to update transaction status:", updateErr);
-        }
-      } else {
-        const errorData = await payoutResponse.json();
-        console.error("PawaPay payout failed:", errorData);
-
-        // Update transaction status to "failed"
-        const { error: updateErr } = await supabase
-          .from("wallet_transactions")
-          .update({ status: "failed" })
-          .eq("id", transaction.id);
-
-        if (updateErr) {
-          console.warn("Failed to update transaction status:", updateErr);
-        }
-
-        // Refund the amount back to wallet balance
-        const { error: refundErr } = await supabase
-          .from("wallets")
-          .update({ available_rwf: currentBalance })
-          .eq("id", walletId);
-
-        if (refundErr) {
-          console.error("Failed to refund withdrawal amount:", refundErr);
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            error: "Withdrawal failed. Your balance has been refunded.",
-            details: errorData 
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          .update({ metadata: { status: "failed", payment_method: "pawapay_momo", phone: phoneNumber, correlationId } })
+          .eq("id", txnId);
       }
-    } catch (payoutError) {
-      console.error("Error initiating PawaPay payout:", payoutError);
-      // Don't fail the request - payout will retry via webhook
+      const errMsg = (payoutData.message || payoutData.error || "Payout failed") as string;
+      return new Response(
+        JSON.stringify({ error: `Withdrawal failed: ${errMsg}`, details: payoutData }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    console.log(`Payout initiated: ${payoutId}, user: ${user.id}, amount: ${amountRwf}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        referenceId: withdrawalId,
+        payoutId,
         amountRwf,
-        newBalance,
-        message: `${amountRwf.toLocaleString()} RWF is on the way to +${phoneNumber}`,
+        newBalance: currentBalance - amountRwf,
+        message: `${amountRwf.toLocaleString()} RWF is on the way to +${normalizedPhone}`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

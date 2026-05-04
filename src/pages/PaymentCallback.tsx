@@ -41,23 +41,30 @@ export default function PaymentCallbackPage() {
       }
 
       try {
-        // Check wallet_transactions table for completion signal from webhook
-        // depositId is stored in external_transaction_id (modern) or reference (legacy)
-        const { data: txRow } = await supabase
-          .from("wallet_transactions")
-          .select("id, status, metadata")
-          .or(`external_transaction_id.eq.${depositId},reference.eq.${depositId}`)
+        // PRIMARY: Check order payment_verified_at (set by webhook when PawaPay confirms)
+        const { data: orderRow } = await supabase
+          .from("orders")
+          .select("id, payment_verified_at, status")
+          .eq("id", orderId!)
           .maybeSingle();
 
-        const txStatus = txRow?.status || (txRow?.metadata as Record<string, unknown> | null)?.status as string | undefined;
+        if (orderRow?.payment_verified_at) {
+          setPollState("success");
+          setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
+          return;
+        }
+
+        // SECONDARY: Check wallet_transactions using only base columns (legacy schema)
+        const { data: txRow } = await supabase
+          .from("wallet_transactions")
+          .select("id, metadata")
+          .eq("reference", depositId!)
+          .maybeSingle();
+
+        const txStatus = (txRow?.metadata as Record<string, unknown> | null)?.status as string | undefined;
 
         if (txStatus === "completed") {
           setPollState("success");
-          // Mark order as Processing now that payment is confirmed
-          await supabase
-            .from("orders")
-            .update({ status: "Processing", payment_status: "paid" })
-            .eq("id", orderId!);
           setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
           return;
         }
@@ -66,7 +73,7 @@ export default function PaymentCallbackPage() {
           return;
         }
 
-        // Fall back to direct PawaPay status check
+        // TERTIARY: Direct PawaPay status check
         const session = (await supabase.auth.getSession()).data.session;
         const accessToken = session?.access_token;
         if (accessToken) {
@@ -74,10 +81,6 @@ export default function PaymentCallbackPage() {
           const pawaStatus = pawaResult?.status;
           if (pawaStatus === "COMPLETED") {
             setPollState("success");
-            await supabase
-              .from("orders")
-              .update({ status: "Processing", payment_status: "paid" })
-              .eq("id", orderId!);
             setTimeout(() => navigate(`/order-confirmation/${orderId}`, { replace: true }), 1500);
             return;
           }

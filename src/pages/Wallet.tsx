@@ -70,12 +70,20 @@ export default function WalletPage() {
   const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(mobileNetworks[0]);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Withdrawal state
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawPhone, setWithdrawPhone] = useState("");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
   const normalizePhone = getPhoneNormalizer(countryCode);
   const amount = selectedPreset ?? (customAmount ? Number(customAmount) : 0);
   const normalizedProfilePhone = normalizePhone(profilePhone);
   const normalizedDepositPhone =
     depositPhoneMode === "saved" ? normalizedProfilePhone : normalizePhone(depositPhoneInput);
   const canSubmitDeposit = amount >= paymentConfig.minDeposit && Boolean(normalizedDepositPhone);
+
+  const withdrawAmountNum = withdrawPhone ? Number(withdrawAmount) : 0;
+  const canSubmitWithdraw = withdrawAmountNum >= 500 && withdrawAmountNum <= (balance ?? 0) && withdrawPhone.trim().length >= 9;
 
   useEffect(() => {
     if (!user) {
@@ -134,6 +142,45 @@ export default function WalletPage() {
       toast({ title: "Deposit failed", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!user || !canSubmitWithdraw) return;
+    const amountRwf = Math.round(withdrawAmountNum);
+    const normalizedWithdrawPhone = normalizePhone(withdrawPhone);
+    if (!normalizedWithdrawPhone) {
+      toast({ title: "Invalid phone", description: "Enter a valid mobile money number.", variant: "destructive" });
+      return;
+    }
+    setIsWithdrawing(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error("Please log in to continue");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/wallet-withdrawal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ amountRwf, phoneNumber: normalizedWithdrawPhone }),
+      });
+      const data = await res.json() as { success?: boolean; message?: string; error?: string; newBalance?: number };
+      if (!res.ok) throw new Error(data.error ?? "Withdrawal failed");
+
+      toast({ title: "Withdrawal initiated", description: data.message ?? `${formatMoney(amountRwf)} is on the way.` });
+      setWithdrawAmount("");
+      setWithdrawPhone("");
+      if (typeof data.newBalance === "number") setBalance(data.newBalance);
+    } catch (error) {
+      toast({ title: "Withdrawal failed", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setIsWithdrawing(false);
     }
   };
 
@@ -275,6 +322,72 @@ export default function WalletPage() {
 
             <p className="text-xs text-gray-500">
               Your wallet balance is used for bidding and live stream purchases only. You will confirm the payment on your phone.
+            </p>
+          </div>
+        </div>
+
+        {/* Withdraw section */}
+        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="space-y-5">
+            <div>
+              <p className="text-base font-semibold text-gray-900">Withdraw to Mobile Money</p>
+              <p className="mt-1 text-sm text-gray-500">Send your wallet balance to your mobile money account.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Amount (RWF)</label>
+              <Input
+                type="number"
+                placeholder="Min. 500 RWF"
+                value={withdrawAmount}
+                min={500}
+                max={balance ?? 0}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                className="h-12 rounded-2xl border-gray-200"
+              />
+              {withdrawAmount && withdrawAmountNum > (balance ?? 0) && (
+                <p className="text-xs text-red-500">Exceeds your balance of {formatMoney(balance ?? 0)}.</p>
+              )}
+              {withdrawAmount && withdrawAmountNum < 500 && (
+                <p className="text-xs text-gray-500">Minimum withdrawal is {formatMoney(500)}.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">Send to phone</label>
+              <Input
+                type="tel"
+                placeholder="+250788123456"
+                value={withdrawPhone}
+                onChange={(e) => setWithdrawPhone(e.target.value)}
+                className="h-12 rounded-2xl border-gray-200"
+              />
+            </div>
+
+            {canSubmitWithdraw && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-gray-500">You receive</span>
+                  <span className="font-medium text-gray-900">{formatMoney(withdrawAmountNum)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-gray-500">Remaining balance</span>
+                  <span className="font-medium text-gray-900">{formatMoney((balance ?? 0) - withdrawAmountNum)}</span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={isWithdrawing || !canSubmitWithdraw}
+              className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              {isWithdrawing ? "Processing..." : `Withdraw ${canSubmitWithdraw ? formatMoney(withdrawAmountNum) : ""}`}
+            </Button>
+
+            <p className="text-xs text-gray-500">
+              Withdrawals are sent directly to your mobile money number. Allow a few minutes for processing.
             </p>
           </div>
         </div>

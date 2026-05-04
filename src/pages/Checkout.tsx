@@ -232,17 +232,20 @@ export default function CheckoutPage() {
           throw new Error("Failed to initialize payment. Please try again.");
         }
 
-        // Record pending transaction
+        // Record pending transaction (legacy schema: kind, amount, reference, metadata)
         await supabase
           .from("wallet_transactions")
           .insert({
             user_id: user.id,
-            type: "purchase",
-            amount_rwf: serverTotal,
-            external_transaction_id: result.depositId,
-            payment_method: "pawapay_momo",
-            status: "pending",
-            description: `PawaPay payment for order ${orderId}`,
+            kind: "purchase",
+            amount: serverTotal,
+            reference: result.depositId,
+            metadata: {
+              status: "pending",
+              payment_method: "pawapay_momo",
+              order_id: orderId,
+              description: `PawaPay payment for order ${orderId}`,
+            },
           })
           .then(({ error }) => { if (error) console.warn("Failed to create pending txn:", error); });
 
