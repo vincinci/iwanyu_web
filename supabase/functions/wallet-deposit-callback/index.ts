@@ -366,8 +366,36 @@ Deno.serve(async (req: Request) => {
       ? legacyTxn.metadata.status
       : null;
 
-    if (txnMetaStatus === "completed" || legacyStatus === "completed") {
+    if (txnMetaStatus === "completed" || legacyStatus === "completed" ||
+        txnMetaStatus === "processing" || legacyStatus === "processing") {
+      console.log(`Deposit ${depositId} already processed/processing, skipping`);
       return new Response(JSON.stringify({ success: true, reason: "Already processed", depositId }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ATOMIC CLAIM: mark as "processing" only if still pending/null.
+    // Single UPDATE with WHERE condition — if two retries race, only one wins.
+    const claimTxnId = txnRecord?.id ?? legacyTxn!.id;
+    const claimCurrentMeta = txnRecord?.metadata ?? legacyTxn?.metadata ?? {};
+    const { data: claimedRows, error: claimErr } = await supabase
+      .from("wallet_transactions")
+      .update({
+        metadata: {
+          ...claimCurrentMeta,
+          status: "processing",
+          claimed_at: new Date().toISOString(),
+        },
+      })
+      .eq("id", claimTxnId)
+      .or("metadata->>status.is.null,metadata->>status.eq.pending")
+      .select("id");
+
+    // If claimErr or no rows updated, another process already claimed this deposit
+    if (claimErr || !claimedRows || claimedRows.length === 0) {
+      console.warn(`Deposit ${depositId} claim failed or already claimed, skipping`, claimErr);
+      return new Response(JSON.stringify({ success: true, reason: "Already claimed", depositId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -385,6 +413,12 @@ Deno.serve(async (req: Request) => {
 
     if (profileErr || !profile) {
       console.warn(`User not found: ${userId}`);
+      // Release the claim so it can be retried
+      await supabase
+        .from("wallet_transactions")
+        .update({ metadata: { ...claimCurrentMeta, status: "pending" } })
+        .eq("id", claimTxnId)
+        .catch(() => null);
       return new Response(JSON.stringify({ success: true, depositId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -392,65 +426,40 @@ Deno.serve(async (req: Request) => {
     }
 
     const previousBalance = Number(profile.wallet_balance_rwf || 0);
-    const newBalance = previousBalance + creditAmount;
 
-    // Update wallet balance
-    const { error: updateErr } = await supabase
-      .from("profiles")
-      .update({ wallet_balance_rwf: newBalance })
-      .eq("id", userId);
+    // Atomic increment — avoids read-then-write race if something slips through
+    const { error: updateErr } = await supabase.rpc("increment_wallet_balance", {
+      p_user_id: userId,
+      p_amount: creditAmount,
+    });
 
     if (updateErr) {
       console.error("Failed to update wallet:", updateErr);
+      // Release the claim
+      await supabase
+        .from("wallet_transactions")
+        .update({ metadata: { ...claimCurrentMeta, status: "pending" } })
+        .eq("id", claimTxnId)
+        .catch(() => null);
       return new Response(JSON.stringify({ success: true, depositId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Update transaction status to completed
-    if (txnRecord) {
-      const { error: updateTxnErr } = await supabase
-        .from("wallet_transactions")
-        .update({
+    // Mark transaction as completed in metadata (single source of truth, works without status column)
+    await supabase
+      .from("wallet_transactions")
+      .update({
+        metadata: {
+          ...claimCurrentMeta,
           status: "completed",
-          previous_balance_rwf: previousBalance,
-          new_balance_rwf: newBalance,
+          amount_rwf: creditAmount,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", txnRecord.id);
-
-      if (updateTxnErr) {
-        console.warn("Failed to update transaction status (column may not exist), falling back to metadata:", updateTxnErr);
-        // Fallback: store status in metadata JSONB (works on legacy schema)
-        await supabase
-          .from("wallet_transactions")
-          .update({
-            metadata: {
-              status: "completed",
-              amount_rwf: creditAmount,
-              new_balance_rwf: newBalance,
-              updated_at: new Date().toISOString(),
-            },
-          })
-          .eq("id", txnRecord.id)
-          .catch(() => null);
-      }
-    } else if (legacyTxn) {
-      await supabase
-        .from("wallet_transactions")
-        .update({
-          metadata: {
-            ...(legacyTxn.metadata ?? {}),
-            status: "completed",
-            amount_rwf: creditAmount,
-            new_balance_rwf: newBalance,
-            updated_at: new Date().toISOString(),
-          },
-        })
-        .eq("id", legacyTxn.id)
-        .catch(() => null);
-    }
+        },
+      })
+      .eq("id", claimTxnId)
+      .catch((e) => console.warn("Failed to mark txn completed:", e));
 
     console.log(`Wallet credited via PawaPay: User ${userId}, Amount: ${creditAmount} RWF, Deposit: ${depositId}`);
 
