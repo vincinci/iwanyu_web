@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send, ImagePlus, X, Trash2 } from "lucide-react";
+import { AlertCircle, StopCircle, Users, Gavel, Package, Camera, Plus, TrendingUp, Minus, Send, ImagePlus, X, Trash2, ChevronUp } from "lucide-react";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { getLiveSessions, endLiveSession, updateStreamProducts, type LiveSession, type StreamProduct } from "@/lib/liveSessions";
 import { fetchRecentComments, subscribeToComments, trackViewerPresence, postComment, type LiveComment } from "@/lib/liveComments";
@@ -33,6 +33,8 @@ export default function LiveSessionPage() {
   const [loading, setLoading] = useState(true);
   const [cameraStatus, setCameraStatus] = useState<"idle" | "starting" | "live" | "error">("idle");
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [mobileSheetTab, setMobileSheetTab] = useState<'product' | 'sales' | 'end'>('product');
   const [viewerCount, setViewerCount] = useState(1);
   const [comments, setComments] = useState<LiveComment[]>([]);
   const [sellerComment, setSellerComment] = useState("");
@@ -332,20 +334,8 @@ export default function LiveSessionPage() {
         {/* ── Camera column — phone frame on mobile, full-area on desktop ── */}
         <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
 
-          {/* Inner frame: phone-shaped on mobile, proper 9/16 height-constrained on desktop */}
-          <div className="relative w-full max-w-[280px] lg:w-auto lg:max-w-none lg:h-full" style={{ aspectRatio: "9/16" }}>
-
-            {/* Phone frame decoration — mobile only */}
-            <div className="absolute inset-0 rounded-[2.5rem] ring-[6px] ring-white/20 pointer-events-none z-20 lg:hidden" />
-            <div className="absolute top-0 inset-x-0 flex justify-center pt-2 z-20 pointer-events-none lg:hidden">
-              <div className="w-24 h-5 bg-black rounded-b-2xl" />
-            </div>
-            <div className="absolute bottom-2 inset-x-0 flex justify-center z-20 pointer-events-none lg:hidden">
-              <div className="w-24 h-1 bg-white/40 rounded-full" />
-            </div>
-
-            {/* Content area: rounded + clipped on mobile, plain on desktop */}
-            <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] lg:rounded-none">
+          {/* Camera frame: full-screen on mobile, 9/16 centered on desktop */}
+          <div className="absolute inset-0 overflow-hidden lg:relative lg:inset-auto lg:h-full lg:aspect-[9/16]">
 
           {/* Video / paused state */}
           {cameraEnabled ? (
@@ -394,7 +384,7 @@ export default function LiveSessionPage() {
               <Button
                 onClick={() => setCameraEnabled(!cameraEnabled)}
                 size="sm"
-                className="rounded-full bg-white/20 hover:bg-white/30 text-white border-0 h-8 px-3 text-xs backdrop-blur"
+                className="hidden lg:flex rounded-full bg-white/20 hover:bg-white/30 text-white border-0 h-8 px-3 text-xs backdrop-blur"
               >
                 <Camera className="h-3.5 w-3.5 mr-1" />
                 {cameraEnabled ? "Pause" : "Resume"}
@@ -402,7 +392,7 @@ export default function LiveSessionPage() {
               <Button
                 onClick={() => setConfirmEnd(true)}
                 size="sm"
-                className="rounded-full bg-red-600 hover:bg-red-700 text-white border-0 h-8 px-3 text-xs"
+                className="hidden lg:flex rounded-full bg-red-600 hover:bg-red-700 text-white border-0 h-8 px-3 text-xs"
               >
                 <StopCircle className="h-3.5 w-3.5 mr-1" /> End Live
               </Button>
@@ -410,7 +400,7 @@ export default function LiveSessionPage() {
           </div>
 
           {/* ── TWITCH-STYLE CHAT OVERLAY ── */}
-          <div className="absolute left-3 right-3 bottom-14 flex flex-col justify-end gap-1.5 max-h-52 overflow-hidden pointer-events-none">
+          <div className="absolute left-3 right-16 bottom-20 flex flex-col justify-end gap-1.5 max-h-48 overflow-hidden pointer-events-none">
             {comments.slice(-6).map((c) => (
               <div key={c.id} className="flex items-start gap-1.5 w-fit max-w-[85%]">
                 <span className="inline-flex h-5 w-5 rounded-full bg-amber-400 text-[10px] font-bold text-amber-900 items-center justify-center shrink-0 mt-0.5">
@@ -425,8 +415,8 @@ export default function LiveSessionPage() {
             <div ref={commentsEndRef} />
           </div>
 
-          {/* ── BOTTOM STATUS BAR ── */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-center gap-2 px-4 py-3">
+          {/* ── BOTTOM STATUS BAR (desktop only) ── */}
+          <div className="absolute bottom-0 left-0 right-0 hidden lg:flex items-center gap-2 px-4 py-3">
             <span className={`rounded-full text-[11px] font-medium px-2.5 py-1 ${
               cameraStatus === "live" ? "bg-green-600 text-white" :
               cameraStatus === "error" ? "bg-red-600 text-white" :
@@ -448,6 +438,53 @@ export default function LiveSessionPage() {
             <span className="hidden lg:inline rounded-full bg-white/20 backdrop-blur text-[11px] text-white px-2.5 py-1">
               Revenue: {formatMoney(totals.totalRevenue)}
             </span>
+          </div>
+
+          {/* ── MOBILE RIGHT-SIDE ACTIONS (TikTok style) ── */}
+          <div className="absolute right-3 bottom-24 z-30 lg:hidden flex flex-col gap-5">
+            <button onClick={() => { setMobileSheetTab('product'); setMobileSheetOpen(true); }} className="flex flex-col items-center gap-1">
+              <div className="h-11 w-11 rounded-full bg-black/50 backdrop-blur border border-white/20 flex items-center justify-center">
+                <Package className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-[10px] text-white font-medium drop-shadow">Products</span>
+            </button>
+            <button onClick={() => setCameraEnabled(!cameraEnabled)} className="flex flex-col items-center gap-1">
+              <div className="h-11 w-11 rounded-full bg-black/50 backdrop-blur border border-white/20 flex items-center justify-center">
+                <Camera className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-[10px] text-white font-medium drop-shadow">{cameraEnabled ? "Pause" : "Resume"}</span>
+            </button>
+            <button onClick={() => { setMobileSheetTab('sales'); setMobileSheetOpen(true); }} className="flex flex-col items-center gap-1">
+              <div className="h-11 w-11 rounded-full bg-black/50 backdrop-blur border border-white/20 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-[10px] text-white font-medium drop-shadow">Sales</span>
+            </button>
+          </div>
+
+          {/* ── MOBILE BOTTOM BAR (chat input + sheet trigger) ── */}
+          <div className="absolute bottom-0 left-0 right-0 z-30 lg:hidden flex items-center gap-2 px-3" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+            <form onSubmit={handleSellerComment} className="flex-1 flex items-center gap-2 bg-white/15 backdrop-blur rounded-full px-4 py-2.5 border border-white/20">
+              <input
+                placeholder="Reply to viewers…"
+                value={sellerComment}
+                onChange={(e) => setSellerComment(e.target.value)}
+                className="flex-1 bg-transparent text-white placeholder:text-white/60 text-sm outline-none min-w-0"
+                maxLength={500}
+                disabled={sellerPosting}
+              />
+              {sellerComment.trim() && (
+                <button type="submit" disabled={sellerPosting} className="text-amber-400 shrink-0">
+                  <Send className="h-4 w-4" />
+                </button>
+              )}
+            </form>
+            <button
+              onClick={() => setMobileSheetOpen(true)}
+              className="h-10 w-10 rounded-full bg-white/20 backdrop-blur border border-white/30 flex items-center justify-center text-white shrink-0"
+            >
+              <ChevronUp className="h-5 w-5" />
+            </button>
           </div>
 
           {/* ── END LIVE CONFIRMATION OVERLAY ── */}
@@ -476,7 +513,6 @@ export default function LiveSessionPage() {
               </div>
             </div>
           )}
-          </div>{/* end content area */}
           </div>{/* end camera frame */}
         </div>{/* end camera column */}
 
@@ -648,160 +684,127 @@ export default function LiveSessionPage() {
         </div>
       </div>
 
-      {/* ── MOBILE BOTTOM PANEL (product form + sales) ── */}
-      <div
-        className="lg:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 overflow-y-auto"
-        style={{ maxHeight: '45vh' }}
-      >
-        <div className="p-4 space-y-5">
-          {/* Error */}
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-              <p className="text-xs text-red-700">{error}</p>
+      {/* ── MOBILE BOTTOM SHEET ── */}
+      {mobileSheetOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSheetOpen(false)} />
+          <div className="relative bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            {/* Handle bar */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-300" />
             </div>
-          )}
-
-          {/* Product Details */}
-          <div>
-            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-              <Package className="h-4 w-4" /> Product Details
-            </h3>
-            <div className="space-y-3">
-              {/* Photo */}
-              <div>
-                <Label className="text-xs text-slate-500 mb-1 block">Product Photo</Label>
-                <div className="flex items-center gap-2">
-                  {productImagePreview ? (
-                    <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
-                      <img src={productImagePreview} alt="" className="h-full w-full object-cover" />
-                      {imageUploading && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <span className="text-[10px] text-white">↑</span>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => { setProductImageFile(null); setProductImagePreview(null); setProductImageUrl(""); if (productImageInputRef.current) productImageInputRef.current.value = ""; }}
-                        className="absolute top-0.5 right-0.5 rounded-full bg-black/60 p-0.5 text-white"
-                      ><X className="h-2.5 w-2.5" /></button>
+            {/* Tabs */}
+            <div className="flex border-b border-gray-100 shrink-0 px-2">
+              <button
+                onClick={() => setMobileSheetTab('product')}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium border-b-2 transition-colors ${mobileSheetTab === 'product' ? 'text-gray-900 border-gray-900' : 'text-gray-400 border-transparent'}`}
+              >
+                <Package className="h-4 w-4" />Post Product
+              </button>
+              <button
+                onClick={() => setMobileSheetTab('sales')}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium border-b-2 transition-colors ${mobileSheetTab === 'sales' ? 'text-gray-900 border-gray-900' : 'text-gray-400 border-transparent'}`}
+              >
+                <TrendingUp className="h-4 w-4" />Sales
+              </button>
+              <button
+                onClick={() => setMobileSheetTab('end')}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium border-b-2 transition-colors ${mobileSheetTab === 'end' ? 'text-red-600 border-red-600' : 'text-gray-400 border-transparent'}`}
+              >
+                <StopCircle className="h-4 w-4" />End Live
+              </button>
+            </div>
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {mobileSheetTab === 'product' && (
+                <div className="space-y-3">
+                  {error && (
+                    <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-red-700">{error}</p>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => productImageInputRef.current?.click()}
-                      className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:bg-slate-50 shrink-0"
-                    >
-                      <ImagePlus className="h-5 w-5" />
-                      <span className="text-[9px] mt-0.5">Add</span>
-                    </button>
                   )}
-                  <p className="text-[11px] text-slate-400">{imageUploading ? "Uploading…" : productImageUrl ? "✓ Ready" : "Optional product image"}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-slate-500 mb-1 block">Product Title</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg" placeholder="Product name" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Color</Label>
-                  <Input value={color} onChange={(e) => setColor(e.target.value)} className="rounded-lg" placeholder="Black" />
-                </div>
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Size</Label>
-                  <Input value={size} onChange={(e) => setSize(e.target.value)} className="rounded-lg" placeholder="M / 42" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Price (RWF)</Label>
-                  <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="rounded-lg" placeholder="0" />
-                </div>
-                <div>
-                  <Label className="text-xs text-slate-500 mb-1 block">Quantity</Label>
-                  <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg" placeholder="0" />
-                </div>
-              </div>
-              <Button className="w-full rounded-lg" onClick={handlePostProduct} disabled={postingProduct || imageUploading}>
-                <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting…" : "Post Product"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Stream Sales */}
-          <div>
-            <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4" /> Stream Sales
-            </h3>
-            <div className="grid grid-cols-3 gap-2 text-center mb-2">
-              <div className="rounded-lg bg-slate-50 p-2">
-                <div className="text-[10px] text-slate-500">Listed</div>
-                <div className="font-semibold text-sm">{totals.totalListed}</div>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-2">
-                <div className="text-[10px] text-slate-500">Sold</div>
-                <div className="font-semibold text-sm">{totals.totalSold}</div>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-2">
-                <div className="text-[10px] text-slate-500">Revenue</div>
-                <div className="font-semibold text-[11px]">{formatMoney(totals.totalRevenue)}</div>
-              </div>
-            </div>
-            {postedProducts.length === 0 ? (
-              <p className="text-xs text-slate-400">No products posted in this stream yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {postedProducts.map((product) => {
-                  const remaining = Math.max(0, product.quantityAvailable - product.soldCount);
-                  const revenue = product.priceRwf * product.soldCount;
-                  return (
-                    <div key={product.id} className="rounded-lg border border-slate-200 p-2">
-                      <div className="text-xs font-semibold">{product.title}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">
-                        {product.color || "—"} · {product.size || "—"} · {formatMoney(product.priceRwf)}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">
-                        Sold: {product.soldCount}/{product.quantityAvailable} · {formatMoney(revenue)}
-                      </div>
-                      <div className="mt-1.5 flex items-center justify-end gap-1">
-                        <Button size="sm" variant="outline" className="h-7 px-2 text-red-500 hover:text-red-600 hover:border-red-300" onClick={() => handleDeleteProduct(product.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRecordSale(product.id, -1)} disabled={product.soldCount === 0}>
-                          <Minus className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="sm" className="h-7 px-2" onClick={() => handleRecordSale(product.id, 1)} disabled={remaining <= 0}>
-                          <Plus className="h-3.5 w-3.5" /> Sale
-                        </Button>
-                      </div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Product Photo</Label>
+                    <div className="flex items-center gap-2">
+                      {productImagePreview ? (
+                        <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                          <img src={productImagePreview} alt="" className="h-full w-full object-cover" />
+                          {imageUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><span className="text-[10px] text-white">↑</span></div>}
+                          <button type="button" onClick={() => { setProductImageFile(null); setProductImagePreview(null); setProductImageUrl(""); if (productImageInputRef.current) productImageInputRef.current.value = ""; }} className="absolute top-0.5 right-0.5 rounded-full bg-black/60 p-0.5 text-white"><X className="h-2.5 w-2.5" /></button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => productImageInputRef.current?.click()} className="flex h-14 w-14 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:bg-slate-50 shrink-0">
+                          <ImagePlus className="h-5 w-5" /><span className="text-[9px] mt-0.5">Add</span>
+                        </button>
+                      )}
+                      <p className="text-[11px] text-slate-400">{imageUploading ? "Uploading…" : productImageUrl ? "✓ Ready" : "Optional product image"}</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Product Title</Label>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg" placeholder="Product name" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs text-slate-500 mb-1 block">Color</Label><Input value={color} onChange={(e) => setColor(e.target.value)} className="rounded-lg" placeholder="Black" /></div>
+                    <div><Label className="text-xs text-slate-500 mb-1 block">Size</Label><Input value={size} onChange={(e) => setSize(e.target.value)} className="rounded-lg" placeholder="M / 42" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs text-slate-500 mb-1 block">Price (RWF)</Label><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="rounded-lg" placeholder="0" /></div>
+                    <div><Label className="text-xs text-slate-500 mb-1 block">Quantity</Label><Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg" placeholder="0" /></div>
+                  </div>
+                  <Button className="w-full rounded-lg" onClick={async () => { await handlePostProduct(); setMobileSheetOpen(false); }} disabled={postingProduct || imageUploading}>
+                    <Plus className="mr-2 h-4 w-4" /> {postingProduct ? "Posting…" : "Post Product"}
+                  </Button>
+                </div>
+              )}
+              {mobileSheetTab === 'sales' && (
+                <div>
+                  <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                    <div className="rounded-lg bg-slate-50 p-3"><div className="text-[10px] text-slate-500">Listed</div><div className="font-semibold text-sm mt-0.5">{totals.totalListed}</div></div>
+                    <div className="rounded-lg bg-slate-50 p-3"><div className="text-[10px] text-slate-500">Sold</div><div className="font-semibold text-sm mt-0.5">{totals.totalSold}</div></div>
+                    <div className="rounded-lg bg-slate-50 p-3"><div className="text-[10px] text-slate-500">Revenue</div><div className="font-semibold text-[11px] mt-0.5">{formatMoney(totals.totalRevenue)}</div></div>
+                  </div>
+                  {postedProducts.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">No products posted yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {postedProducts.map((product) => {
+                        const remaining = Math.max(0, product.quantityAvailable - product.soldCount);
+                        const revenue = product.priceRwf * product.soldCount;
+                        return (
+                          <div key={product.id} className="rounded-lg border border-slate-200 p-3">
+                            <div className="text-xs font-semibold">{product.title}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">{product.color || "—"} · {product.size || "—"} · {formatMoney(product.priceRwf)}</div>
+                            <div className="text-[11px] text-slate-500">Sold: {product.soldCount}/{product.quantityAvailable} · {formatMoney(revenue)}</div>
+                            <div className="mt-2 flex items-center justify-end gap-1">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-red-500" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRecordSale(product.id, -1)} disabled={product.soldCount === 0}><Minus className="h-3.5 w-3.5" /></Button>
+                              <Button size="sm" className="h-7 px-2" onClick={() => handleRecordSale(product.id, 1)} disabled={remaining <= 0}><Plus className="h-3.5 w-3.5" /> Sale</Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              {mobileSheetTab === 'end' && (
+                <div className="py-8 text-center">
+                  <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                    <StopCircle className="h-8 w-8 text-red-600" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-xl mb-2">End your live?</h3>
+                  <p className="text-gray-500 text-sm mb-8">Your viewers will be disconnected and the stream will end permanently.</p>
+                  <Button onClick={handleEndSession} className="w-full rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold py-4 text-base h-auto">
+                    <StopCircle className="h-5 w-5 mr-2" /> End Live Now
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* ── MOBILE CHAT INPUT (pinned at very bottom) ── */}
-      <form
-        onSubmit={handleSellerComment}
-        className="lg:hidden flex gap-2 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0"
-        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-      >
-        <Input
-          placeholder="Reply to viewers…"
-          value={sellerComment}
-          onChange={(e) => setSellerComment(e.target.value)}
-          className="h-9 text-sm rounded-full"
-          maxLength={500}
-          disabled={sellerPosting}
-        />
-        <Button type="submit" size="sm" className="h-9 w-9 p-0 rounded-full shrink-0" disabled={sellerPosting || !sellerComment.trim()}>
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      )}
     </div>
   );
 }
