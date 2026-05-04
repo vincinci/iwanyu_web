@@ -133,9 +133,22 @@ const Index = () => {
                             <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
                             <span className="h-4 w-4 rounded-full bg-red-500" />
                           </div>
-                          <span className="text-white/60 text-xs">{session.vendorName}</span>
                         </div>
                       )}
+                      {/* Bottom overlay — what's happening */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 pt-8 pb-3">
+                        <p className="text-[11px] text-white/70 truncate">{session.vendorName}</p>
+                        <p className="text-xs font-semibold text-white truncate leading-tight">{session.productTitle || "Live Stream"}</p>
+                        {session.auctionEnabled && session.currentBidRwf > 0 && (
+                          <p className="text-[10px] text-yellow-300 font-medium mt-0.5">{formatMoney(session.currentBidRwf)} current bid</p>
+                        )}
+                        {session.auctionEnabled && session.currentBidRwf === 0 && (
+                          <p className="text-[10px] text-yellow-300/80 font-medium mt-0.5">Bidding open — no bids yet</p>
+                        )}
+                        {!session.auctionEnabled && (
+                          <p className="text-[10px] text-white/50 mt-0.5">Live now · tap to watch</p>
+                        )}
+                      </div>
                       <div className="absolute top-2 left-2 flex gap-1">
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
                           <span className="h-1 w-1 rounded-full bg-white animate-pulse" /> LIVE
@@ -151,13 +164,13 @@ const Index = () => {
                           </span>
                         )}
                       </div>
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur">
+                      <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur">
                         <Eye className="h-3 w-3" /> {session.watchers}
                       </div>
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-gray-500 truncate">{session.vendorName}</p>
-                      <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{session.productTitle}</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{session.productTitle || "Live Stream"}</p>
                       {session.auctionEnabled && (
                         <p className="text-xs text-purple-700 font-medium mt-1">{formatMoney(session.currentBidRwf)} current bid</p>
                       )}
