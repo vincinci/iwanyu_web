@@ -16,7 +16,7 @@ interface CreateOrderRequest {
   email: string;
   phone: string;
   address: string;
-  paymentMethod: "momo" | "wallet";
+  paymentMethod: "momo" | "wallet" | "cod";
   discountCode?: string | null;
 }
 
@@ -283,11 +283,11 @@ Deno.serve(async (req: Request) => {
     }
 
     step = "notifications.enqueue";
-    const paymentMethodLabel = paymentMethod === "wallet" ? "Wallet" : "Mobile Money";
+    const paymentMethodLabel = paymentMethod === "wallet" ? "Wallet" : paymentMethod === "cod" ? "Cash on Delivery" : "Mobile Money";
 
     // ── Notify each vendor + buyer at order placement (fire-and-forget) ──
     // Wallet orders are emailed only after successful wallet deduction.
-    if (RESEND_API_KEY && paymentMethod !== "wallet") {
+    if (RESEND_API_KEY && paymentMethod !== "wallet" && paymentMethod !== "cod") {
       (async () => {
         try {
           // Aggregate order details per vendor

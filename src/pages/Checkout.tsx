@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { 
-  ShoppingBag, Smartphone, ArrowLeft, Lock, Truck, 
-  ChevronRight, Shield, CheckCircle2, Loader2, Wallet 
+  ShoppingBag, ArrowLeft, Lock, Truck, 
+  ChevronRight, Shield, Loader2
 } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,6 @@ import { calculateServiceFee, GUEST_SERVICE_FEE_RATE } from "@/lib/fees";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
-import { initializePawaPayDeposit } from "@/lib/pawapay";
-import { getUserWalletBalance } from "@/lib/liveSessions";
-import { getPaymentConfig, getUserCountry, detectCountryFromPhone, type CountryCode, type MobileNetwork } from "@/lib/region";
 import { usePreventDoubleClick } from "@/hooks/useRateLimit";
 import { validateEmail, validatePhone } from "@/lib/security";
 
@@ -34,13 +31,6 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"momo" | "wallet">("momo");
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [countryCode, setCountryCode] = useState<CountryCode>("RW");
-  const [paymentConfig, setPaymentConfig] = useState(() => getPaymentConfig("RW"));
-  const [mobileNetworks, setMobileNetworks] = useState<MobileNetwork[]>(paymentConfig.mobileNetworks);
-  const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(paymentConfig.mobileNetworks[0]);
-  const [isLoadingRegion, setIsLoadingRegion] = useState(true);
 
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<null | {
@@ -48,51 +38,6 @@ export default function CheckoutPage() {
     discountRwf: number;
   }>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
-
-  // Fetch wallet balance when user changes
-  useEffect(() => {
-    if (user?.id) {
-      getUserWalletBalance(user.id).then(wallet => {
-        if (wallet) {
-          setWalletBalance(wallet.availableRwf);
-        }
-      });
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    const loadRegion = async () => {
-      try {
-        const country = await getUserCountry();
-        setCountryCode(country);
-        const config = getPaymentConfig(country);
-        setPaymentConfig(config);
-        setMobileNetworks(config.mobileNetworks);
-        if (config.mobileNetworks.length > 0) {
-          setSelectedNetwork(config.mobileNetworks[0]);
-        }
-      } catch (error) {
-        console.error("Failed to detect region:", error);
-      } finally {
-        setIsLoadingRegion(false);
-      }
-    };
-
-    void loadRegion();
-  }, []);
-
-  useEffect(() => {
-    const detected = detectCountryFromPhone(phone);
-    if (detected && detected !== countryCode) {
-      const config = getPaymentConfig(detected);
-      setCountryCode(detected);
-      setPaymentConfig(config);
-      setMobileNetworks(config.mobileNetworks);
-      if (config.mobileNetworks.length > 0) {
-        setSelectedNetwork(config.mobileNetworks[0]);
-      }
-    }
-  }, [phone, countryCode]);
 
   const discountRwf = appliedDiscount?.discountRwf ?? 0;
   const discountedSubtotal = Math.max(0, Math.round(subtotal - discountRwf));
@@ -177,13 +122,6 @@ export default function CheckoutPage() {
         throw new Error("Checkout is not configured.");
       }
 
-      // Validate wallet payment if selected
-      if (paymentMethod === "wallet") {
-        if (walletBalance === null || walletBalance < total) {
-          throw new Error(`Insufficient wallet balance. Required: ${formatMoney(total)}, Available: ${formatMoney(walletBalance ?? 0)}`);
-        }
-      }
-
       const session = (await supabase.auth.getSession()).data.session;
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error("Please log in to continue");
@@ -210,7 +148,7 @@ export default function CheckoutPage() {
               email: trimmedEmail,
               phone: trimmedPhone,
               address: trimmedAddress,
-              paymentMethod,
+              paymentMethod: "cod",
               discountCode: appliedDiscount?.code ?? null,
             }),
           }
@@ -235,64 +173,11 @@ export default function CheckoutPage() {
           throw new Error(errorMessage);
         }
 
-        const { orderId, total: serverTotal, paymentStatus } = await createOrderRes.json();
+        const { orderId } = await createOrderRes.json();
 
-        // Order is persisted server-side; clear local cart before moving to payment/confirmation.
+        // Order is persisted server-side; clear local cart and go to confirmation.
         clear();
-
-        // If wallet payment, navigate to order confirmation directly
-        if (paymentMethod === "wallet") {
-          sessionStorage.setItem("pendingOrderId", orderId);
-          // Navigate to order confirmation page (or success page)
-          navigate(`/order-confirmation/${orderId}`);
-          return;
-        }
-
-        // Mobile money payment via PawaPay
-        const paymentCountry = detectCountryFromPhone(trimmedPhone) ?? countryCode;
-        const result = await initializePawaPayDeposit(
-          {
-            amount: serverTotal,
-            currency: "RWF",
-            country: paymentCountry,
-            accountIdentifier: trimmedPhone,
-            provider: selectedNetwork?.shortName,
-            correlationId: orderId, // Use orderId for idempotency
-          },
-          accessToken
-        );
-
-        if (!result?.depositId) {
-          throw new Error("Failed to initialize payment. Please try again.");
-        }
-
-        // Store depositId in wallet_transactions as pending
-        // This will be matched with the webhook callback
-        const { error: txnCreateErr } = await supabase
-          .from("wallet_transactions")
-          .insert({
-            user_id: user.id,
-            type: "purchase",
-            amount_rwf: serverTotal,
-            external_transaction_id: result.depositId,
-            payment_method: "pawapay_momo",
-            status: "pending",
-            description: `PawaPay payment for order ${orderId}`,
-          });
-
-        if (txnCreateErr) {
-          console.warn("Failed to create pending transaction:", txnCreateErr);
-          // Continue anyway - the webhook will handle it
-        }
-
-        sessionStorage.setItem("pendingOrderId", orderId);
-        sessionStorage.setItem("pendingDepositId", result.depositId);
-
-        // Direct deposit flow: customer confirms the payment on their phone.
-        // Show the in-app verification page which polls and reconciles the order.
-        navigate(
-          `/payment-callback?orderId=${encodeURIComponent(orderId)}&depositId=${encodeURIComponent(result.depositId)}`,
-        );
+        navigate(`/order-confirmation/${orderId}`);
       } catch (e) {
         toast({
           title: t("checkout.checkoutFailed"),
@@ -410,111 +295,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Payment Method Selection */}
-                <div className="bg-white rounded-2xl p-6 border border-gray-100">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">Payment</h2>
-                      <p className="text-sm text-gray-500">{t("checkout.paymentSubtitle")}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("momo")}
-                      className={`relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
-                        paymentMethod === "momo" 
-                          ? "border-amber-500 bg-amber-50" 
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-                        paymentMethod === "momo" ? "bg-amber-500" : "bg-gray-100"
-                      }`}>
-                        <Smartphone className={`h-6 w-6 ${paymentMethod === "momo" ? "text-white" : "text-gray-500"}`} />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-gray-900">{t("checkout.mobileMoney")}</div>
-                        <div className="text-xs text-gray-500">{t("checkout.mobileMoneyHint")}</div>
-                      </div>
-                      {paymentMethod === "momo" && (
-                        <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-amber-500" />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("wallet")}
-                      disabled={walletBalance === null || walletBalance < total}
-                      className={`relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
-                        walletBalance === null || walletBalance < total
-                          ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
-                          : paymentMethod === "wallet" 
-                            ? "border-blue-500 bg-blue-50" 
-                            : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-                        paymentMethod === "wallet" ? "bg-blue-500" : "bg-gray-100"
-                      }`}>
-                        <Wallet className={`h-6 w-6 ${paymentMethod === "wallet" ? "text-white" : "text-gray-500"}`} />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-gray-900">{t("checkout.wallet") || "Wallet"}</div>
-                        <div className="text-xs text-gray-500">
-                          {walletBalance === null 
-                            ? "Loading..." 
-                            : walletBalance < total
-                              ? `Insufficient (${formatMoney(walletBalance)})`
-                              : formatMoney(walletBalance)
-                          }
-                        </div>
-                      </div>
-                      {paymentMethod === "wallet" && (
-                        <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-blue-500" />
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="mt-4 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
-                    <Lock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-blue-700">
-                      {paymentMethod === "wallet" 
-                        ? "Your wallet will be debited immediately upon order confirmation."
-                        : t("checkout.redirectHint")
-                      }
-                    </p>
-                  </div>
-
-                  {paymentMethod === "momo" && (
-                    <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                      <p className="text-sm font-medium text-gray-900 mb-3">Available payment methods</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {mobileNetworks.map((network) => (
-                          <button
-                            key={network.id}
-                            type="button"
-                            onClick={() => setSelectedNetwork(network)}
-                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
-                              selectedNetwork?.id === network.id
-                                ? "border-amber-500 bg-amber-50 text-gray-900"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                            }`}
-                          >
-                            {network.name}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-xs text-gray-500">
-                        Detected region: {paymentConfig.country.flag} {paymentConfig.country.name}
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Right Column - Order Summary */}
@@ -633,7 +413,7 @@ export default function CheckoutPage() {
                       </>
                     ) : (
                       <>
-                        {t("checkout.pay")} {formatMoney(total)}
+                        Place Order — {formatMoney(total)}
                         <ChevronRight className="ml-2 h-5 w-5" />
                       </>
                     )}
