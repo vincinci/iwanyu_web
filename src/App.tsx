@@ -29,6 +29,7 @@ const AdminVendorsPage = lazy(() => import("./pages/admin/AdminVendors"));
 const AdminProductsPage = lazy(() => import("./pages/admin/AdminProducts"));
 const AdminDiscountsPage = lazy(() => import("./pages/admin/AdminDiscounts"));
 const AdminApplicationsPage = lazy(() => import("./pages/admin/AdminApplications"));
+const AdminWithdrawalsPage = lazy(() => import("./pages/admin/AdminWithdrawals"));
 const StaticPage = lazy(() => import("./pages/StaticPage"));
 const SellerProductsPage = lazy(() => import("./pages/seller/SellerProducts"));
 const SellerNewProductPage = lazy(() => import("./pages/seller/SellerNewProduct"));
@@ -250,6 +251,14 @@ const AppContent = () => {
           element={
             <RequireAuth roles={["admin"]}>
               {withSuspense(<AdminApplicationsPage />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/withdrawals"
+          element={
+            <RequireAuth roles={["admin"]}>
+              {withSuspense(<AdminWithdrawalsPage />)}
             </RequireAuth>
           }
         />

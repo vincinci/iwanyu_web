@@ -1,4 +1,4 @@
-import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Search, Trash2, Percent } from "lucide-react";
+import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Search, Trash2, Percent, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ const nav = [
   { label: "Products", icon: Boxes, href: "/admin/products" },
   { label: "Discounts", icon: Percent, href: "/admin/discounts" },
   { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
+  { label: "Withdrawals", icon: Wallet, href: "/admin/withdrawals" },
 ];
 
 export default function AdminVendorsPage() {

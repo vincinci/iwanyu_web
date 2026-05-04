@@ -21,9 +21,14 @@ type VendorPayoutRow = {
     completed_at: string | null;
 };
 
-type OrderItemRow = {
-    price_rwf: number;
-    quantity: number;
+type PayoutSettingsRow = {
+    bank_name: string | null;
+    bank_account_number: string | null;
+    bank_account_holder: string | null;
+    bank_set_at: string | null;
+    mobile_provider: string | null;
+    mobile_number: string | null;
+    mobile_account_name: string | null;
 };
 
 type WithdrawalRequestRow = {
@@ -39,16 +44,6 @@ type WithdrawalRequestRow = {
     reviewed_at: string | null;
 };
 
-type PayoutSettingsRow = {
-    bank_name: string | null;
-    bank_account_number: string | null;
-    bank_account_holder: string | null;
-    bank_set_at: string | null;
-    mobile_provider: string | null;
-    mobile_number: string | null;
-    mobile_account_name: string | null;
-};
-
 export default function SellerPayoutsPage() {
     const { user } = useAuth();
     const { t } = useLanguage();
@@ -59,13 +54,13 @@ export default function SellerPayoutsPage() {
     const [loading, setLoading] = useState(false);
     const [ownedVendorIds, setOwnedVendorIds] = useState<string[]>([]);
     const [payouts, setPayouts] = useState<VendorPayoutRow[]>([]);
-    const [requests, setRequests] = useState<WithdrawalRequestRow[]>([]);
     const [grossSalesRwf, setGrossSalesRwf] = useState(0);
+    const [requests, setRequests] = useState<WithdrawalRequestRow[]>([]);
+    const [payoutSettings, setPayoutSettings] = useState<PayoutSettingsRow | null>(null);
     const [requestAmount, setRequestAmount] = useState("");
     const [requestNote, setRequestNote] = useState("");
     const [submittingRequest, setSubmittingRequest] = useState(false);
-    const [payoutSettings, setPayoutSettings] = useState<PayoutSettingsRow | null>(null);
-    const [payoutMethodChoice, setPayoutMethodChoice] = useState<"bank" | "mobile">("bank");
+    const [payoutMethodChoice, setPayoutMethodChoice] = useState<"mobile" | "bank">("mobile");
 
     useEffect(() => {
         let cancelled = false;
@@ -89,67 +84,59 @@ export default function SellerPayoutsPage() {
 
                 setOwnedVendorIds(vendorIds);
 
-                if (vendorIds.length === 0) {
-                    setPayouts([]);
-                    setRequests([]);
-                    setGrossSalesRwf(0);
-                    return;
-                }
-
                 const [payoutsResult, salesResult, requestsResult, settingsResult] = await Promise.all([
-                    supabase
-                        .from("vendor_payouts")
-                        .select("id, order_id, amount_rwf, status, provider, provider_reference, created_at, completed_at")
-                        .in("vendor_id", vendorIds)
-                        .order("created_at", { ascending: false })
-                        .limit(100),
-                    supabase
-                        .from("order_items")
-                        .select("price_rwf, quantity")
-                        .in("vendor_id", vendorIds)
-                        .limit(5000),
-                    supabase
-                        .from("vendor_withdrawal_requests")
-                        .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, created_at, reviewed_at")
-                        .in("vendor_id", vendorIds)
-                        .order("created_at", { ascending: false })
-                        .limit(100),
-                    supabase
-                        .from("vendor_payout_settings")
-                        .select("bank_name, bank_account_number, bank_account_holder, bank_set_at, mobile_provider, mobile_number, mobile_account_name")
-                        .eq("vendor_id", vendorIds[0])
-                        .maybeSingle(),
+                    vendorIds.length > 0
+                        ? supabase
+                              .from("vendor_payouts")
+                              .select("id, order_id, amount_rwf, status, provider, provider_reference, created_at, completed_at")
+                              .in("vendor_id", vendorIds)
+                              .order("created_at", { ascending: false })
+                              .limit(100)
+                        : Promise.resolve({ data: [], error: null }),
+                    // Gross sales: sum of order_items for this vendor
+                    vendorIds.length > 0
+                        ? supabase
+                              .from("order_items")
+                              .select("price_rwf, quantity")
+                              .in("vendor_id", vendorIds)
+                        : Promise.resolve({ data: [], error: null }),
+                    // Seller's own withdrawal requests
+                    vendorIds.length > 0
+                        ? supabase
+                              .from("vendor_withdrawal_requests")
+                              .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, created_at, reviewed_at")
+                              .in("vendor_id", vendorIds)
+                              .order("created_at", { ascending: false })
+                              .limit(100)
+                        : Promise.resolve({ data: [], error: null }),
+                    vendorIds.length > 0
+                        ? supabase
+                              .from("vendor_payout_settings")
+                              .select("bank_name, bank_account_number, bank_account_holder, bank_set_at, mobile_provider, mobile_number, mobile_account_name")
+                              .eq("vendor_id", vendorIds[0])
+                              .maybeSingle()
+                        : Promise.resolve({ data: null, error: null }),
                 ]);
-
-                if (payoutsResult.error) throw payoutsResult.error;
-                if (salesResult.error) throw salesResult.error;
-                if (requestsResult.error) throw requestsResult.error;
-                // settingsResult failure is non-fatal — ignore error
 
                 if (cancelled) return;
 
-                const payoutRows = (payoutsResult.data ?? []) as VendorPayoutRow[];
-                const salesRows = (salesResult.data ?? []) as OrderItemRow[];
-                const requestRows = (requestsResult.data ?? []) as WithdrawalRequestRow[];
+                setPayouts((payoutsResult.data ?? []) as VendorPayoutRow[]);
 
-                setPayouts(payoutRows);
-                setRequests(requestRows);
+                // Compute gross sales total
+                const salesRows = (salesResult.data ?? []) as Array<{ price_rwf: number; quantity: number }>;
+                const gross = salesRows.reduce((sum, row) => sum + Number(row.price_rwf ?? 0) * Number(row.quantity ?? 1), 0);
+                setGrossSalesRwf(gross);
+
+                setRequests((requestsResult.data ?? []) as WithdrawalRequestRow[]);
+
                 const ps = (settingsResult.data as PayoutSettingsRow | null) ?? null;
                 setPayoutSettings(ps);
-                if (ps?.mobile_number && !ps?.bank_account_number) {
-                    setPayoutMethodChoice("mobile");
-                }
-                setGrossSalesRwf(
-                    salesRows.reduce(
-                        (sum, row) => sum + Number(row.price_rwf ?? 0) * Number(row.quantity ?? 0),
-                        0,
-                    ),
-                );
+                // Default payout method to whichever is set
+                if (ps?.mobile_number) setPayoutMethodChoice("mobile");
+                else if (ps?.bank_account_number) setPayoutMethodChoice("bank");
             } catch {
                 if (!cancelled) {
                     setPayouts([]);
-                    setRequests([]);
-                    setGrossSalesRwf(0);
                     toast({
                         title: t("sellerPayouts.loadFailedTitle"),
                         description: t("sellerPayouts.loadFailedDesc"),

@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle, Percent } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle, Percent, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ const nav = [
   { labelKey: "admin.products", icon: Boxes, href: "/admin/products" },
   { labelKey: "admin.discounts", icon: Percent, href: "/admin/discounts" },
   { labelKey: "admin.applications", icon: BadgeCheck, href: "/admin/applications" },
+  { labelKey: "admin.withdrawals", icon: Wallet, href: "/admin/withdrawals" },
 ];
 
 type VendorApplication = {

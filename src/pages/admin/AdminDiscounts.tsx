@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, ClipboardList, Percent, Search, ShieldAlert, Tag, Trash2, Users, Boxes } from "lucide-react";
+import { BadgeCheck, ClipboardList, Percent, Search, ShieldAlert, Tag, Trash2, Users, Boxes, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ const nav = [
   { label: "Products", icon: Boxes, href: "/admin/products" },
   { label: "Discounts", icon: Percent, href: "/admin/discounts", active: true },
   { label: "Applications", icon: BadgeCheck, href: "/admin/applications" },
+  { label: "Withdrawals", icon: Wallet, href: "/admin/withdrawals" },
 ];
 
 export default function AdminDiscountsPage() {
