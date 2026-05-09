@@ -82,18 +82,33 @@ export default function AdminApplicationsPage() {
 
   async function approveApplication(app: VendorApplication) {
     if (!supabase) throw new Error(t("admin.supabaseMissing"));
-    const vendorId = createId("v");
-    
-    const { error: vendorErr } = await supabase.from("vendors").insert({
-      id: vendorId,
-      name: app.store_name,
-      shop_name: app.store_name,
-      location: app.location,
-      verified: false,
-      owner_user_id: app.owner_user_id,
-      status: "approved",
-    });
-    if (vendorErr) throw new Error(vendorErr.message);
+    let vendorId = app.vendor_id;
+
+    if (vendorId) {
+      const { error: vendorUpdateErr } = await supabase
+        .from("vendors")
+        .update({
+          name: app.store_name,
+          shop_name: app.store_name,
+          location: app.location,
+          status: "approved",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vendorId);
+      if (vendorUpdateErr) throw new Error(vendorUpdateErr.message);
+    } else {
+      vendorId = createId("v");
+      const { error: vendorErr } = await supabase.from("vendors").insert({
+        id: vendorId,
+        name: app.store_name,
+        shop_name: app.store_name,
+        location: app.location,
+        verified: false,
+        owner_user_id: app.owner_user_id,
+        status: "approved",
+      });
+      if (vendorErr) throw new Error(vendorErr.message);
+    }
 
     const { error: profileErr } = await supabase
       .from("profiles")

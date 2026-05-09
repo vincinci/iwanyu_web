@@ -9,6 +9,7 @@ import { useMarketplace } from "@/context/marketplace";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { createId } from "@/lib/ids";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Upload, Camera, CreditCard, Store, ArrowRight, ArrowLeft, Loader2, Mail, User, X, RefreshCw } from "lucide-react";
 
@@ -287,7 +288,7 @@ export default function SellerOnboardingPage() {
         location: location.trim() || undefined,
         verified: false,
         ownerUserId: user.id,
-        status: "approved",
+        status: "pending",
       });
 
       // Update vendor with verification images
@@ -302,6 +303,18 @@ export default function SellerOnboardingPage() {
           verification_status: "pending",
         })
         .eq("id", vendor.id);
+
+      const { error: appErr } = await supabase.from("vendor_applications").insert({
+        id: createId("va"),
+        owner_user_id: user.id,
+        store_name: storeName.trim(),
+        location: location.trim() || null,
+        status: "pending",
+        vendor_id: vendor.id,
+      });
+      if (appErr) {
+        throw new Error(appErr.message);
+      }
 
       await refresh();
 

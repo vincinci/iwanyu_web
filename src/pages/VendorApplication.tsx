@@ -58,7 +58,7 @@ export default function VendorApplicationPage() {
         location: location.trim(),
         verified: false,
         owner_user_id: user.id,
-        status: 'approved',
+        status: "pending",
       });
 
       if (vendorErr) throw new Error(vendorErr.message);
@@ -69,7 +69,7 @@ export default function VendorApplicationPage() {
         owner_user_id: user.id,
         store_name: storeName.trim(),
         location: location.trim(),
-        status: "approved",
+        status: "pending",
         vendor_id: vendorId,
       });
 

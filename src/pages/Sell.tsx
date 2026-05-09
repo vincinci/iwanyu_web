@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth";
 import { useMarketplace } from "@/context/marketplace";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { createId } from "@/lib/ids";
 import type { Vendor } from "@/types/vendor";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useMemo, useState } from "react";
@@ -181,18 +182,31 @@ export default function SellPage() {
                     try {
                       setSubmittingApplication(true);
                       await setRole("seller");
-                      await createVendor({
+                      const vendor = await createVendor({
                         name: storeName.trim(),
                         location: location.trim() || undefined,
                         verified: false,
                         ownerUserId: user.id,
-                        status: "approved",
+                        status: "pending",
                       });
+
+                      const { error: appErr } = await supabase
+                        .from("vendor_applications")
+                        .insert({
+                          id: createId("va"),
+                          owner_user_id: user.id,
+                          store_name: storeName.trim(),
+                          location: location.trim() || null,
+                          status: "pending",
+                          vendor_id: vendor.id,
+                        });
+                      if (appErr) throw new Error(appErr.message);
+
                       await refresh();
 
                       toast({
-                        title: "Store created",
-                        description: "Welcome! Your dashboard is ready.",
+                        title: "Application submitted",
+                        description: "Your seller application is now pending admin review.",
                       });
                       navigate("/seller");
                     } catch (error) {
