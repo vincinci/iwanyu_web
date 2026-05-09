@@ -82,60 +82,46 @@ export default function AdminApplicationsPage() {
 
       if (!appsErr && !vendorsErr && appsBefore && vendorsData) {
         const vendors = vendorsData as VendorIdentityRow[];
+        const apps = appsBefore as VendorApplication[];
         const vendorIdsWithApplications = new Set(
-          (appsBefore as VendorApplication[])
-            .map((a) => a.vendor_id)
-            .filter((id): id is string => Boolean(id))
+          apps.map((a) => a.vendor_id).filter((id): id is string => Boolean(id))
         );
 
-        const missingApplications = vendors
+        const synthesizedMissing = vendors
           .filter((v) => v.owner_user_id)
           .filter((v) => !vendorIdsWithApplications.has(v.id))
           .map((v) => ({
-            id: createId("va"),
-            owner_user_id: v.owner_user_id,
+            id: `vendor-${v.id}`,
+            owner_user_id: v.owner_user_id as string,
             store_name: v.name,
             location: v.location,
-            status:
-              v.status === "approved"
-                ? "approved"
-                : v.status === "rejected"
-                ? "rejected"
-                : "pending",
+            status: toAppStatus(v.status),
             vendor_id: v.id,
+            created_at: v.created_at,
           }));
 
-        if (missingApplications.length > 0) {
-          await supabase.from("vendor_applications").insert(missingApplications);
-        }
+        const vendorsById = new Map(vendors.map((v) => [v.id, v]));
+        const vendorsByOwner = new Map(
+          vendors
+            .filter((v) => v.owner_user_id)
+            .map((v) => [v.owner_user_id as string, v])
+        );
 
-        const { data: appsAfter, error: appsAfterErr } = await supabase
-          .from("vendor_applications")
-          .select("id, owner_user_id, store_name, location, status, vendor_id, created_at")
-          .order("created_at", { ascending: false });
+        const combined = [...apps, ...synthesizedMissing].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
-        if (!appsAfterErr && appsAfter) {
-          const vendorsById = new Map(vendors.map((v) => [v.id, v]));
-          const vendorsByOwner = new Map(
-            vendors
-              .filter((v) => v.owner_user_id)
-              .map((v) => [v.owner_user_id as string, v])
-          );
+        const enriched = combined.map((app) => {
+          const vendor = (app.vendor_id ? vendorsById.get(app.vendor_id) : undefined) ?? vendorsByOwner.get(app.owner_user_id);
+          return {
+            ...app,
+            selfie_url: vendor?.selfie_url ?? null,
+            id_front_url: vendor?.id_front_url ?? null,
+            id_back_url: vendor?.id_back_url ?? null,
+            verification_status: vendor?.verification_status ?? null,
+          };
+        });
 
-          const enriched = (appsAfter as VendorApplication[]).map((app) => {
-            const vendor = (app.vendor_id ? vendorsById.get(app.vendor_id) : undefined) ?? vendorsByOwner.get(app.owner_user_id);
-            return {
-              ...app,
-              selfie_url: vendor?.selfie_url ?? null,
-              id_front_url: vendor?.id_front_url ?? null,
-              id_back_url: vendor?.id_back_url ?? null,
-              verification_status: vendor?.verification_status ?? null,
-            };
-          });
-
-          setAllApplications(enriched);
-          setApplications(enriched.filter((a) => a.status === "pending") as VendorApplication[]);
-        }
+        setAllApplications(enriched);
+        setApplications(enriched.filter((a) => a.status === "pending") as VendorApplication[]);
       } else if (!vendorsErr && vendorsData) {
         // Fallback path for environments where vendor_applications RLS blocks select.
         const vendors = vendorsData as VendorIdentityRow[];
