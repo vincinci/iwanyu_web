@@ -185,18 +185,33 @@ export default function AdminApplicationsPage() {
     let vendorId = app.vendor_id;
 
     if (vendorId) {
-      const { error: vendorUpdateErr } = await supabase
+      // Some deployments may not yet have verification_status; fall back to core fields.
+      const preferredPayload = {
+        name: app.store_name,
+        shop_name: app.store_name,
+        location: app.location,
+        status: "approved",
+        verification_status: "approved",
+      };
+
+      let vendorUpdate = await supabase
         .from("vendors")
-        .update({
-          name: app.store_name,
-          shop_name: app.store_name,
-          location: app.location,
-          status: "approved",
-          verification_status: "approved",
-          updated_at: new Date().toISOString(),
-        })
+        .update(preferredPayload)
         .eq("id", vendorId);
-      if (vendorUpdateErr) throw new Error(vendorUpdateErr.message);
+
+      if (vendorUpdate.error) {
+        vendorUpdate = await supabase
+          .from("vendors")
+          .update({
+            name: app.store_name,
+            shop_name: app.store_name,
+            location: app.location,
+            status: "approved",
+          })
+          .eq("id", vendorId);
+      }
+
+      if (vendorUpdate.error) throw new Error(vendorUpdate.error.message);
     } else {
       vendorId = createId("v");
       const { error: vendorErr } = await supabase.from("vendors").insert({
@@ -242,11 +257,19 @@ export default function AdminApplicationsPage() {
   async function rejectApplication(app: VendorApplication) {
     if (!supabase) throw new Error(t("admin.supabaseMissing"));
     if (app.vendor_id) {
-      const { error: vendorErr } = await supabase
+      let vendorUpdate = await supabase
         .from("vendors")
-        .update({ status: "rejected", verification_status: "rejected", updated_at: new Date().toISOString() })
+        .update({ status: "rejected", verification_status: "rejected" })
         .eq("id", app.vendor_id);
-      if (vendorErr) throw new Error(vendorErr.message);
+
+      if (vendorUpdate.error) {
+        vendorUpdate = await supabase
+          .from("vendors")
+          .update({ status: "rejected" })
+          .eq("id", app.vendor_id);
+      }
+
+      if (vendorUpdate.error) throw new Error(vendorUpdate.error.message);
     }
 
     if (!app.id.startsWith("vendor-")) {
