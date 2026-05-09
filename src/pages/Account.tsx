@@ -245,9 +245,11 @@ export default function AccountPage() {
                       <Link to="/seller">
                         <Button variant="outline" className="rounded-full">{t("account.sellerDashboard")}</Button>
                       </Link>
-                      <Link to="/admin">
-                        <Button variant="outline" className="rounded-full">{t("account.adminDashboard")}</Button>
-                      </Link>
+                      {user.role === "admin" && (
+                        <Link to="/admin">
+                          <Button variant="outline" className="rounded-full">{t("account.adminDashboard")}</Button>
+                        </Link>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
