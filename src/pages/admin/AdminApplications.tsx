@@ -46,6 +46,12 @@ type VendorIdentityRow = {
   verification_status: string | null;
 };
 
+function toAppStatus(status: string | null): "pending" | "approved" | "rejected" {
+  if (status === "approved") return "approved";
+  if (status === "rejected") return "rejected";
+  return "pending";
+}
+
 export default function AdminApplicationsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -130,6 +136,28 @@ export default function AdminApplicationsPage() {
           setAllApplications(enriched);
           setApplications(enriched.filter((a) => a.status === "pending") as VendorApplication[]);
         }
+      } else if (!vendorsErr && vendorsData) {
+        // Fallback path for environments where vendor_applications RLS blocks select.
+        const vendors = vendorsData as VendorIdentityRow[];
+        const synthesized = vendors
+          .filter((v) => v.owner_user_id)
+          .map((v) => ({
+            id: `vendor-${v.id}`,
+            owner_user_id: v.owner_user_id as string,
+            store_name: v.name,
+            location: v.location,
+            status: toAppStatus(v.status),
+            vendor_id: v.id,
+            created_at: v.created_at,
+            selfie_url: v.selfie_url,
+            id_front_url: v.id_front_url,
+            id_back_url: v.id_back_url,
+            verification_status: v.verification_status,
+          }))
+          .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+
+        setAllApplications(synthesized);
+        setApplications(synthesized.filter((a) => a.status === "pending") as VendorApplication[]);
       }
       setLoading(false);
     }
@@ -194,11 +222,13 @@ export default function AdminApplicationsPage() {
       .eq("id", app.owner_user_id);
     if (profileErr) throw new Error(profileErr.message);
 
-    const { error: appErr } = await supabase
-      .from("vendor_applications")
-      .update({ status: "approved", vendor_id: vendorId, updated_at: new Date().toISOString() })
-      .eq("id", app.id);
-    if (appErr) throw new Error(appErr.message);
+    if (!app.id.startsWith("vendor-")) {
+      const { error: appErr } = await supabase
+        .from("vendor_applications")
+        .update({ status: "approved", vendor_id: vendorId, updated_at: new Date().toISOString() })
+        .eq("id", app.id);
+      if (appErr) throw new Error(appErr.message);
+    }
 
     setAllApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: "approved" as const, vendor_id: vendorId } : a));
     await refresh();
@@ -216,11 +246,21 @@ export default function AdminApplicationsPage() {
 
   async function rejectApplication(app: VendorApplication) {
     if (!supabase) throw new Error(t("admin.supabaseMissing"));
-    const { error } = await supabase
-      .from("vendor_applications")
-      .update({ status: "rejected", updated_at: new Date().toISOString() })
-      .eq("id", app.id);
-    if (error) throw new Error(error.message);
+    if (app.vendor_id) {
+      const { error: vendorErr } = await supabase
+        .from("vendors")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("id", app.vendor_id);
+      if (vendorErr) throw new Error(vendorErr.message);
+    }
+
+    if (!app.id.startsWith("vendor-")) {
+      const { error } = await supabase
+        .from("vendor_applications")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("id", app.id);
+      if (error) throw new Error(error.message);
+    }
 
     setAllApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: "rejected" as const } : a));
   }
