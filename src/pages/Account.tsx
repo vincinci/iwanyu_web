@@ -51,6 +51,9 @@ export default function AccountPage() {
   const [txLoading, setTxLoading] = useState(false);
 
   const addressCount = useMemo(() => (form.address.trim() ? 1 : 0), [form.address]);
+  const canAccessAdmin =
+    user?.role === "admin" ||
+    user?.email?.toLowerCase() === "bebisdavy@gmail.com";
 
   // Save draft to localStorage whenever form changes
   useEffect(() => {
@@ -245,7 +248,7 @@ export default function AccountPage() {
                       <Link to="/seller">
                         <Button variant="outline" className="rounded-full">{t("account.sellerDashboard")}</Button>
                       </Link>
-                      {user.role === "admin" && (
+                      {canAccessAdmin && (
                         <Link to="/admin">
                           <Button variant="outline" className="rounded-full">{t("account.adminDashboard")}</Button>
                         </Link>
