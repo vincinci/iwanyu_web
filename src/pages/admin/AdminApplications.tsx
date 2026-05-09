@@ -54,11 +54,12 @@ function toAppStatus(
   const verification = (verificationStatus ?? "").trim().toLowerCase();
   const vendorStatus = (status ?? "").trim().toLowerCase();
 
-  if (verification.includes("pending")) return "pending";
-  if (verification.includes("reject")) return "rejected";
-  if (verification.includes("approve")) return "approved";
+  // Explicit status on vendor/application row is authoritative
   if (vendorStatus === "approved") return "approved";
   if (vendorStatus === "rejected") return "rejected";
+  // Fall back to document verification status ('verified' is the DB-allowed value for approved)
+  if (verification === "verified") return "approved";
+  if (verification === "rejected") return "rejected";
   return "pending";
 }
 
@@ -192,7 +193,7 @@ export default function AdminApplicationsPage() {
       // Keep update payload minimal to avoid schema drift errors in production.
       let vendorUpdate = await supabase
         .from("vendors")
-        .update({ status: "approved", verification_status: "approved" })
+        .update({ status: "approved", verification_status: "verified" })
         .eq("id", vendorId);
 
       if (vendorUpdate.error) {
