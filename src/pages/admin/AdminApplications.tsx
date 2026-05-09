@@ -46,7 +46,13 @@ type VendorIdentityRow = {
   verification_status: string | null;
 };
 
-function toAppStatus(status: string | null): "pending" | "approved" | "rejected" {
+function toAppStatus(
+  status: string | null,
+  verificationStatus?: string | null
+): "pending" | "approved" | "rejected" {
+  if (verificationStatus === "pending") return "pending";
+  if (verificationStatus === "rejected") return "rejected";
+  if (verificationStatus === "approved") return "approved";
   if (status === "approved") return "approved";
   if (status === "rejected") return "rejected";
   return "pending";
@@ -111,8 +117,10 @@ export default function AdminApplicationsPage() {
 
         const enriched = combined.map((app) => {
           const vendor = (app.vendor_id ? vendorsById.get(app.vendor_id) : undefined) ?? vendorsByOwner.get(app.owner_user_id);
+          const normalizedStatus = toAppStatus(app.status, vendor?.verification_status ?? null);
           return {
             ...app,
+            status: normalizedStatus,
             selfie_url: vendor?.selfie_url ?? null,
             id_front_url: vendor?.id_front_url ?? null,
             id_back_url: vendor?.id_back_url ?? null,
@@ -132,7 +140,7 @@ export default function AdminApplicationsPage() {
             owner_user_id: v.owner_user_id as string,
             store_name: v.name,
             location: v.location,
-            status: toAppStatus(v.status),
+            status: toAppStatus(v.status, v.verification_status),
             vendor_id: v.id,
             created_at: v.created_at,
             selfie_url: v.selfie_url,
@@ -184,6 +192,7 @@ export default function AdminApplicationsPage() {
           shop_name: app.store_name,
           location: app.location,
           status: "approved",
+          verification_status: "approved",
           updated_at: new Date().toISOString(),
         })
         .eq("id", vendorId);
@@ -235,7 +244,7 @@ export default function AdminApplicationsPage() {
     if (app.vendor_id) {
       const { error: vendorErr } = await supabase
         .from("vendors")
-        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .update({ status: "rejected", verification_status: "rejected", updated_at: new Date().toISOString() })
         .eq("id", app.vendor_id);
       if (vendorErr) throw new Error(vendorErr.message);
     }
