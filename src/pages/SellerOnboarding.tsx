@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Upload, Camera, CreditCard, Store, ArrowRight, ArrowLeft, Loader2, Mail, User, X, RefreshCw } from "lucide-react";
 
 type Step = "account" | "verify-email" | "identity" | "store" | "done";
+type IdentityDocumentType = "national_id" | "passport" | "drivers_license";
 
 const STEPS: { id: Step; label: string; description: string }[] = [
   { id: "account", label: "Create account", description: "Sign up to get started" },
@@ -40,6 +41,7 @@ export default function SellerOnboardingPage() {
   const [idFrontPreview, setIdFrontPreview] = useState<string | null>(null);
   const [idBackFile, setIdBackFile] = useState<File | null>(null);
   const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
+  const [documentType, setDocumentType] = useState<IdentityDocumentType>("national_id");
 
   // Camera state for selfie
   const [cameraActive, setCameraActive] = useState(false);
@@ -90,11 +92,14 @@ export default function SellerOnboardingPage() {
   }, [user, supabase]);
 
   // Calculate current step
+  const requiresIdBack = documentType === "national_id";
+  const hasIdentityDocs = Boolean(selfiePreview && idFrontPreview && (!requiresIdBack || idBackPreview));
+
   const getCurrentStep = (): Step => {
     if (!user) return "account";
     if (!user.emailConfirmed) return "verify-email";
     if (existingVendor) return "done";
-    if (!selfiePreview || !idFrontPreview) return "identity";
+    if (!hasIdentityDocs) return "identity";
     return "store";
   };
 
@@ -214,9 +219,9 @@ export default function SellerOnboardingPage() {
         accessToken,
       });
 
-      // Upload ID back (optional)
+      // Upload ID back when required for national IDs.
       let idBackUrl: string | undefined;
-      if (idBackFile) {
+      if (requiresIdBack && idBackFile) {
         setUploadProgress(70);
         const idBackResult = await uploadImageToCloudinary(idBackFile, {
           folder: "seller-verification",
@@ -253,8 +258,8 @@ export default function SellerOnboardingPage() {
       return;
     }
 
-    if (!selfieFile || !idFrontFile) {
-      toast({ title: "Please upload your photo and ID", variant: "destructive" });
+    if (!selfieFile || !idFrontFile || (requiresIdBack && !idBackFile)) {
+      toast({ title: t("sell.uploadRequiredDocs"), variant: "destructive" });
       return;
     }
 
@@ -485,6 +490,39 @@ export default function SellerOnboardingPage() {
                 </div>
 
                 <div className="space-y-6">
+                  {/* Document type */}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                      {t("sell.documentType")} *
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {([
+                        { id: "national_id", label: t("sell.documentNationalId") },
+                        { id: "passport", label: t("sell.documentPassport") },
+                        { id: "drivers_license", label: t("sell.documentDriversLicense") },
+                      ] as Array<{ id: IdentityDocumentType; label: string }>).map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setDocumentType(option.id);
+                            setIdFrontFile(null);
+                            setIdFrontPreview(null);
+                            setIdBackFile(null);
+                            setIdBackPreview(null);
+                          }}
+                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                            documentType === option.id
+                              ? "border-gray-900 bg-gray-900 text-white"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Selfie Camera Capture */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -585,10 +623,18 @@ export default function SellerOnboardingPage() {
                   {/* ID Front Upload */}
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      {t("sell.idFront")} *
+                      {documentType === "passport"
+                        ? t("sell.passportPhoto")
+                        : documentType === "drivers_license"
+                        ? t("sell.licenseFront")
+                        : t("sell.idFront")} *
                     </Label>
                     <p className="text-xs text-gray-500 mb-3">
-                      {t("sell.idFrontDesc")}
+                      {documentType === "passport"
+                        ? t("sell.passportPhotoDesc")
+                        : documentType === "drivers_license"
+                        ? t("sell.licenseFrontDesc")
+                        : t("sell.idFrontDesc")}
                     </p>
                     <div className="relative">
                       <input
@@ -629,55 +675,56 @@ export default function SellerOnboardingPage() {
                     </div>
                   </div>
 
-                  {/* ID Back Upload (Optional) */}
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      {t("sell.idBack")}
-                    </Label>
-                    <p className="text-xs text-gray-500 mb-3">
-                      {t("sell.idBackDesc")}
-                    </p>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handleFileSelect(e, setIdBackFile, setIdBackPreview)}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <div
-                        className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
-                          idBackPreview
-                            ? "border-green-300 bg-green-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        {idBackPreview ? (
-                          <div className="flex items-center gap-4">
-                            <img
-                              src={idBackPreview}
-                              alt="ID back"
-                              className="w-20 h-14 rounded-lg object-cover"
-                            />
-                            <div className="text-left">
-                              <p className="font-medium text-green-700">✓ {t("sell.idBackUploaded")}</p>
-                              <p className="text-sm text-gray-500">{t("sell.clickToChange")}</p>
+                  {/* ID Back Upload (Required for national IDs) */}
+                  {requiresIdBack && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                        {t("sell.idBackRequired")} *
+                      </Label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        {t("sell.idBackDesc")}
+                      </p>
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) => handleFileSelect(e, setIdBackFile, setIdBackPreview)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div
+                          className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
+                            idBackPreview
+                              ? "border-green-300 bg-green-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {idBackPreview ? (
+                            <div className="flex items-center gap-4">
+                              <img
+                                src={idBackPreview}
+                                alt="ID back"
+                                className="w-20 h-14 rounded-lg object-cover"
+                              />
+                              <div className="text-left">
+                                <p className="font-medium text-green-700">✓ {t("sell.idBackUploaded")}</p>
+                                <p className="text-sm text-gray-500">{t("sell.clickToChange")}</p>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-400">{t("sell.uploadIdBack")}</p>
-                        )}
+                          ) : (
+                            <p className="text-sm text-gray-400">{t("sell.uploadIdBackRequired")}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Continue Button - shows when both selfie and ID front are captured */}
-                  {selfiePreview && idFrontPreview ? (
+                  {/* Continue Button - shows when required identity files are captured */}
+                  {hasIdentityDocs ? (
                     <div className="pt-4 border-t border-gray-200">
                       <Button
                         onClick={() => {
-                          // Force move to store step by setting a flag
-                          // The getCurrentStep will return "store" when both are set
+                          // Step advances automatically once required files are present.
                         }}
                         className="w-full h-12 rounded-full bg-amber-400 text-black hover:bg-amber-500 text-base font-medium"
                       >
@@ -797,6 +844,9 @@ export default function SellerOnboardingPage() {
                       setSelfiePreview(null);
                       setIdFrontFile(null);
                       setIdFrontPreview(null);
+                      setIdBackFile(null);
+                      setIdBackPreview(null);
+                      setDocumentType("national_id");
                     }}
                     className="w-full text-gray-500"
                   >
