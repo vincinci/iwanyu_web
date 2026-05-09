@@ -185,29 +185,16 @@ export default function AdminApplicationsPage() {
     let vendorId = app.vendor_id;
 
     if (vendorId) {
-      // Some deployments may not yet have verification_status; fall back to core fields.
-      const preferredPayload = {
-        name: app.store_name,
-        shop_name: app.store_name,
-        location: app.location,
-        status: "approved",
-        verification_status: "approved",
-      };
-
+      // Keep update payload minimal to avoid schema drift errors in production.
       let vendorUpdate = await supabase
         .from("vendors")
-        .update(preferredPayload)
+        .update({ status: "approved", verification_status: "approved" })
         .eq("id", vendorId);
 
       if (vendorUpdate.error) {
         vendorUpdate = await supabase
           .from("vendors")
-          .update({
-            name: app.store_name,
-            shop_name: app.store_name,
-            location: app.location,
-            status: "approved",
-          })
+          .update({ status: "approved" })
           .eq("id", vendorId);
       }
 
@@ -217,7 +204,6 @@ export default function AdminApplicationsPage() {
       const { error: vendorErr } = await supabase.from("vendors").insert({
         id: vendorId,
         name: app.store_name,
-        shop_name: app.store_name,
         location: app.location,
         verified: false,
         owner_user_id: app.owner_user_id,
@@ -242,16 +228,6 @@ export default function AdminApplicationsPage() {
 
     setAllApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: "approved" as const, vendor_id: vendorId } : a));
     await refresh();
-
-    // Fire-and-forget: notify the seller their store is live
-    supabase.from("profiles").select("email").eq("id", app.owner_user_id).single()
-      .then(({ data }) => {
-        if (data?.email) {
-          return supabase.functions.invoke("send-email", {
-            body: { template: "seller_approved", to: data.email, data: { storeName: app.store_name } },
-          });
-        }
-      }).catch(() => {});
   }
 
   async function rejectApplication(app: VendorApplication) {
