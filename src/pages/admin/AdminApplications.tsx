@@ -27,6 +27,23 @@ type VendorApplication = {
   status: "pending" | "approved" | "rejected";
   vendor_id: string | null;
   created_at: string;
+  selfie_url?: string | null;
+  id_front_url?: string | null;
+  id_back_url?: string | null;
+  verification_status?: string | null;
+};
+
+type VendorIdentityRow = {
+  id: string;
+  owner_user_id: string | null;
+  name: string;
+  location: string | null;
+  status: string | null;
+  created_at: string;
+  selfie_url: string | null;
+  id_front_url: string | null;
+  id_back_url: string | null;
+  verification_status: string | null;
 };
 
 export default function AdminApplicationsPage() {
@@ -45,13 +62,74 @@ export default function AdminApplicationsPage() {
     async function load() {
       if (!supabase) return;
       setLoading(true);
-      const { data, error } = await supabase
+
+      const { data: appsBefore, error: appsErr } = await supabase
         .from("vendor_applications")
         .select("id, owner_user_id, store_name, location, status, vendor_id, created_at")
         .order("created_at", { ascending: false });
-      if (!error && data) {
-        setAllApplications(data as VendorApplication[]);
-        setApplications(data.filter(a => a.status === "pending") as VendorApplication[]);
+
+      const { data: vendorsData, error: vendorsErr } = await supabase
+        .from("vendors")
+        .select("id, owner_user_id, name, location, status, created_at, selfie_url, id_front_url, id_back_url, verification_status")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      if (!appsErr && !vendorsErr && appsBefore && vendorsData) {
+        const vendors = vendorsData as VendorIdentityRow[];
+        const vendorIdsWithApplications = new Set(
+          (appsBefore as VendorApplication[])
+            .map((a) => a.vendor_id)
+            .filter((id): id is string => Boolean(id))
+        );
+
+        const missingApplications = vendors
+          .filter((v) => v.owner_user_id)
+          .filter((v) => !vendorIdsWithApplications.has(v.id))
+          .map((v) => ({
+            id: createId("va"),
+            owner_user_id: v.owner_user_id,
+            store_name: v.name,
+            location: v.location,
+            status:
+              v.status === "approved"
+                ? "approved"
+                : v.status === "rejected"
+                ? "rejected"
+                : "pending",
+            vendor_id: v.id,
+          }));
+
+        if (missingApplications.length > 0) {
+          await supabase.from("vendor_applications").insert(missingApplications);
+        }
+
+        const { data: appsAfter, error: appsAfterErr } = await supabase
+          .from("vendor_applications")
+          .select("id, owner_user_id, store_name, location, status, vendor_id, created_at")
+          .order("created_at", { ascending: false });
+
+        if (!appsAfterErr && appsAfter) {
+          const vendorsById = new Map(vendors.map((v) => [v.id, v]));
+          const vendorsByOwner = new Map(
+            vendors
+              .filter((v) => v.owner_user_id)
+              .map((v) => [v.owner_user_id as string, v])
+          );
+
+          const enriched = (appsAfter as VendorApplication[]).map((app) => {
+            const vendor = (app.vendor_id ? vendorsById.get(app.vendor_id) : undefined) ?? vendorsByOwner.get(app.owner_user_id);
+            return {
+              ...app,
+              selfie_url: vendor?.selfie_url ?? null,
+              id_front_url: vendor?.id_front_url ?? null,
+              id_back_url: vendor?.id_back_url ?? null,
+              verification_status: vendor?.verification_status ?? null,
+            };
+          });
+
+          setAllApplications(enriched);
+          setApplications(enriched.filter((a) => a.status === "pending") as VendorApplication[]);
+        }
       }
       setLoading(false);
     }
@@ -293,6 +371,45 @@ export default function AdminApplicationsPage() {
                         <p className="text-xs text-gray-400 mt-1">
                           {t("admin.applied")}: {new Date(app.created_at).toLocaleDateString()} • {t("admin.user")}: {app.owner_user_id.slice(0, 8)}...
                         </p>
+                        {(app.selfie_url || app.id_front_url || app.id_back_url) && (
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            {app.selfie_url && (
+                              <a
+                                href={app.selfie_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                              >
+                                Selfie
+                              </a>
+                            )}
+                            {app.id_front_url && (
+                              <a
+                                href={app.id_front_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                              >
+                                ID front
+                              </a>
+                            )}
+                            {app.id_back_url && (
+                              <a
+                                href={app.id_back_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                              >
+                                ID back
+                              </a>
+                            )}
+                            {app.verification_status && (
+                              <span className="text-xs text-gray-500">
+                                verification: {app.verification_status}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {app.status === "pending" && (
