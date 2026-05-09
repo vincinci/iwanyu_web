@@ -147,17 +147,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Deduct from payout balance (temporarily held)
-    const { error: updateErr } = await supabase
+    // Deduct from payout balance atomically so concurrent withdrawals cannot overdraw.
+    const { data: reservedVendor, error: updateErr } = await supabase
       .from("vendors")
       .update({ payout_balance_rwf: newBalance })
-      .eq("id", vendorId);
+      .eq("id", vendorId)
+      .gte("payout_balance_rwf", amountRwf)
+      .select("payout_balance_rwf")
+      .maybeSingle();
 
-    if (updateErr) {
+    if (updateErr || !reservedVendor) {
       console.error("Failed to update payout balance:", updateErr);
+      await supabase
+        .from("seller_withdrawals")
+        .update({ status: "failed", reason: "Insufficient balance or concurrent withdrawal" })
+        .eq("id", withdrawal.id);
       return new Response(
-        JSON.stringify({ error: "Failed to process withdrawal" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Insufficient balance or concurrent withdrawal detected" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -232,7 +239,7 @@ Deno.serve(async (req: Request) => {
           console.warn("Failed to update withdrawal status:", updateErr);
         }
 
-        // Refund the amount back to vendor balance
+        // Refund the amount back to vendor balance.
         const { error: refundErr } = await supabase
           .from("vendors")
           .update({ payout_balance_rwf: currentBalance })
@@ -244,7 +251,25 @@ Deno.serve(async (req: Request) => {
       }
     } catch (payoutError) {
       console.error("Error initiating PawaPay payout:", payoutError);
-      // Payout will retry via webhook, so don't fail here
+
+      await supabase
+        .from("seller_withdrawals")
+        .update({ status: "failed", reason: "PawaPay payout initiation error" })
+        .eq("id", withdrawal.id);
+
+      const { error: refundErr } = await supabase
+        .from("vendors")
+        .update({ payout_balance_rwf: currentBalance })
+        .eq("id", vendorId);
+
+      if (refundErr) {
+        console.error("Failed to refund balance after payout initiation error:", refundErr);
+      }
+
+      return new Response(
+        JSON.stringify({ error: "Failed to initiate payout" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(

@@ -6,6 +6,9 @@ type SeedContext = {
   vendorId: string;
 };
 
+// Official pawaPay sandbox Rwanda success MSISDN from the payout docs.
+const PAWAPAY_SANDBOX_SUCCESS_MSISDN = "+250783456789";
+
 const hasSupabase = process.env.E2E_SUPABASE_ENABLED === "1";
 const isSupabaseRuntimeEnabled = process.env.VITE_E2E_DISABLE_SUPABASE !== "1";
 
@@ -90,6 +93,7 @@ async function seedSellerAndVendor(): Promise<SeedContext> {
       banner_url: "https://example.com/e2e-banner.png",
       status: "approved",
       profile_completed: true,
+      payout_balance_rwf: 20000,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "id" },
@@ -97,10 +101,22 @@ async function seedSellerAndVendor(): Promise<SeedContext> {
 
   if (vendorError) throw new Error(`Unable to seed vendor: ${vendorError.message}`);
 
+  const { error: profileError } = await serviceClient.from("profiles").upsert({
+    id: userId,
+    email: userEmail,
+    phone: "+250788000111",
+    full_name: "E2E Seller",
+    role: "seller",
+    profile_completed: true,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "id" });
+
+  if (profileError) throw new Error(`Unable to update e2e profile: ${profileError.message}`);
+
   return { userId, vendorId };
 }
 
-test.describe("seller publish guard + admin withdrawal review", () => {
+test.describe("seller publish guard + live payout initiation", () => {
   test.beforeEach(async ({ page }) => {
     test.skip(!hasSupabase, "Requires E2E_SUPABASE_ENABLED=1");
     test.skip(!isSupabaseRuntimeEnabled, "Set VITE_E2E_DISABLE_SUPABASE=0 for Supabase-backed integration tests");
@@ -131,7 +147,7 @@ test.describe("seller publish guard + admin withdrawal review", () => {
     await expect(publishButton).toBeDisabled();
   });
 
-  test("admin can approve and mark paid a pending withdrawal request", async ({ page }) => {
+  test("seller can save payout settings and initiate mobile money withdrawal", async ({ page }) => {
     const { userId, vendorId } = await seedSellerAndVendor();
 
     const serviceClient = createClient(supabaseUrl!, supabaseServiceRoleKey!, {
@@ -142,37 +158,107 @@ test.describe("seller publish guard + admin withdrawal review", () => {
       },
     });
 
-    const destination = `E2E-DEST-${Date.now()}`;
-    const { error: insertError } = await serviceClient.from("vendor_withdrawal_requests").insert({
+    await serviceClient.from("vendor_payout_settings").delete().eq("vendor_id", vendorId);
+    await serviceClient.from("seller_withdrawals").delete().eq("vendor_id", vendorId);
+
+    const productId = `product-e2e-${Date.now()}`;
+    const orderId = crypto.randomUUID();
+
+    const { error: productError } = await serviceClient.from("products").upsert({
+      id: productId,
       vendor_id: vendorId,
-      requested_by: userId,
-      amount_rwf: 1500,
-      payout_method: "bank_transfer",
-      payout_destination: destination,
-      note: "E2E pending withdrawal",
-      status: "pending",
+      title: "E2E Seller Payout Product",
+      description: "Seed product for payout availability",
+      category: "General",
+      price_rwf: 6000,
+      image_url: "https://example.com/e2e-product.png",
+      in_stock: true,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+
+    if (productError) throw new Error(`Unable to seed payout product: ${productError.message}`);
+
+    const { error: orderError } = await serviceClient.from("orders").insert({
+      id: orderId,
+      buyer_user_id: userId,
+      buyer_email: email,
+      shipping_address: "Kigali, Rwanda",
+      status: "Delivered",
+      total_rwf: 6000,
+      payment: { provider: "test", verified: true },
     });
 
-    if (insertError) throw new Error(`Unable to seed withdrawal request: ${insertError.message}`);
+    if (orderError) throw new Error(`Unable to seed payout order: ${orderError.message}`);
+
+    const { error: itemError } = await serviceClient.from("order_items").insert({
+      order_id: orderId,
+      product_id: productId,
+      vendor_id: vendorId,
+      title: "E2E Seller Payout Product",
+      price_rwf: 6000,
+      quantity: 1,
+      image_url: "https://example.com/e2e-product.png",
+      status: "Delivered",
+      vendor_payout_rwf: 5580,
+    });
+
+    if (itemError) throw new Error(`Unable to seed payout order item: ${itemError.message}`);
+
+    const savedMobile = PAWAPAY_SANDBOX_SUCCESS_MSISDN;
+    let requestSeen = false;
+
+    await page.route("**/functions/v1/seller-withdrawal-callback", async (route) => {
+      requestSeen = true;
+      const body = route.request().postDataJSON() as {
+        vendorId: string;
+        amountRwf: number;
+        mobileNetwork: string;
+        phoneNumber: string;
+        reason?: string;
+      };
+
+      expect(body.vendorId).toBe(vendorId);
+      expect(body.amountRwf).toBe(1500);
+      expect(body.mobileNetwork).toBe("MTN");
+      expect(body.phoneNumber).toBe("250783456789");
+      expect(body.reason).toBe("Seller earnings withdrawal");
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          withdrawalId: "00000000-0000-4000-8000-000000000001",
+          amountRwf: 1500,
+          newBalance: 18500,
+          message: "1,500 RWF is on the way to +250783456789",
+        }),
+      });
+    });
 
     await login(page, email!, password!);
 
-    await page.goto("/account");
-    await page.getByRole("button", { name: /^admin$/i }).click();
-    await expect(page.getByText(/role updated/i)).toBeVisible({ timeout: 20_000 });
+    await page.goto("/seller/payout-settings");
+    await expect(page.getByRole("heading", { name: /payout settings/i })).toBeVisible({ timeout: 20_000 });
 
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: /dashboard overview/i })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: /^mtn$/i }).click();
+    await page.getByPlaceholder("+250 7XX XXX XXX").fill(savedMobile);
+    await page.getByPlaceholder("Registered name").fill("E2E Seller");
+    await page.getByRole("button", { name: /save mobile money/i }).click();
+    await expect(page.getByText(/mobile money saved/i)).toBeVisible({ timeout: 20_000 });
 
-    const row = page.locator("tr", { hasText: destination }).first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
+    await page.goto("/seller/payouts");
+    await expect(page.getByRole("heading", { name: /payouts/i })).toBeVisible({ timeout: 20_000 });
 
-    await row.getByRole("button", { name: /approve/i }).click();
-    await expect(page.getByText(/request approved/i)).toBeVisible({ timeout: 20_000 });
-    await expect(row).toContainText(/approved/i);
+    await expect(page.getByText(/available now/i)).toBeVisible({ timeout: 20_000 });
+    await page.getByPlaceholder("50000").fill("1500");
+    await page.getByRole("button", { name: /withdraw funds/i }).click();
 
-    await row.getByRole("button", { name: /mark paid/i }).click();
-    await expect(page.getByText(/marked as paid/i)).toBeVisible({ timeout: 20_000 });
-    await expect(row).toContainText(/paid/i);
+    await expect(page.getByText(/withdrawal started/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/1,500 RWF is on the way to \+250783456789/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/MTN: \+250783456789|MTN: 250783456789/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/processing/i).last()).toBeVisible({ timeout: 20_000 });
+
+    expect(requestSeen).toBe(true);
   });
 });

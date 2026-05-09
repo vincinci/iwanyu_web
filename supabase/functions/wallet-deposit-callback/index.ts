@@ -240,6 +240,10 @@ Deno.serve(async (req: Request) => {
               expected: existingOrder.total_rwf,
               got: amountRwf,
             });
+            return new Response(JSON.stringify({ error: "Deposit amount is below the order total" }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           } else {
             const verifiedAt = new Date().toISOString();
             const nextPayment = {

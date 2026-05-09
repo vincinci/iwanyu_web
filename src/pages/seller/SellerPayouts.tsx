@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/money";
+import { paymentService } from "@/lib/payment";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -35,13 +36,12 @@ type WithdrawalRequestRow = {
     id: string;
     vendor_id: string;
     amount_rwf: number;
-    payout_method: string;
-    payout_destination: string;
-    note: string | null;
-    status: "pending" | "approved" | "processing" | "paid" | "rejected";
-    admin_note: string | null;
+    mobile_network: string | null;
+    phone_number: string;
+    reason: string | null;
+    status: "pending" | "processing" | "completed" | "failed";
     created_at: string;
-    reviewed_at: string | null;
+    completed_at: string | null;
 };
 
 export default function SellerPayoutsPage() {
@@ -103,8 +103,8 @@ export default function SellerPayoutsPage() {
                     // Seller's own withdrawal requests
                     vendorIds.length > 0
                         ? supabase
-                              .from("vendor_withdrawal_requests")
-                              .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, created_at, reviewed_at")
+                            .from("seller_withdrawals")
+                            .select("id, vendor_id, amount_rwf, mobile_network, phone_number, reason, status, created_at, completed_at")
                               .in("vendor_id", vendorIds)
                               .order("created_at", { ascending: false })
                               .limit(100)
@@ -163,7 +163,7 @@ export default function SellerPayoutsPage() {
             .reduce((sum, p) => sum + Number(p.amount_rwf ?? 0), 0);
 
         const requestedOpen = requests
-            .filter((r) => r.status === "pending" || r.status === "approved" || r.status === "processing")
+            .filter((r) => r.status === "pending" || r.status === "processing")
             .reduce((sum, r) => sum + Number(r.amount_rwf ?? 0), 0);
 
         const pending = pendingSettlements + requestedOpen;
@@ -226,7 +226,6 @@ export default function SellerPayoutsPage() {
                 : payoutSettings?.bank_account_number
                 ? `${payoutSettings.bank_name}: ${payoutSettings.bank_account_number} (${payoutSettings.bank_account_holder})`
                 : "";
-        const derivedMethod = payoutMethodChoice === "mobile" && payoutSettings?.mobile_number ? "mobile_money" : "bank_transfer";
 
         if (!derivedDestination) {
             toast({
@@ -237,35 +236,53 @@ export default function SellerPayoutsPage() {
             return;
         }
 
+        if (payoutMethodChoice !== "mobile" || !payoutSettings?.mobile_number) {
+            toast({
+                title: "Mobile money required",
+                description: "Live withdrawals are currently available only to your saved mobile money number.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setSubmittingRequest(true);
         try {
-            const { data, error } = await supabase
-                .from("vendor_withdrawal_requests")
-                .insert({
-                    vendor_id: ownedVendorIds[0],
-                    requested_by: user.id,
-                    amount_rwf: amount,
-                    payout_method: derivedMethod,
-                    payout_destination: derivedDestination,
-                    note: requestNote.trim() || null,
-                })
-                .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, created_at, reviewed_at")
-                .single();
+            const result = await paymentService.withdraw(
+                {
+                    amount,
+                    phone: payoutSettings.mobile_number,
+                    network: payoutSettings.mobile_provider || "MTN",
+                },
+                user.id,
+            );
 
-            if (error) throw error;
+            if (!result.success) {
+                throw new Error(result.message);
+            }
 
-            const inserted = data as WithdrawalRequestRow;
+            const inserted: WithdrawalRequestRow = {
+                id: result.referenceId || crypto.randomUUID(),
+                vendor_id: ownedVendorIds[0],
+                amount_rwf: amount,
+                mobile_network: payoutSettings.mobile_provider,
+                phone_number: payoutSettings.mobile_number,
+                reason: requestNote.trim() || null,
+                status: "processing",
+                created_at: new Date().toISOString(),
+                completed_at: null,
+            };
+
             setRequests((prev) => [inserted, ...prev]);
             setRequestAmount("");
             setRequestNote("");
             toast({
-                title: t("sellerPayouts.requestSubmittedTitle"),
-                description: t("sellerPayouts.requestSubmittedDesc"),
+                title: "Withdrawal started",
+                description: result.message,
             });
-        } catch {
+        } catch (error) {
             toast({
                 title: t("sellerPayouts.requestFailedTitle"),
-                description: t("sellerPayouts.requestFailedDesc"),
+                description: error instanceof Error ? error.message : t("sellerPayouts.requestFailedDesc"),
                 variant: "destructive",
             });
         } finally {
@@ -496,7 +513,7 @@ export default function SellerPayoutsPage() {
                             <th className="px-6 py-4">{t("sellerPayouts.destinationLabel")}</th>
                             <th className="px-6 py-4">{t("seller.amount")}</th>
                             <th className="px-6 py-4">{t("seller.status")}</th>
-                            <th className="px-6 py-4">{t("sellerPayouts.adminNote")}</th>
+                            <th className="px-6 py-4">Reason</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -516,14 +533,14 @@ export default function SellerPayoutsPage() {
                             requests.map((row) => (
                                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 text-gray-500">{new Date(row.created_at).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-gray-600">{row.payout_destination}</td>
+                                    <td className="px-6 py-4 text-gray-600">{row.mobile_network ? `${row.mobile_network}: ` : ""}{row.phone_number}</td>
                                     <td className="px-6 py-4 font-bold text-gray-900">{formatMoney(row.amount_rwf)}</td>
                                     <td className="px-6 py-4">
-                                        <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                        <span className={`${statusClassName(row.status === "completed" ? "completed" : row.status === "failed" ? "failed" : row.status === "processing" ? "processing" : "pending")} px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide`}>
                                             {row.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-500">{row.admin_note || "-"}</td>
+                                    <td className="px-6 py-4 text-gray-500">{row.reason || "-"}</td>
                                 </tr>
                             ))
                         )}

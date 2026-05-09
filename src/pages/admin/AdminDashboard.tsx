@@ -47,13 +47,12 @@ type AdminWithdrawalRow = {
   id: string;
   vendor_id: string;
   amount_rwf: number;
-  payout_method: string;
-  payout_destination: string;
-  note: string | null;
-  status: "pending" | "approved" | "processing" | "paid" | "rejected";
-  admin_note: string | null;
+  mobile_network: string | null;
+  phone_number: string;
+  reason: string | null;
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   created_at: string;
-  reviewed_at: string | null;
+  completed_at: string | null;
   vendors: { name: string | null } | null;
 };
 
@@ -133,8 +132,8 @@ export default function AdminDashboardPage() {
       setWithdrawalsLoading(true);
 
       const { data, error } = await supabase
-        .from("vendor_withdrawal_requests")
-        .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, created_at, reviewed_at, vendors(name)")
+        .from("seller_withdrawals")
+        .select("id, vendor_id, amount_rwf, mobile_network, phone_number, reason, status, created_at, completed_at, vendors(name)")
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -408,57 +407,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-  async function reviewWithdrawal(
-    request: AdminWithdrawalRow,
-    nextStatus: "approved" | "rejected" | "paid",
-    note?: string,
-  ) {
-    if (!supabase) throw new Error(t("admin.supabaseMissing"));
-    if (!user) throw new Error(t("admin.notSignedIn"));
-
-    const updatePayload = {
-      status: nextStatus,
-      admin_note: note?.trim() || null,
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from("vendor_withdrawal_requests")
-      .update(updatePayload)
-      .eq("id", request.id);
-
-    if (error) throw new Error(error.message);
-
-    const { error: notificationError } = await supabase.from("vendor_notifications").insert({
-      vendor_id: request.vendor_id,
-      type: "payout_reviewed",
-      title: `Withdrawal request ${nextStatus}`,
-      message: `Your withdrawal request for ${formatMoney(request.amount_rwf)} is now ${nextStatus}.${
-        note?.trim() ? ` Note: ${note.trim()}` : ""
-      }`,
-      created_by: user.id,
-    });
-
-    if (notificationError) {
-      throw new Error(notificationError.message);
-    }
-
-    setWithdrawals((prev) =>
-      prev.map((row) =>
-        row.id === request.id
-          ? {
-              ...row,
-              status: nextStatus,
-              admin_note: note?.trim() || null,
-              reviewed_at: new Date().toISOString(),
-            }
-          : row,
-      ),
-    );
-  }
-
   return (
     <div className="dashboard-shell">
       {/* Top Bar */}
@@ -702,7 +650,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold">{t("admin.withdrawalRequests")}</h3>
                 <span className="text-xs text-gray-500">
-                  {withdrawals.filter((w) => w.status === "pending").length} {t("admin.pending")}
+                  {withdrawals.filter((w) => w.status === "pending" || w.status === "processing").length} active
                 </span>
               </div>
 
@@ -715,7 +663,7 @@ export default function AdminDashboardPage() {
                       <th className="text-left px-4 py-3 font-medium text-gray-500">{t("admin.withdrawalDestination")}</th>
                       <th className="text-right px-4 py-3 font-medium text-gray-500">{t("seller.amount")}</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">{t("seller.status")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{t("admin.actions")}</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Details</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -732,7 +680,7 @@ export default function AdminDashboardPage() {
                         <tr key={request.id} className="border-b border-gray-50 hover:bg-gray-50">
                           <td className="px-4 py-3 text-gray-500">{new Date(request.created_at).toLocaleDateString()}</td>
                           <td className="px-4 py-3 font-medium">{request.vendors?.name || t("admin.unknown")}</td>
-                          <td className="px-4 py-3 text-gray-600">{request.payout_destination}</td>
+                          <td className="px-4 py-3 text-gray-600">{request.mobile_network ? `${request.mobile_network}: ` : ""}{request.phone_number}</td>
                           <td className="px-4 py-3 text-right font-semibold">{formatMoney(request.amount_rwf)}</td>
                           <td className="px-4 py-3">
                             <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
@@ -740,68 +688,11 @@ export default function AdminDashboardPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {request.status === "pending" ? (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  className="rounded-full bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={async () => {
-                                    try {
-                                      await reviewWithdrawal(request, "approved");
-                                      toast({ title: t("admin.requestApproved") });
-                                    } catch (e) {
-                                      toast({
-                                        title: t("admin.failed"),
-                                        description: e instanceof Error ? e.message : t("admin.unknownError"),
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                >
-                                  {t("admin.approve")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="rounded-full border-red-200 text-red-600 hover:bg-red-50"
-                                  onClick={async () => {
-                                    try {
-                                      await reviewWithdrawal(request, "rejected", t("admin.withdrawalRejectedNote"));
-                                      toast({ title: t("admin.requestRejected") });
-                                    } catch (e) {
-                                      toast({
-                                        title: t("admin.failed"),
-                                        description: e instanceof Error ? e.message : t("admin.unknownError"),
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                >
-                                  {t("admin.reject")}
-                                </Button>
-                              </div>
-                            ) : request.status === "approved" || request.status === "processing" ? (
-                              <Button
-                                size="sm"
-                                className="rounded-full bg-gray-900 text-white hover:bg-gray-800"
-                                onClick={async () => {
-                                  try {
-                                    await reviewWithdrawal(request, "paid", t("admin.withdrawalPaidNote"));
-                                    toast({ title: t("admin.markedPaid") });
-                                  } catch (e) {
-                                    toast({
-                                      title: t("admin.failed"),
-                                      description: e instanceof Error ? e.message : t("admin.unknownError"),
-                                      variant: "destructive",
-                                    });
-                                  }
-                                }}
-                              >
-                                {t("admin.markPaid")}
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-gray-500">{request.admin_note || t("admin.reviewed")}</span>
-                            )}
+                            <span className="text-xs text-gray-500">
+                              {request.completed_at
+                                ? `Completed ${new Date(request.completed_at).toLocaleDateString()}`
+                                : request.reason || "Automatic payout flow"}
+                            </span>
                           </td>
                         </tr>
                       ))

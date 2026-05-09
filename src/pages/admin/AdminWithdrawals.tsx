@@ -1,20 +1,7 @@
-import { BadgeCheck, Users, ClipboardList, Boxes, ShieldAlert, Check, X, Banknote, Percent, Wallet } from "lucide-react";
+import { BadgeCheck, Users, ClipboardList, Boxes, Percent, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/auth";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { formatMoney } from "@/lib/money";
 
@@ -31,38 +18,32 @@ type WithdrawalRow = {
   id: string;
   vendor_id: string;
   amount_rwf: number;
-  payout_method: string;
-  payout_destination: string;
-  note: string | null;
-  status: "pending" | "approved" | "processing" | "paid" | "rejected";
-  admin_note: string | null;
-  reviewed_at: string | null;
+  mobile_network: string | null;
+  phone_number: string;
+  reason: string | null;
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   created_at: string;
+  completed_at: string | null;
+  external_transaction_id: string | null;
   vendors: { name: string | null } | null;
 };
 
-type FilterStatus = "all" | "pending" | "approved" | "paid" | "rejected";
+type FilterStatus = "all" | "pending" | "processing" | "completed" | "failed" | "cancelled";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700",
-  approved: "bg-blue-100 text-blue-700",
   processing: "bg-indigo-100 text-indigo-700",
-  paid: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
+  completed: "bg-green-100 text-green-700",
+  failed: "bg-red-100 text-red-700",
+  cancelled: "bg-slate-100 text-slate-700",
 };
 
 export default function AdminWithdrawalsPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const supabase = getSupabaseClient();
 
   const [loading, setLoading] = useState(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("pending");
-  const [actionRow, setActionRow] = useState<WithdrawalRow | null>(null);
-  const [actionType, setActionType] = useState<"approve" | "reject" | "paid" | null>(null);
-  const [adminNote, setAdminNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,8 +51,8 @@ export default function AdminWithdrawalsPage() {
       if (!supabase) return;
       setLoading(true);
       const { data, error } = await supabase
-        .from("vendor_withdrawal_requests")
-        .select("id, vendor_id, amount_rwf, payout_method, payout_destination, note, status, admin_note, reviewed_at, created_at, vendors(name)")
+        .from("seller_withdrawals")
+        .select("id, vendor_id, amount_rwf, mobile_network, phone_number, reason, status, created_at, completed_at, external_transaction_id, vendors(name)")
         .order("created_at", { ascending: false })
         .limit(200);
       if (!cancelled) {
@@ -85,59 +66,7 @@ export default function AdminWithdrawalsPage() {
 
   const filtered = withdrawals.filter((w) => filter === "all" || w.status === filter);
 
-  const pendingCount = withdrawals.filter((w) => w.status === "pending").length;
-
-  async function submitAction() {
-    if (!supabase || !user || !actionRow || !actionType) return;
-    setSubmitting(true);
-    try {
-      const nextStatus = actionType === "approve" ? "approved" : actionType === "reject" ? "rejected" : "paid";
-      const { error } = await supabase
-        .from("vendor_withdrawal_requests")
-        .update({
-          status: nextStatus,
-          admin_note: adminNote.trim() || null,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", actionRow.id);
-      if (error) throw error;
-
-      // Notify the vendor
-      await supabase.from("vendor_notifications").insert({
-        vendor_id: actionRow.vendor_id,
-        type: "payout_reviewed",
-        title: `Withdrawal request ${nextStatus}`,
-        message: `Your withdrawal request for ${formatMoney(actionRow.amount_rwf)} is now ${nextStatus}.${
-          adminNote.trim() ? ` Note: ${adminNote.trim()}` : ""
-        }`,
-        created_by: user.id,
-      });
-
-      setWithdrawals((prev) =>
-        prev.map((w) =>
-          w.id === actionRow.id
-            ? { ...w, status: nextStatus as WithdrawalRow["status"], admin_note: adminNote.trim() || null, reviewed_at: new Date().toISOString() }
-            : w,
-        ),
-      );
-      toast({ title: `Request ${nextStatus}`, description: `${formatMoney(actionRow.amount_rwf)} to ${actionRow.payout_destination}` });
-      setActionRow(null);
-      setActionType(null);
-      setAdminNote("");
-    } catch (err) {
-      toast({ title: "Action failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  function openAction(row: WithdrawalRow, type: "approve" | "reject" | "paid") {
-    setActionRow(row);
-    setActionType(type);
-    setAdminNote("");
-  }
+  const pendingCount = withdrawals.filter((w) => w.status === "pending" || w.status === "processing").length;
 
   return (
     <div className="dashboard-shell">
@@ -185,15 +114,15 @@ export default function AdminWithdrawalsPage() {
         <main className="dashboard-main">
           <div className="container py-8">
             <div className="mb-8">
-              <h1 className="text-2xl font-semibold text-gray-900">Seller Withdrawal Requests</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Seller Withdrawals</h1>
               <p className="text-gray-500 text-sm mt-1">
-                Sellers request manual payouts here. Approve, reject, or mark as paid.
+                Live mobile-money withdrawals update here automatically as payout callbacks arrive.
               </p>
             </div>
 
             {/* Filter tabs */}
             <div className="flex gap-2 mb-6 flex-wrap">
-              {(["pending", "approved", "paid", "rejected", "all"] as FilterStatus[]).map((s) => (
+              {(["pending", "processing", "completed", "failed", "cancelled", "all"] as FilterStatus[]).map((s) => (
                 <button
                   key={s}
                   onClick={() => setFilter(s)}
@@ -229,9 +158,9 @@ export default function AdminWithdrawalsPage() {
                       <th className="px-5 py-4">Seller</th>
                       <th className="px-5 py-4">Amount</th>
                       <th className="px-5 py-4">Destination</th>
-                      <th className="px-5 py-4">Note</th>
+                      <th className="px-5 py-4">Reason</th>
                       <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4 text-right">Actions</th>
+                      <th className="px-5 py-4">Completed</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -247,52 +176,18 @@ export default function AdminWithdrawalsPage() {
                           {formatMoney(row.amount_rwf)}
                         </td>
                         <td className="px-5 py-4 text-gray-600 max-w-[200px] truncate">
-                          {row.payout_destination}
+                          {row.mobile_network ? `${row.mobile_network}: ` : ""}{row.phone_number}
                         </td>
                         <td className="px-5 py-4 text-gray-500 max-w-[160px] truncate">
-                          {row.note || row.admin_note ? (
-                            <span title={[row.note, row.admin_note ? `Admin: ${row.admin_note}` : ""].filter(Boolean).join(" | ")}>
-                              {row.note ?? "—"}
-                              {row.admin_note && <span className="ml-1 text-blue-500">(Admin note)</span>}
-                            </span>
-                          ) : "—"}
+                          {row.reason || "—"}
                         </td>
                         <td className="px-5 py-4">
                           <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_COLORS[row.status] ?? "bg-gray-100 text-gray-600"}`}>
                             {row.status}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            {row.status === "pending" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs"
-                                  onClick={() => openAction(row, "approve")}
-                                >
-                                  <Check size={12} className="mr-1" /> Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-red-300 text-red-600 hover:bg-red-50 h-7 px-3 text-xs"
-                                  onClick={() => openAction(row, "reject")}
-                                >
-                                  <X size={12} className="mr-1" /> Reject
-                                </Button>
-                              </>
-                            )}
-                            {row.status === "approved" && (
-                              <Button
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs"
-                                onClick={() => openAction(row, "paid")}
-                              >
-                                <Banknote size={12} className="mr-1" /> Mark Paid
-                              </Button>
-                            )}
-                          </div>
+                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">
+                          {row.completed_at ? new Date(row.completed_at).toLocaleString() : "—"}
                         </td>
                       </tr>
                     ))}
@@ -303,68 +198,6 @@ export default function AdminWithdrawalsPage() {
           </div>
         </main>
       </div>
-
-      {/* Action dialog */}
-      <AlertDialog open={!!actionRow} onOpenChange={(open) => { if (!open) { setActionRow(null); setActionType(null); setAdminNote(""); } }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {actionType === "approve" && "Approve withdrawal request"}
-              {actionType === "reject" && "Reject withdrawal request"}
-              {actionType === "paid" && "Mark as paid"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {actionRow && (
-                <>
-                  <strong>{actionRow.vendors?.name ?? "Seller"}</strong> requested {formatMoney(actionRow.amount_rwf)} to{" "}
-                  <em>{actionRow.payout_destination}</em>.
-                  {actionType === "approve" && " Approving means you agree to send this payment manually."}
-                  {actionType === "paid" && " Mark this as paid after you have sent the money."}
-                  {actionType === "reject" && " The seller will be notified with your note."}
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="px-1 py-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              {actionType === "reject" ? "Reason for rejection (required)" : "Admin note (optional)"}
-            </label>
-            <Textarea
-              value={adminNote}
-              onChange={(e) => setAdminNote(e.target.value)}
-              placeholder={
-                actionType === "reject"
-                  ? "e.g. Insufficient verification, please re-submit with ID"
-                  : "e.g. Sent via MTN MoMo, ref #12345"
-              }
-              rows={3}
-              className="text-sm"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={submitting || (actionType === "reject" && !adminNote.trim())}
-              onClick={(e) => { e.preventDefault(); void submitAction(); }}
-              className={
-                actionType === "reject"
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : actionType === "paid"
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-green-600 hover:bg-green-700 text-white"
-              }
-            >
-              {submitting
-                ? "Saving…"
-                : actionType === "approve"
-                ? "Approve"
-                : actionType === "reject"
-                ? "Reject"
-                : "Mark as Paid"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

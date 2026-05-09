@@ -341,7 +341,7 @@ export const paymentService = {
 
       if (!response.ok) {
         throw new PaymentError(
-          result.message || "Withdrawal failed. Please try again.",
+          result.error || result.message || "Withdrawal failed. Please try again.",
           "WITHDRAWAL_FAILED",
           true
         );
@@ -352,7 +352,7 @@ export const paymentService = {
       return {
         success: true,
         message: `${request.amount.toLocaleString()} RWF is on the way to +${request.phone}`,
-        referenceId: result.referenceId,
+        referenceId: result.withdrawalId || result.referenceId,
       };
     } catch (error) {
       idempotencyManager.markComplete(userId, request.amount);
