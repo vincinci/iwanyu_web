@@ -29,6 +29,7 @@ type VendorRow = {
     banner_path: string | null;
     description: string | null;
     profile_completed: boolean | null;
+    status: string | null;
 };
 
 export default function SellerSettingsPage() {
@@ -38,6 +39,7 @@ export default function SellerSettingsPage() {
     const supabase = getSupabaseClient();
 
     const [vendorId, setVendorId] = useState<string | null>(null);
+    const [vendorStatus, setVendorStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -81,7 +83,7 @@ export default function SellerSettingsPage() {
             try {
                 const { data, error } = await supabase
                     .from("vendors")
-                    .select("id, name, email, location, phone, logo_url, logo_path, banner_url, banner_path, description, profile_completed")
+                    .select("id, name, email, location, phone, logo_url, logo_path, banner_url, banner_path, description, profile_completed, status")
                     .eq("owner_user_id", user.id)
                     .order("updated_at", { ascending: false })
                     .limit(1)
@@ -92,6 +94,7 @@ export default function SellerSettingsPage() {
 
                 const row = (data ?? null) as VendorRow | null;
                 setVendorId(row?.id ?? null);
+                setVendorStatus(row?.status ?? null);
                 setForm((prev) => ({
                     ...prev,
                     storeName: row?.name ?? prev.storeName,
@@ -162,7 +165,8 @@ export default function SellerSettingsPage() {
                 banner_url: bannerUrl || null,
                 banner_path: bannerPath || null,
                 profile_completed: profileCompleted,
-                status: "approved",
+                // Never auto-approve from profile edits. Keep current status or default to pending.
+                status: vendorStatus ?? "pending",
                 updated_at: new Date().toISOString(),
             };
 

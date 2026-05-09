@@ -51,11 +51,14 @@ function toAppStatus(
   status: string | null,
   verificationStatus?: string | null
 ): "pending" | "approved" | "rejected" {
-  if (verificationStatus === "pending") return "pending";
-  if (verificationStatus === "rejected") return "rejected";
-  if (verificationStatus === "approved") return "approved";
-  if (status === "approved") return "approved";
-  if (status === "rejected") return "rejected";
+  const verification = (verificationStatus ?? "").trim().toLowerCase();
+  const vendorStatus = (status ?? "").trim().toLowerCase();
+
+  if (verification.includes("pending")) return "pending";
+  if (verification.includes("reject")) return "rejected";
+  if (verification.includes("approve")) return "approved";
+  if (vendorStatus === "approved") return "approved";
+  if (vendorStatus === "rejected") return "rejected";
   return "pending";
 }
 
