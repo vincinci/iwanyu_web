@@ -9,6 +9,7 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
+import { canAccessAdmin } from "@/lib/adminAccess";
 
 const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
@@ -167,7 +168,7 @@ export default function AdminApplicationsPage() {
     return result;
   }, [allApplications, statusFilter, searchQuery]);
 
-  if (!user || user.role !== "admin") {
+  if (!canAccessAdmin(user)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md text-center">

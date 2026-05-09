@@ -22,6 +22,7 @@ import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
+import { canAccessAdmin } from "@/lib/adminAccess";
 
 const nav = [
   { label: "Overview", icon: ClipboardList, href: "/admin" },
@@ -108,7 +109,7 @@ export default function AdminProductsPage() {
     return result;
   }, [products, searchQuery, categoryFilter, stockFilter]);
 
-  if (!user || user.role !== "admin") {
+  if (!canAccessAdmin(user)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md text-center">

@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/auth";
 import type { AuthRole } from "@/types/auth";
 import { isE2EMode } from "@/lib/e2e";
+import { canAccessAdmin } from "@/lib/adminAccess";
 
 export default function RequireAuth({
   children,
@@ -24,6 +25,9 @@ export default function RequireAuth({
   }
 
   if (roles && roles.length > 0) {
+    if (roles.includes("admin") && canAccessAdmin(user)) {
+      return children;
+    }
     const role = user.role ?? "buyer";
     if (!roles.includes(role)) return <Navigate to="/account" replace />;
   }

@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { canAccessAdmin } from "@/lib/adminAccess";
 import {
   Table,
   TableBody,
@@ -95,7 +96,7 @@ export default function AdminDiscountsPage() {
     return rows.filter((r) => r.code.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q));
   }, [rows, search]);
 
-  if (!user || user.role !== "admin") {
+  if (!canAccessAdmin(user)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md text-center">

@@ -23,6 +23,7 @@ import { getSupabaseClient } from "@/lib/supabaseClient";
 import { createId } from "@/lib/ids";
 import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
+import { canAccessAdmin } from "@/lib/adminAccess";
 
 const nav = [
   { labelKey: "admin.overview", icon: ClipboardList, href: "/admin", active: true },
@@ -245,7 +246,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (user.role !== "admin") {
+  if (!canAccessAdmin(user)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-between p-4">
         <div className="max-w-md text-center">

@@ -11,6 +11,7 @@ import { getNavCategoriesWithCounts } from '@/lib/categories';
 import { useLanguage } from '@/context/languageContext';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { getUserWalletBalance } from '@/lib/liveSessions';
+import { canAccessAdmin } from '@/lib/adminAccess';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -93,9 +94,7 @@ export const Header = () => {
   };
 
   const sellLink = user ? "/sell" : "/signup?next=/sell";
-  const canAccessAdmin =
-    user?.role === 'admin' ||
-    user?.email?.toLowerCase() === 'bebisdavy@gmail.com';
+  const hasAdminAccess = canAccessAdmin(user);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200/70">
@@ -253,7 +252,7 @@ export const Header = () => {
                             <span>{t("header.sellerDashboard")}</span>
                           </Link>
                         )}
-                        {canAccessAdmin && (
+                        {hasAdminAccess && (
                           <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm font-medium border-b border-border mb-2">
                             <Shield size={16} className="text-iwanyu-primary" />
                             <span>{t("header.adminDashboard")}</span>
@@ -413,7 +412,7 @@ export const Header = () => {
                     {(user?.role === 'seller' || user?.role === 'admin') && (
                       <Link to="/seller" onClick={toggleMobileMenu} className="block py-2 text-sm font-medium text-foreground border-b border-border mb-2 pb-3">{t("header.sellerDashboard")}</Link>
                     )}
-                    {canAccessAdmin && (
+                    {hasAdminAccess && (
                       <Link to="/admin" onClick={toggleMobileMenu} className="block py-2 text-sm font-medium text-foreground border-b border-border mb-2 pb-3">{t("header.adminDashboard")}</Link>
                     )}
                     <Link to="/orders" onClick={toggleMobileMenu} className="block py-2 text-sm text-foreground">{t("header.orders")}</Link>
