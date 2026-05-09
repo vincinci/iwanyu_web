@@ -42,6 +42,12 @@ export default function SellerOnboardingPage() {
   const [idBackFile, setIdBackFile] = useState<File | null>(null);
   const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
   const [documentType, setDocumentType] = useState<IdentityDocumentType>("national_id");
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+  const [idFrontUrl, setIdFrontUrl] = useState<string | null>(null);
+  const [idBackUrl, setIdBackUrl] = useState<string | null>(null);
+  const [selfieUploading, setSelfieUploading] = useState(false);
+  const [idFrontUploading, setIdFrontUploading] = useState(false);
+  const [idBackUploading, setIdBackUploading] = useState(false);
 
   // Camera state for selfie
   const [cameraActive, setCameraActive] = useState(false);
@@ -59,8 +65,6 @@ export default function SellerOnboardingPage() {
     }
   }, []);
 
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   // Check if user already has a store
@@ -105,6 +109,57 @@ export default function SellerOnboardingPage() {
 
   const currentStep = getCurrentStep();
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
+
+  const getAccessToken = useCallback(async (): Promise<string | null> => {
+    if (!supabase) return null;
+    const session = (await supabase.auth.getSession()).data.session;
+    return session?.access_token ?? null;
+  }, [supabase]);
+
+  const uploadVerificationImage = useCallback(
+    async (
+      file: File,
+      target: "selfie" | "idFront" | "idBack"
+    ): Promise<boolean> => {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        toast({ title: "Please sign in again", variant: "destructive" });
+        return false;
+      }
+
+      if (target === "selfie") setSelfieUploading(true);
+      if (target === "idFront") setIdFrontUploading(true);
+      if (target === "idBack") setIdBackUploading(true);
+
+      try {
+        const result = await uploadImageToCloudinary(file, {
+          folder: "seller-verification",
+          accessToken,
+        });
+
+        if (target === "selfie") setSelfieUrl(result.url);
+        if (target === "idFront") setIdFrontUrl(result.url);
+        if (target === "idBack") setIdBackUrl(result.url);
+        return true;
+      } catch (error) {
+        console.error("Immediate upload failed:", error);
+        toast({
+          title: "Upload failed",
+          description: "Could not upload image. Please try again.",
+          variant: "destructive",
+        });
+        if (target === "selfie") setSelfieUrl(null);
+        if (target === "idFront") setIdFrontUrl(null);
+        if (target === "idBack") setIdBackUrl(null);
+        return false;
+      } finally {
+        if (target === "selfie") setSelfieUploading(false);
+        if (target === "idFront") setIdFrontUploading(false);
+        if (target === "idBack") setIdBackUploading(false);
+      }
+    },
+    [getAccessToken, toast]
+  );
 
   // Camera functions for selfie
   const startCamera = useCallback(async () => {
@@ -156,14 +211,17 @@ export default function SellerOnboardingPage() {
         const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
         setSelfieFile(file);
         setSelfiePreview(canvas.toDataURL("image/jpeg"));
+        setSelfieUrl(null);
+        void uploadVerificationImage(file, "selfie");
         stopCamera();
       }
     }, "image/jpeg", 0.9);
-  }, [stopCamera]);
+  }, [stopCamera, uploadVerificationImage]);
 
   const retakeSelfie = () => {
     setSelfieFile(null);
     setSelfiePreview(null);
+    setSelfieUrl(null);
     startCamera();
   };
 
@@ -178,74 +236,18 @@ export default function SellerOnboardingPage() {
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
     setFile: (f: File | null) => void,
-    setPreview: (p: string | null) => void
+    setPreview: (p: string | null) => void,
+    target: "idFront" | "idBack"
   ) => {
     const file = e.target.files?.[0];
     if (file) {
       setFile(file);
+      if (target === "idFront") setIdFrontUrl(null);
+      if (target === "idBack") setIdBackUrl(null);
       const reader = new FileReader();
       reader.onload = (ev) => setPreview(ev.target?.result as string);
       reader.readAsDataURL(file);
-    }
-  };
-
-  // Upload images to Cloudinary
-  const uploadImages = async (): Promise<{ selfieUrl: string; idFrontUrl: string; idBackUrl?: string } | null> => {
-    if (!supabase || !user) return null;
-
-    const session = (await supabase.auth.getSession()).data.session;
-    if (!session?.access_token) {
-      toast({ title: "Please sign in again", variant: "destructive" });
-      return null;
-    }
-
-    setUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const accessToken = session.access_token;
-
-      // Upload selfie
-      setUploadProgress(10);
-      const selfieResult = await uploadImageToCloudinary(selfieFile!, {
-        folder: "seller-verification",
-        accessToken,
-      });
-
-      // Upload ID front
-      setUploadProgress(40);
-      const idFrontResult = await uploadImageToCloudinary(idFrontFile!, {
-        folder: "seller-verification",
-        accessToken,
-      });
-
-      // Upload ID back when required for national IDs.
-      let idBackUrl: string | undefined;
-      if (requiresIdBack && idBackFile) {
-        setUploadProgress(70);
-        const idBackResult = await uploadImageToCloudinary(idBackFile, {
-          folder: "seller-verification",
-          accessToken,
-        });
-        idBackUrl = idBackResult.url;
-      }
-
-      setUploadProgress(100);
-      return {
-        selfieUrl: selfieResult.url,
-        idFrontUrl: idFrontResult.url,
-        idBackUrl,
-      };
-    } catch (error) {
-      console.error("Upload failed:", error);
-      toast({
-        title: "Upload failed",
-        description: "Could not upload images. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setUploading(false);
+      void uploadVerificationImage(file, target);
     }
   };
 
@@ -263,16 +265,19 @@ export default function SellerOnboardingPage() {
       return;
     }
 
+    if (selfieUploading || idFrontUploading || (requiresIdBack && idBackUploading)) {
+      toast({ title: t("sell.waitForUploads"), variant: "destructive" });
+      return;
+    }
+
+    if (!selfieUrl || !idFrontUrl || (requiresIdBack && !idBackUrl)) {
+      toast({ title: t("sell.uploadRequiredDocs"), variant: "destructive" });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      // Upload images first
-      const images = await uploadImages();
-      if (!images) {
-        setSubmitting(false);
-        return;
-      }
-
       // Set role to seller
       await setRole("seller");
 
@@ -289,9 +294,9 @@ export default function SellerOnboardingPage() {
       await supabase
         .from("vendors")
         .update({
-          selfie_url: images.selfieUrl,
-          id_front_url: images.idFrontUrl,
-          id_back_url: images.idBackUrl || null,
+          selfie_url: selfieUrl,
+          id_front_url: idFrontUrl,
+          id_back_url: idBackUrl || null,
           phone: phone.trim() || null,
           email: user.email,
           verification_status: "pending",
@@ -508,8 +513,10 @@ export default function SellerOnboardingPage() {
                             setDocumentType(option.id);
                             setIdFrontFile(null);
                             setIdFrontPreview(null);
+                            setIdFrontUrl(null);
                             setIdBackFile(null);
                             setIdBackPreview(null);
+                            setIdBackUrl(null);
                           }}
                           className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
                             documentType === option.id
@@ -641,7 +648,7 @@ export default function SellerOnboardingPage() {
                         type="file"
                         accept="image/*"
                         capture="environment"
-                        onChange={(e) => handleFileSelect(e, setIdFrontFile, setIdFrontPreview)}
+                        onChange={(e) => handleFileSelect(e, setIdFrontFile, setIdFrontPreview, "idFront")}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       />
                       <div
@@ -689,7 +696,7 @@ export default function SellerOnboardingPage() {
                           type="file"
                           accept="image/*"
                           capture="environment"
-                          onChange={(e) => handleFileSelect(e, setIdBackFile, setIdBackPreview)}
+                          onChange={(e) => handleFileSelect(e, setIdBackFile, setIdBackPreview, "idBack")}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
                         <div
@@ -803,26 +810,9 @@ export default function SellerOnboardingPage() {
                     </p>
                   </div>
 
-                  {uploading && (
-                    <div className="bg-amber-50 rounded-lg p-4">
-                      <div className="flex items-center gap-3">
-                        <Loader2 className="animate-spin text-amber-600" size={20} />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800">{t("sell.uploading")}</p>
-                          <div className="w-full bg-amber-200 rounded-full h-2 mt-2">
-                            <div
-                              className="bg-amber-500 h-2 rounded-full transition-all"
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   <Button
                     onClick={handleCreateStore}
-                    disabled={submitting || uploading || !storeName.trim()}
+                    disabled={submitting || selfieUploading || idFrontUploading || idBackUploading || !storeName.trim()}
                     className="w-full rounded-full bg-amber-400 text-black hover:bg-amber-500 h-12 text-base"
                   >
                     {submitting ? (
@@ -842,10 +832,13 @@ export default function SellerOnboardingPage() {
                     onClick={() => {
                       setSelfieFile(null);
                       setSelfiePreview(null);
+                      setSelfieUrl(null);
                       setIdFrontFile(null);
                       setIdFrontPreview(null);
+                      setIdFrontUrl(null);
                       setIdBackFile(null);
                       setIdBackPreview(null);
+                      setIdBackUrl(null);
                       setDocumentType("national_id");
                     }}
                     className="w-full text-gray-500"

@@ -31,6 +31,12 @@ type MediaPreview = {
   file: File;
 };
 
+type UploadedMedia = {
+  kind: "image" | "video";
+  url: string;
+  publicId: string;
+};
+
 type VendorProfileRow = {
   name: string | null;
   email: string | null;
@@ -161,6 +167,7 @@ export default function SellerNewProductPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [uploadedMediaById, setUploadedMediaById] = useState<Record<string, UploadedMedia>>({});
   const [profileCheckLoading, setProfileCheckLoading] = useState(false);
   const [profileMissingFields, setProfileMissingFields] = useState<string[]>([]);
 
@@ -228,6 +235,61 @@ export default function SellerNewProductPage() {
 
   const isProfileCompleteForPublish = isAdmin || profileMissingFields.length === 0;
 
+  const uploadFilesImmediately = async (files: File[]) => {
+    if (!files.length) return;
+    if (!supabase || !user) return;
+
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      toast({
+        title: t("sellerNew.uploadFailed"),
+        description: t("sellerNew.missingSession"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingCount((prev) => prev + files.length);
+
+    await Promise.all(
+      files.map(async (file) => {
+        const fileId = fileKey(file);
+        const kind = file.type.startsWith("video/") ? "video" : "image";
+
+        try {
+          const result = await uploadMediaToCloudinary(file, {
+            kind,
+            folder: "products",
+            accessToken,
+            onProgress: (progress) => {
+              setUploadProgress((prev) => ({ ...prev, [fileId]: progress }));
+            },
+          });
+
+          setUploadedMediaById((prev) => ({
+            ...prev,
+            [fileId]: {
+              kind,
+              url: result.url,
+              publicId: result.publicId,
+            },
+          }));
+          setUploadProgress((prev) => ({ ...prev, [fileId]: 100 }));
+        } catch (error) {
+          setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }));
+          toast({
+            title: t("sellerNew.uploadFailed"),
+            description: error instanceof Error ? error.message : t("seller.unknownError"),
+            variant: "destructive",
+          });
+        } finally {
+          setUploadingCount((prev) => Math.max(0, prev - 1));
+        }
+      })
+    );
+  };
+
   const addFiles = (incoming: File[]) => {
     const accepted: File[] = [];
     for (const f of incoming) {
@@ -248,6 +310,11 @@ export default function SellerNewProductPage() {
       accepted.push(f);
     }
 
+    const acceptedNew = accepted.filter((file) => {
+      const key = fileKey(file);
+      return !mediaFiles.some((existing) => fileKey(existing) === key);
+    });
+
     setMediaFiles((prev) => {
       const merged = [...prev, ...accepted];
       // de-dupe by key
@@ -261,6 +328,10 @@ export default function SellerNewProductPage() {
       }
       return deduped.slice(0, MAX_MEDIA_FILES);
     });
+
+    if (acceptedNew.length > 0) {
+      void uploadFilesImmediately(acceptedNew.slice(0, MAX_MEDIA_FILES));
+    }
   };
 
   useEffect(() => {
@@ -480,7 +551,18 @@ export default function SellerNewProductPage() {
                           <button
                             type="button"
                             onClick={() => {
+                              const id = p.id;
                               setMediaFiles((prev) => prev.filter((f) => fileKey(f) !== p.id));
+                              setUploadProgress((prev) => {
+                                const next = { ...prev };
+                                delete next[id];
+                                return next;
+                              });
+                              setUploadedMediaById((prev) => {
+                                const next = { ...prev };
+                                delete next[id];
+                                return next;
+                              });
                             }}
                             className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm hover:text-foreground"
                             aria-label={t("sellerNew.removeMedia")}
@@ -662,7 +744,7 @@ export default function SellerNewProductPage() {
 
                 <Button
                   className="w-full rounded-md"
-                  disabled={!canSubmit || uploading || (!isAdmin && vendorOptions.length === 0) || !isProfileCompleteForPublish || profileCheckLoading}
+                  disabled={!canSubmit || uploading || uploadingCount > 0 || (!isAdmin && vendorOptions.length === 0) || !isProfileCompleteForPublish || profileCheckLoading}
                   onClick={async () => {
                     try {
                       const actorUserId = user?.id ?? (isLocalE2E ? E2E_SELLER_ID : undefined);
@@ -722,40 +804,25 @@ export default function SellerNewProductPage() {
                       }
 
                       setUploading(true);
-                      setUploadProgress({});
-                      setUploadingCount(mediaFiles.length);
-
-                      const { data } = await supabase.auth.getSession();
-                      const accessToken = data.session?.access_token;
-                      if (!accessToken) throw new Error(t("sellerNew.missingSession"));
+                      if (uploadingCount > 0) {
+                        throw new Error("Please wait for media uploads to complete.");
+                      }
 
                       const productId = createId("p");
 
-                      // Upload all files in parallel with progress tracking
-                      const uploadPromises = mediaFiles.map(async (file, idx) => {
-                        const kind = file.type.startsWith("video/") ? "video" : "image";
+                      const uploaded = mediaFiles.map((file, idx) => {
                         const fileId = fileKey(file);
-                        
-                        try {
-                          const result = await uploadMediaToCloudinary(file, {
-                            kind,
-                            folder: "products",
-                            accessToken,
-                            onProgress: (progress) => {
-                              setUploadProgress((prev) => ({ ...prev, [fileId]: progress }));
-                            },
-                          });
-                          
-                          setUploadingCount((prev) => prev - 1);
-                          return { idx, kind, url: result.url, publicId: result.publicId };
-                        } catch (error) {
-                          setUploadingCount((prev) => prev - 1);
-                          throw error;
+                        const uploadedMedia = uploadedMediaById[fileId];
+                        if (!uploadedMedia?.url || !uploadedMedia.publicId) {
+                          throw new Error("Some media are not uploaded yet. Please wait or reselect the failed file.");
                         }
-                      });
-
-                      const uploadResults = await Promise.all(uploadPromises);
-                      const uploaded = uploadResults.filter(Boolean) as Array<{
+                        return {
+                          idx,
+                          kind: uploadedMedia.kind,
+                          url: uploadedMedia.url,
+                          publicId: uploadedMedia.publicId,
+                        };
+                      }) as Array<{
                         idx: number;
                         kind: "image" | "video";
                         url: string;
@@ -819,10 +886,10 @@ export default function SellerNewProductPage() {
                   {uploading ? t("sellerNew.uploading") : t("sellerNew.publishProduct")}
                 </Button>
 
-                {uploading && mediaFiles.length > 0 && (
+                {(uploading || uploadingCount > 0) && mediaFiles.length > 0 && (
                   <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-3">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">{t("sellerNew.uploadingMedia")}</span>
+                      <span className="font-medium text-foreground">{uploadingCount > 0 ? "Uploading media in background..." : t("sellerNew.uploadingMedia")}</span>
                       <span className="text-muted-foreground">
                         {mediaFiles.length - uploadingCount} / {mediaFiles.length} {t("sellerNew.complete")}
                       </span>
@@ -832,7 +899,7 @@ export default function SellerNewProductPage() {
                       {mediaFiles.map((file) => {
                         const fileId = fileKey(file);
                         const progress = uploadProgress[fileId] || 0;
-                        const isComplete = progress === 100;
+                        const isComplete = progress === 100 || Boolean(uploadedMediaById[fileId]?.url);
                         
                         return (
                           <div key={fileId} className="space-y-1">

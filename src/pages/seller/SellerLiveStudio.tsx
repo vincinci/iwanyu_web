@@ -59,8 +59,37 @@ export default function SellerLiveStudioPage() {
   const [auctionImages, setAuctionImages] = useState<File[]>([]);
   const [auctionImagePreviews, setAuctionImagePreviews] = useState<string[]>([]);
   const [auctionUploadProgress, setAuctionUploadProgress] = useState(0);
+  const [auctionPrimaryImageUrl, setAuctionPrimaryImageUrl] = useState("");
+  const [auctionImageUploading, setAuctionImageUploading] = useState(false);
   const auctionFileInputRef = useRef<HTMLInputElement>(null);
   const primaryVendor = ownedVendors[0];
+
+  const uploadAuctionPrimaryImage = useCallback(async (file: File) => {
+    const accessToken = (await (await import("@/lib/supabaseClient")).getSupabaseClient()?.auth.getSession())?.data.session?.access_token;
+    if (!accessToken) {
+      setError("Please sign in again to upload images.");
+      return;
+    }
+
+    setAuctionImageUploading(true);
+    setAuctionUploadProgress(1);
+    try {
+      const result = await uploadMediaToCloudinary(file, {
+        kind: "image",
+        folder: "live-auctions",
+        accessToken,
+        onProgress: (p) => setAuctionUploadProgress(Math.max(1, Math.round(p))),
+      });
+      setAuctionPrimaryImageUrl(result.url);
+      setAuctionUploadProgress(100);
+    } catch (err) {
+      setAuctionPrimaryImageUrl("");
+      setAuctionUploadProgress(0);
+      setError(err instanceof Error ? err.message : "Image upload failed.");
+    } finally {
+      setAuctionImageUploading(false);
+    }
+  }, []);
 
   const refreshSessions = useCallback(async () => {
     const sessions = await getLiveSessionsForVendors(ownedVendorIds);
@@ -77,17 +106,29 @@ export default function SellerLiveStudioPage() {
   const handleAuctionImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/")).slice(0, 5);
     if (!files.length) return;
+    const hadNoImages = auctionImages.length === 0;
     setAuctionImages((prev) => [...prev, ...files].slice(0, 5));
     const previews = files.map((f) => URL.createObjectURL(f));
     setAuctionImagePreviews((prev) => [...prev, ...previews].slice(0, 5));
+    if (hadNoImages) {
+      void uploadAuctionPrimaryImage(files[0]);
+    }
   };
 
   const removeAuctionImage = (index: number) => {
-    setAuctionImages((prev) => prev.filter((_, i) => i !== index));
+    const nextImages = auctionImages.filter((_, i) => i !== index);
+    setAuctionImages(nextImages);
     setAuctionImagePreviews((prev) => {
       URL.revokeObjectURL(prev[index]);
       return prev.filter((_, i) => i !== index);
     });
+    if (index === 0) {
+      setAuctionPrimaryImageUrl("");
+      setAuctionUploadProgress(0);
+      if (nextImages[0]) {
+        void uploadAuctionPrimaryImage(nextImages[0]);
+      }
+    }
   };
   const handleStartLiveStream = async () => {
     setError(null);
@@ -154,23 +195,21 @@ export default function SellerLiveStudioPage() {
       return;
     }
 
-    const accessToken = (await (await import("@/lib/supabaseClient")).getSupabaseClient()?.auth.getSession())?.data.session?.access_token;
-
     setAuctionLoading(true);
 
     try {
-      // Upload first image (if any)
-      let imageUrl = "";
-      if (auctionImages.length > 0 && accessToken) {
-        setAuctionUploadProgress(1);
-        const result = await uploadMediaToCloudinary(auctionImages[0], {
-          kind: "image",
-          folder: "live-auctions",
-          accessToken,
-          onProgress: (p) => setAuctionUploadProgress(Math.round(p * 0.9)),
-        });
-        imageUrl = result.url;
-        setAuctionUploadProgress(100);
+      let imageUrl = auctionPrimaryImageUrl;
+      if (auctionImages.length > 0) {
+        if (auctionImageUploading) {
+          setError("Image is still uploading. Please wait a moment.");
+          setAuctionLoading(false);
+          return;
+        }
+        if (!imageUrl) {
+          setError("Please re-select the image so it can finish uploading.");
+          setAuctionLoading(false);
+          return;
+        }
       }
 
       const normalizedHours = Math.min(24, Math.max(1, Math.round(auctionDurationHours)));
@@ -205,7 +244,6 @@ export default function SellerLiveStudioPage() {
       setError(err instanceof Error ? err.message : "Failed to create auction");
     } finally {
       setAuctionLoading(false);
-      setAuctionUploadProgress(0);
     }
   };
 
@@ -419,10 +457,10 @@ export default function SellerLiveStudioPage() {
                 </div>
 
                 {/* Upload progress */}
-                {auctionLoading && auctionUploadProgress > 0 && (
+                {(auctionImageUploading || (auctionLoading && auctionUploadProgress > 0)) && (
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs text-gray-500">
-                      <span>Uploading image…</span>
+                      <span>{auctionImageUploading ? "Uploading image now…" : "Uploading image…"}</span>
                       <span>{auctionUploadProgress}%</span>
                     </div>
                     <div className="h-1 w-full rounded-full bg-gray-100">
@@ -434,7 +472,7 @@ export default function SellerLiveStudioPage() {
                 <div className="space-y-3 mt-auto">
                   <Button
                     onClick={handleCreateLiveAuction}
-                    disabled={auctionLoading || !auctionProductName.trim() || !auctionStartingBid}
+                    disabled={auctionLoading || auctionImageUploading || !auctionProductName.trim() || !auctionStartingBid}
                     size="lg"
                     className="w-full rounded-xl bg-black hover:bg-gray-800 text-white font-medium h-11 disabled:opacity-40"
                   >
