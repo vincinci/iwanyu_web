@@ -56,6 +56,40 @@ serve(async (req) => {
 
     const transactionId = `wth_${Date.now()}_${user.id.substring(0, 8)}`;
 
+    const currentBalance = profile.wallet_balance_rwf || 0;
+    const newBalance = currentBalance - parseInt(amount);
+
+    // Record transaction FIRST
+    const { error: txError } = await supabaseClient
+      .from("wallet_transactions")
+      .insert({
+        user_id: user.id,
+        external_transaction_id: transactionId,
+        type: "withdrawal",
+        amount_rwf: parseInt(amount),
+        previous_balance_rwf: currentBalance,
+        new_balance_rwf: newBalance,
+        status: "pending",
+        phone_number: phoneNumber,
+        payment_method: "pawapay",
+        provider: "pawapay",
+        metadata: {},
+        description: `PawaPay withdrawal ${transactionId}`,
+      });
+
+    if (txError) {
+      console.error("Database error:", txError);
+      throw new Error(`Failed to record transaction: ${txError.message}`);
+    }
+
+    // Deduct from wallet immediately (after recording)
+    await supabaseClient
+      .from("profiles")
+      .update({
+        wallet_balance_rwf: newBalance,
+      })
+      .eq("id", user.id);
+
     // Call PawaPay API for payout
     const pawapayResponse = await fetch("https://api.pawapay.io/payouts", {
       method: "POST",
@@ -80,40 +114,39 @@ serve(async (req) => {
     });
 
     if (!pawapayResponse.ok) {
-      const error = await pawapayResponse.text();
-      throw new Error(`PawaPay error: ${error}`);
+      const errorText = await pawapayResponse.text();
+      console.error("PawaPay API error:", errorText);
+      
+      // Refund the wallet since PawaPay failed
+      await supabaseClient
+        .from("profiles")
+        .update({
+          wallet_balance_rwf: currentBalance,
+        })
+        .eq("id", user.id);
+      
+      // Update transaction status to failed
+      await supabaseClient
+        .from("wallet_transactions")
+        .update({ 
+          status: "failed",
+          new_balance_rwf: currentBalance,
+          metadata: { error: errorText }
+        })
+        .eq("external_transaction_id", transactionId);
+      
+      throw new Error(`PawaPay error: ${errorText}`);
     }
 
     const pawapayData = await pawapayResponse.json();
 
-    const currentBalance = profile.wallet_balance_rwf || 0;
-    const newBalance = currentBalance - parseInt(amount);
-
-    // Deduct from wallet immediately
-    await supabaseClient
-      .from("profiles")
-      .update({
-        wallet_balance_rwf: newBalance,
-      })
-      .eq("id", user.id);
-
-    // Record transaction
+    // Update transaction with PawaPay response
     await supabaseClient
       .from("wallet_transactions")
-      .insert({
-        user_id: user.id,
-        external_transaction_id: transactionId,
-        type: "withdrawal",
-        amount_rwf: parseInt(amount),
-        previous_balance_rwf: currentBalance,
-        new_balance_rwf: newBalance,
-        status: "pending",
-        phone_number: phoneNumber,
-        payment_method: "pawapay",
-        provider: "pawapay",
-        metadata: pawapayData,
-        description: `PawaPay withdrawal ${transactionId}`,
-      });
+      .update({ 
+        metadata: pawapayData
+      })
+      .eq("external_transaction_id", transactionId);
 
     return new Response(
       JSON.stringify({
