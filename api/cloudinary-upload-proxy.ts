@@ -1,10 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
-import formidable from "formidable";
-import fetch from "node-fetch";
-import FormData from "form-data";
-import fs from "fs";
 
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
 const supabaseAnonKey = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
@@ -12,10 +8,14 @@ const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDIN
 const apiKey = (process.env.CLOUDINARY_API_KEY || process.env.VITE_CLOUDINARY_API_KEY || "").trim();
 const apiSecret = (process.env.CLOUDINARY_API_SECRET || process.env.VITE_CLOUDINARY_API_SECRET || "").trim();
 
+// Increase max body size for file uploads (50MB)
 export const config = {
   api: {
-    bodyParser: false, // Disable body parsing so we can handle multipart/form-data
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
   },
+  maxDuration: 60, // 60 seconds max execution
 };
 
 function signCloudinaryParams(params: Record<string, string | number>, secret: string) {
@@ -27,6 +27,7 @@ function signCloudinaryParams(params: Record<string, string | number>, secret: s
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('Proxy request:', req.method, req.url);
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");

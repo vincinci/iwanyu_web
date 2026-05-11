@@ -76,15 +76,15 @@ export async function uploadMediaToCloudinary(
     accessToken: string;
     onProgress?: (progress: number) => void;
     retries?: number;
-    useProxy?: boolean; // NEW: Option to use server-side proxy
+    useProxy?: boolean; // Option to use server-side proxy
   }
 ): Promise<{ url: string; publicId: string }> {
-  // Use proxy by default for better reliability
-  if (input.useProxy !== false) {
+  // Use direct upload by default (proxy disabled for now due to serverless timeout issues)
+  if (input.useProxy === true) {
     return uploadViaProxy(file, input);
   }
   
-  // Direct upload (original method, may timeout for some users)
+  // Direct upload (original method)
   return uploadDirectToCloudinary(file, input);
 }
 

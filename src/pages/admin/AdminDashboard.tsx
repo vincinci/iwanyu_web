@@ -24,7 +24,7 @@ import { createId } from "@/lib/ids";
 import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 import { canAccessAdmin } from "@/lib/adminAccess";
-import { uploadMediaToCloudinary, testCloudinaryConnectivity } from "@/lib/cloudinary";
+import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 
 const nav = [
   { labelKey: "admin.overview", icon: ClipboardList, href: "/admin", active: true },
@@ -457,17 +457,6 @@ export default function AdminDashboardPage() {
       if (!accessToken) {
         throw new Error("Not authenticated. Please sign in again.");
       }
-      
-      // Test Cloudinary connectivity (non-blocking, just for diagnostics)
-      testCloudinaryConnectivity().then(result => {
-        if (result.reachable) {
-          console.log("✓ Cloudinary connectivity test passed");
-        } else {
-          console.warn("⚠ Cloudinary connectivity test failed (this is normal due to CORS):", result.message);
-        }
-      }).catch(err => {
-        console.warn("⚠ Connectivity test error (can be ignored):", err);
-      });
 
       const uploadedItems: Array<{url: string; type: 'image' | 'video'}> = [];
       
