@@ -7,11 +7,24 @@ export interface PaymentResponse {
   error?: string;
 }
 
+// Get API base URL (Vercel deployment or local)
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:5173';
+};
+
 export class PawaPay {
   /**
-   * Initiate a wallet deposit
+   * Initiate a wallet deposit using PawaPay Deposits API
+   * Reference: POST https://api.pawapay.io/deposits
    */
-  static async deposit(amount: number, phoneNumber: string): Promise<PaymentResponse> {
+  static async deposit(
+    amount: number, 
+    phoneNumber: string, 
+    correspondent?: string
+  ): Promise<PaymentResponse> {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error('Supabase client not available');
@@ -23,14 +36,14 @@ export class PawaPay {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pawapay-deposit`,
+        `${getApiBaseUrl()}/api/pawapay-deposit`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ amount, phoneNumber }),
+          body: JSON.stringify({ amount, phoneNumber, correspondent }),
         }
       );
 
@@ -50,9 +63,14 @@ export class PawaPay {
   }
 
   /**
-   * Initiate a wallet withdrawal
+   * Initiate a wallet withdrawal using PawaPay Payouts API
+   * Reference: POST https://api.pawapay.io/payouts
    */
-  static async withdraw(amount: number, phoneNumber: string): Promise<PaymentResponse> {
+  static async withdraw(
+    amount: number, 
+    phoneNumber: string, 
+    correspondent?: string
+  ): Promise<PaymentResponse> {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error('Supabase client not available');
@@ -64,14 +82,14 @@ export class PawaPay {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pawapay-withdrawal`,
+        `${getApiBaseUrl()}/api/pawapay-withdrawal`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ amount, phoneNumber }),
+          body: JSON.stringify({ amount, phoneNumber, correspondent }),
         }
       );
 
@@ -91,9 +109,14 @@ export class PawaPay {
   }
 
   /**
-   * Pay for an order
+   * Pay for an order using PawaPay Deposits API
+   * Reference: POST https://api.pawapay.io/deposits
    */
-  static async payOrder(orderId: string, phoneNumber: string): Promise<PaymentResponse> {
+  static async payOrder(
+    orderId: string, 
+    phoneNumber: string, 
+    correspondent?: string
+  ): Promise<PaymentResponse> {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error('Supabase client not available');
@@ -105,14 +128,14 @@ export class PawaPay {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pawapay-payment`,
+        `${getApiBaseUrl()}/api/pawapay-payment`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ orderId, phoneNumber }),
+          body: JSON.stringify({ orderId, phoneNumber, correspondent }),
         }
       );
 
@@ -132,20 +155,37 @@ export class PawaPay {
   }
 
   /**
-   * Check transaction status
+   * Check transaction status via PawaPay Status API
+   * Reference: GET https://api.pawapay.io/deposits/{depositId}
+   * Reference: GET https://api.pawapay.io/payouts/{payoutId}
    */
   static async checkStatus(transactionId: string): Promise<any> {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error('Supabase client not available');
 
-      const { data, error } = await supabase
-        .from('wallet_transactions')
-        .select('*')
-        .eq('transaction_id', transactionId)
-        .single();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
 
-      if (error) throw error;
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/pawapay-status?transactionId=${transactionId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Status check failed');
+      }
 
       return data;
     } catch (error: any) {
