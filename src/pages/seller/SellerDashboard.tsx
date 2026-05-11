@@ -36,8 +36,8 @@ export default function SellerDashboardPage() {
   const location = useLocation();
   const [notifications, setNotifications] = useState<VendorNotification[]>([]);
 
-  const [metrics, setMetrics] = useState<{ productCount: number; orderCount: number; salesRwf: number; paidOrderCount: number; pendingOrderCount: number }>(
-    { productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0 }
+  const [metrics, setMetrics] = useState<{ productCount: number; orderCount: number; salesRwf: number; paidOrderCount: number; pendingOrderCount: number; walletBalanceRwf: number }>(
+    { productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0, walletBalanceRwf: 0 }
   );
   const [metricsLoading, setMetricsLoading] = useState(false);
 
@@ -91,7 +91,7 @@ export default function SellerDashboardPage() {
       if (!supabase || !user) return;
 
       if (!isAdmin && ownedVendorIds.length === 0) {
-        setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0 });
+        setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0, walletBalanceRwf: 0 });
         return;
       }
 
@@ -100,6 +100,15 @@ export default function SellerDashboardPage() {
         const productCount = isAdmin
           ? products.length
           : products.filter((p) => ownedVendorIds.includes(p.vendorId)).length;
+
+        // Fetch wallet balance from profiles
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("wallet_balance_rwf")
+          .eq("id", user.id)
+          .single();
+
+        const walletBalanceRwf = Number(profileData?.wallet_balance_rwf ?? 0);
 
         let query = supabase
           .from("order_items")
@@ -139,9 +148,9 @@ export default function SellerDashboardPage() {
           pendingOrderCount = Math.max(uniqueOrders.size - paidOrderCount, 0);
         }
 
-        if (!cancelled) setMetrics({ productCount, orderCount: uniqueOrders.size, salesRwf, paidOrderCount, pendingOrderCount });
+        if (!cancelled) setMetrics({ productCount, orderCount: uniqueOrders.size, salesRwf, paidOrderCount, pendingOrderCount, walletBalanceRwf });
       } catch {
-        if (!cancelled) setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0 });
+        if (!cancelled) setMetrics({ productCount: 0, orderCount: 0, salesRwf: 0, paidOrderCount: 0, pendingOrderCount: 0, walletBalanceRwf: 0 });
       } finally {
         if (!cancelled) setMetricsLoading(false);
       }
@@ -263,7 +272,19 @@ export default function SellerDashboardPage() {
                   <p className="text-gray-600 text-sm">{t("seller.overviewDesc")}</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                  <div className="dashboard-card p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-green-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-green-700">Wallet Balance (PawaPay)</p>
+                      <Wallet size={18} className="text-green-600" />
+                    </div>
+                    <div className="text-2xl font-semibold text-green-900">
+                      {metricsLoading ? "..." : formatMoney(metrics.walletBalanceRwf)}
+                    </div>
+                    <Link to="/seller/payouts" className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-800 mt-2 font-medium">
+                      Request payout <ArrowRight size={12} />
+                    </Link>
+                  </div>
                   <div className="dashboard-card p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">{t("seller.sales")}</p>

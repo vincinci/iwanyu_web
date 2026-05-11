@@ -1,4 +1,4 @@
-import { ArrowUpRight, Calendar } from "lucide-react";
+import { ArrowUpRight, Calendar, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -55,11 +55,13 @@ export default function SellerPayoutsPage() {
     const [ownedVendorIds, setOwnedVendorIds] = useState<string[]>([]);
     const [payouts, setPayouts] = useState<VendorPayoutRow[]>([]);
     const [grossSalesRwf, setGrossSalesRwf] = useState(0);
+    const [walletBalanceRwf, setWalletBalanceRwf] = useState(0);
     const [requests, setRequests] = useState<WithdrawalRequestRow[]>([]);
     const [payoutSettings, setPayoutSettings] = useState<PayoutSettingsRow | null>(null);
     const [requestAmount, setRequestAmount] = useState("");
     const [requestNote, setRequestNote] = useState("");
     const [submittingRequest, setSubmittingRequest] = useState(false);
+    const [submittingWalletWithdrawal, setSubmittingWalletWithdrawal] = useState(false);
     const [payoutMethodChoice, setPayoutMethodChoice] = useState<"mobile" | "bank">("mobile");
 
     useEffect(() => {
@@ -84,7 +86,7 @@ export default function SellerPayoutsPage() {
 
                 setOwnedVendorIds(vendorIds);
 
-                const [payoutsResult, salesResult, requestsResult, settingsResult] = await Promise.all([
+                const [payoutsResult, salesResult, requestsResult, settingsResult, profileResult] = await Promise.all([
                     vendorIds.length > 0
                         ? supabase
                               .from("vendor_payouts")
@@ -116,6 +118,12 @@ export default function SellerPayoutsPage() {
                               .eq("vendor_id", vendorIds[0])
                               .maybeSingle()
                         : Promise.resolve({ data: null, error: null }),
+                    // Fetch wallet balance from profiles
+                    supabase
+                        .from("profiles")
+                        .select("wallet_balance_rwf")
+                        .eq("id", user.id)
+                        .single(),
                 ]);
 
                 if (cancelled) return;
@@ -126,6 +134,10 @@ export default function SellerPayoutsPage() {
                 const salesRows = (salesResult.data ?? []) as Array<{ price_rwf: number; quantity: number }>;
                 const gross = salesRows.reduce((sum, row) => sum + Number(row.price_rwf ?? 0) * Number(row.quantity ?? 1), 0);
                 setGrossSalesRwf(gross);
+
+                // Store wallet balance
+                const walletBal = Number(profileResult.data?.wallet_balance_rwf ?? 0);
+                setWalletBalanceRwf(walletBal);
 
                 setRequests((requestsResult.data ?? []) as WithdrawalRequestRow[]);
 
@@ -290,6 +302,78 @@ export default function SellerPayoutsPage() {
         }
     }
 
+    async function handleWalletWithdrawClick() {
+        if (!supabase || !user?.id) return;
+
+        const amount = Math.floor(Number(requestAmount));
+        if (!Number.isFinite(amount) || amount <= 0) {
+            toast({
+                title: t("sellerPayouts.invalidAmountTitle"),
+                description: t("sellerPayouts.invalidAmountDesc"),
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (amount > walletBalanceRwf) {
+            toast({
+                title: "Amount exceeds wallet balance",
+                description: `You can only withdraw up to ${formatMoney(walletBalanceRwf)} from your wallet.`,
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (!payoutSettings?.mobile_number) {
+            toast({
+                title: "No mobile number set",
+                description: "Go to Payout Settings to add your mobile money number.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setSubmittingWalletWithdrawal(true);
+        try {
+            const result = await paymentService.withdrawWalletBalance(
+                {
+                    amount,
+                    phone: payoutSettings.mobile_number,
+                    network: payoutSettings.mobile_provider || "MTN",
+                },
+                user.id,
+            );
+
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+
+            // Refresh wallet balance
+            const { data: profileData } = await supabase
+                .from("profiles")
+                .select("wallet_balance_rwf")
+                .eq("id", user.id)
+                .single();
+
+            setWalletBalanceRwf(Number(profileData?.wallet_balance_rwf ?? 0));
+            setRequestAmount("");
+            setRequestNote("");
+            
+            toast({
+                title: "Wallet withdrawal started",
+                description: result.message,
+            });
+        } catch (error) {
+            toast({
+                title: "Withdrawal failed",
+                description: error instanceof Error ? error.message : "Failed to process withdrawal. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setSubmittingWalletWithdrawal(false);
+        }
+    }
+
     function handlePayoutSettings() {
         navigate("/seller/payout-settings");
     }
@@ -309,10 +393,38 @@ export default function SellerPayoutsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Balance Card */}
+            {/* Wallet Balance Card - PawaPay */}
+            <Card className="dashboard-card bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                <CardHeader>
+                    <CardTitle className="text-green-700 font-normal text-sm uppercase tracking-wider flex items-center gap-2">
+                        <Wallet size={16} />
+                        PawaPay Wallet Balance
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-4xl font-semibold text-green-900 mb-2">
+                      {loading ? "..." : formatMoney(walletBalanceRwf)}
+                    </div>
+                    <div className="text-sm text-green-700 mb-4">
+                      Available to withdraw now
+                    </div>
+                    <Button
+                        onClick={() => void handleWalletWithdrawClick()}
+                        disabled={loading || walletBalanceRwf <= 0 || submittingWalletWithdrawal}
+                        className="bg-green-700 text-white hover:bg-green-800 font-semibold rounded-full mb-3 w-full"
+                    >
+                        {submittingWalletWithdrawal ? "Processing..." : "Withdraw from Wallet"} <ArrowUpRight size={16} className="ml-2" />
+                    </Button>
+                    <div className="text-xs text-gray-600 bg-white/60 rounded-lg p-3 border border-green-100">
+                      💡 This is your mobile money wallet balance that you can withdraw instantly to your phone.
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Balance Card - Sales */}
             <Card className="dashboard-card lg:col-span-2">
                 <CardHeader>
-                    <CardTitle className="text-gray-500 font-normal text-sm uppercase tracking-wider">{t("seller.availableBalance")}</CardTitle>
+                    <CardTitle className="text-gray-500 font-normal text-sm uppercase tracking-wider">{t("seller.availableBalance")} (Sales)</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="text-4xl font-semibold text-gray-900 mb-2">
