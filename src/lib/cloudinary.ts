@@ -76,6 +76,93 @@ export async function uploadMediaToCloudinary(
     accessToken: string;
     onProgress?: (progress: number) => void;
     retries?: number;
+    useProxy?: boolean; // NEW: Option to use server-side proxy
+  }
+): Promise<{ url: string; publicId: string }> {
+  // Use proxy by default for better reliability
+  if (input.useProxy !== false) {
+    return uploadViaProxy(file, input);
+  }
+  
+  // Direct upload (original method, may timeout for some users)
+  return uploadDirectToCloudinary(file, input);
+}
+
+/**
+ * Upload via server-side proxy (more reliable for users with connectivity issues)
+ */
+async function uploadViaProxy(
+  file: File,
+  input: {
+    kind: CloudinaryMediaKind;
+    folder?: string;
+    accessToken: string;
+    onProgress?: (progress: number) => void;
+  }
+): Promise<{ url: string; publicId: string }> {
+  const proxyUrl = "/api/cloudinary-upload-proxy";
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("kind", input.kind);
+  formData.append("folder", input.folder || "");
+  
+  console.log(`Uploading via proxy:`, {
+    filename: file.name,
+    size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+    type: input.kind
+  });
+  
+  const xhr = new XMLHttpRequest();
+  
+  return new Promise((resolve, reject) => {
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && input.onProgress) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        input.onProgress(percentComplete);
+      }
+    });
+    
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          console.log(`✓ Upload successful via proxy`);
+          resolve({ url: data.url, publicId: data.publicId });
+        } catch (e) {
+          reject(new Error("Failed to parse proxy response"));
+        }
+      } else {
+        try {
+          const errorData = JSON.parse(xhr.responseText);
+          reject(new Error(`Proxy upload failed: ${errorData.error || errorData.message || xhr.statusText}`));
+        } catch (e) {
+          reject(new Error(`Proxy upload failed (${xhr.status}): ${xhr.statusText}`));
+        }
+      }
+    });
+    
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error during proxy upload"));
+    });
+    
+    xhr.open("POST", proxyUrl);
+    xhr.setRequestHeader("Authorization", `Bearer ${input.accessToken}`);
+    xhr.send(formData);
+  });
+}
+
+/**
+ * Direct upload to Cloudinary (original method)
+ */
+async function uploadDirectToCloudinary(
+  file: File,
+  input: {
+    kind: CloudinaryMediaKind;
+    folder?: string;
+    accessToken: string;
+    onProgress?: (progress: number) => void;
+    retries?: number;
   }
 ): Promise<{ url: string; publicId: string }> {
   const maxRetries = input.retries ?? 3; // Increased to 3 retries
