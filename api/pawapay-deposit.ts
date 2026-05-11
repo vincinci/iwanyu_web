@@ -3,7 +3,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const pawapayApiKey = process.env.PAWAPAY_API_KEY || '';
 
@@ -31,16 +31,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { amount, phoneNumber, correspondent } = req.body;
 
+    console.log('[PawaPay Deposit] Request received:', { amount, phoneNumber: phoneNumber?.substring(0, 7) + '***', correspondent });
+
     if (!amount || !phoneNumber) {
+      console.error('[PawaPay Deposit] Missing required fields');
       return res.status(400).json({ error: 'Amount and phone number required' });
     }
 
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[PawaPay Deposit] Missing Supabase config:', { 
+        hasUrl: !!supabaseUrl, 
+        hasServiceKey: !!supabaseServiceKey 
+      });
       return res.status(500).json({ error: 'Supabase configuration missing' });
     }
 
     if (!pawapayApiKey) {
-      return res.status(500).json({ error: 'PawaPay API key missing' });
+      console.error('[PawaPay Deposit] Missing PawaPay API key');
+      return res.status(500).json({ error: 'PawaPay API key missing. Please set PAWAPAY_API_KEY in Vercel environment variables.' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -150,7 +158,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       pawapayData,
     });
   } catch (error: any) {
-    console.error('Deposit error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error('[PawaPay Deposit] Error:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
