@@ -39,8 +39,13 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .single();
 
-    if (!wallet || wallet.balance < parseFloat(amount)) {
+    if (!wallet || wallet.balance < parseInt(amount)) {
       throw new Error("Insufficient balance");
+    }
+
+    // Minimum withdrawal amount
+    if (parseInt(amount) < 500) {
+      throw new Error("Minimum withdrawal is 500 ZMW");
     }
 
     const transactionId = `wth_${Date.now()}_${user.id.substring(0, 8)}`;
@@ -75,11 +80,14 @@ serve(async (req) => {
 
     const pawapayData = await pawapayResponse.json();
 
+    const currentBalance = wallet.balance;
+    const newBalance = currentBalance - parseInt(amount);
+
     // Deduct from wallet immediately
     await supabaseClient
       .from("wallets")
       .update({
-        balance: wallet.balance - parseFloat(amount),
+        balance: newBalance,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", user.id);
@@ -89,13 +97,17 @@ serve(async (req) => {
       .from("wallet_transactions")
       .insert({
         user_id: user.id,
-        transaction_id: transactionId,
+        external_transaction_id: transactionId,
         type: "withdrawal",
-        amount: parseFloat(amount),
+        amount_rwf: parseInt(amount),
+        previous_balance_rwf: currentBalance,
+        new_balance_rwf: newBalance,
         status: "pending",
         phone_number: phoneNumber,
+        payment_method: "pawapay",
         provider: "pawapay",
         metadata: pawapayData,
+        description: `PawaPay withdrawal ${transactionId}`,
       });
 
     return new Response(

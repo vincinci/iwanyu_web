@@ -66,18 +66,31 @@ serve(async (req) => {
 
     const pawapayData = await pawapayResponse.json();
 
+    // Get current wallet balance
+    const { data: wallet } = await supabaseClient
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", user.id)
+      .single();
+
+    const currentBalance = wallet?.balance || 0;
+
     // Store transaction in database
     const { error: dbError } = await supabaseClient
       .from("wallet_transactions")
       .insert({
         user_id: user.id,
-        transaction_id: transactionId,
+        external_transaction_id: transactionId,
         type: "deposit",
-        amount: parseFloat(amount),
+        amount_rwf: parseInt(amount),
+        previous_balance_rwf: currentBalance,
+        new_balance_rwf: currentBalance, // Will be updated on callback
         status: "pending",
         phone_number: phoneNumber,
+        payment_method: "pawapay",
         provider: "pawapay",
         metadata: pawapayData,
+        description: `PawaPay deposit ${transactionId}`,
       });
 
     if (dbError) {

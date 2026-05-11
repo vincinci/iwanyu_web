@@ -17,7 +17,7 @@ serve(async (req) => {
     const { data: transaction, error: fetchError } = await supabaseClient
       .from("wallet_transactions")
       .select("*")
-      .eq("transaction_id", depositId)
+      .eq("external_transaction_id", depositId)
       .single();
 
     if (fetchError || !transaction) {
@@ -31,7 +31,7 @@ serve(async (req) => {
         status: status === "COMPLETED" ? "completed" : "failed",
         updated_at: new Date().toISOString(),
       })
-      .eq("transaction_id", depositId);
+      .eq("external_transaction_id", depositId);
 
     if (updateError) {
       throw new Error("Failed to update transaction");
@@ -46,8 +46,9 @@ serve(async (req) => {
         .single();
 
       const currentBalance = wallet?.balance || 0;
-      const newBalance = currentBalance + parseFloat(amount);
+      const newBalance = currentBalance + parseInt(amount);
 
+      // Update wallet
       await supabaseClient
         .from("wallets")
         .upsert({
@@ -55,6 +56,14 @@ serve(async (req) => {
           balance: newBalance,
           updated_at: new Date().toISOString(),
         });
+
+      // Update transaction with new balance
+      await supabaseClient
+        .from("wallet_transactions")
+        .update({
+          new_balance_rwf: newBalance,
+        })
+        .eq("external_transaction_id", depositId);
     }
 
     return new Response(JSON.stringify({ success: true }), {

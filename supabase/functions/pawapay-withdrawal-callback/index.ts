@@ -17,7 +17,7 @@ serve(async (req) => {
     const { data: transaction, error: fetchError } = await supabaseClient
       .from("wallet_transactions")
       .select("*")
-      .eq("transaction_id", payoutId)
+      .eq("external_transaction_id", payoutId)
       .single();
 
     if (fetchError || !transaction) {
@@ -32,7 +32,7 @@ serve(async (req) => {
         status: finalStatus,
         updated_at: new Date().toISOString(),
       })
-      .eq("transaction_id", payoutId);
+      .eq("external_transaction_id", payoutId);
 
     // If failed, refund the wallet
     if (status === "FAILED") {
@@ -42,13 +42,24 @@ serve(async (req) => {
         .eq("user_id", transaction.user_id)
         .single();
 
+      const refundAmount = parseInt(amount);
+      const newBalance = wallet.balance + refundAmount;
+
       await supabaseClient
         .from("wallets")
         .update({
-          balance: wallet.balance + parseFloat(amount),
+          balance: newBalance,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", transaction.user_id);
+
+      // Update transaction with refunded balance
+      await supabaseClient
+        .from("wallet_transactions")
+        .update({
+          new_balance_rwf: newBalance,
+        })
+        .eq("external_transaction_id", payoutId);
     }
 
     return new Response(JSON.stringify({ success: true }), {
