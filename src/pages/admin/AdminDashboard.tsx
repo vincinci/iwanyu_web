@@ -510,7 +510,7 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setHeroMediaUploading(false);
-      setHeroImageUploadProgress(0);
+      setHeroMediaUploadProgress(0);
       // Reset file input
       event.target.value = "";
     }
