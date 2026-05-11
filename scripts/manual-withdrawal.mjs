@@ -78,7 +78,7 @@ async function executeWithdrawal() {
       body: JSON.stringify({
         amountRwf: amount,
         phoneNumber: phone,
-        mobileNetwork: 'MTN_RWANDA',
+        mobileNetwork: 'MTN_MOMO_RWA',
         _adminOverride: true, // Flag to indicate admin call
         _userId: user.id, // Explicit user ID
       }),

@@ -53,17 +53,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Verify authorization
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
     const body = await req.json() as {
       amountRwf: number;
       phoneNumber: string;
@@ -72,15 +61,47 @@ Deno.serve(async (req: Request) => {
       _userId?: string;
     };
 
+    // Verify authorization
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized - No auth header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
     let user: { id: string };
 
-    // Check if this is an admin call with service role key
-    const isServiceRole = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY.substring(0, 20));
-    
-    if (isServiceRole && body._adminOverride && body._userId) {
-      // Admin override - use provided user ID
-      user = { id: body._userId };
-      console.log("Admin override: Processing withdrawal for user", user.id);
+    // Extract token from header
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+
+    // Check for admin override
+    if (body._adminOverride && body._userId) {
+      // Verify the token is actually service role by testing admin access
+      try {
+        const testClient = createClient(SUPABASE_URL, token);
+        const { data, error } = await testClient.from('profiles').select('id').eq('id', body._userId).single();
+        
+        if (!error && data) {
+          // Token has admin access - allow override
+          user = { id: body._userId };
+          console.log("✅ Admin override: Processing withdrawal for user", user.id);
+        } else {
+          console.error("❌ Admin override failed - invalid service role key");
+          return new Response(JSON.stringify({ error: "Unauthorized - Invalid admin token" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } catch (err) {
+        console.error("❌ Admin override error:", err);
+        return new Response(JSON.stringify({ error: "Unauthorized - Admin check failed" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     } else {
       // Normal user call - verify JWT
       const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -89,17 +110,14 @@ Deno.serve(async (req: Request) => {
 
       const { data: { user: authUser }, error: userErr } = await userClient.auth.getUser();
       if (userErr || !authUser) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        console.error("User auth failed:", userErr);
+        return new Response(JSON.stringify({ error: "Unauthorized - Invalid token" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       user = authUser;
     }
-
-    const { amountRwf, phoneNumber, mobileNetwork } = body;
-      mobileNetwork?: string;
-    };
 
     const { amountRwf, phoneNumber, mobileNetwork } = body;
 
@@ -232,7 +250,7 @@ Deno.serve(async (req: Request) => {
         payoutId: withdrawalId,
         amount: String(Math.trunc(amountRwf)),
         currency: "RWF",
-        correspondent: mobileNetwork || "MTN_RWANDA",
+        correspondent: mobileNetwork || "MTN_MOMO_RWA",
         recipient: {
           type: "MSISDN",
           address: {
