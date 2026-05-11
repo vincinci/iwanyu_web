@@ -280,7 +280,7 @@ export default function SellerNewProductPage() {
           setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }));
           toast({
             title: t("sellerNew.uploadFailed"),
-            description: error instanceof Error ? error.message : t("seller.unknownError"),
+            description: t("seller.unknownError"),
             variant: "destructive",
           });
         } finally {

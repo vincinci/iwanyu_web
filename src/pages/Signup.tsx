@@ -64,7 +64,7 @@ export default function SignupPage() {
 
       navigate(nextPath);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("auth.signupFailed"));
+      setError(t("auth.signupFailed"));
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function SignupPage() {
       options: { redirectTo: getOAuthRedirectUrl(nextPath) },
     });
 
-    if (e) setError(e.message);
+    if (e) setError(t("auth.signupFailed"));
   };
 
   return (

@@ -313,7 +313,7 @@ export default function SellerOnboardingPage() {
         vendor_id: vendor.id,
       });
       if (appErr) {
-        throw new Error(appErr.message);
+        throw new Error("Application submission failed");
       }
 
       await refresh();
@@ -325,10 +325,9 @@ export default function SellerOnboardingPage() {
 
       setExistingVendor({ id: vendor.id, name: vendor.name });
     } catch (error) {
-      console.error("Store creation failed:", error);
       toast({
         title: "Could not create store",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {

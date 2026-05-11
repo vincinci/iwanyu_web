@@ -61,7 +61,7 @@ export default function VendorApplicationPage() {
         status: "pending",
       });
 
-      if (vendorErr) throw new Error(vendorErr.message);
+      if (vendorErr) throw new Error("Failed to create vendor");
 
       const applicationId = createId("va");
       const { error: appErr } = await supabase.from("vendor_applications").insert({
@@ -73,13 +73,12 @@ export default function VendorApplicationPage() {
         vendor_id: vendorId,
       });
 
-      if (appErr) throw new Error(appErr.message);
+      if (appErr) throw new Error("Failed to submit application");
 
       await refresh();
       navigate("/seller");
     } catch (e) {
-      console.error("Vendor application failed:", e);
-      alert(e instanceof Error ? e.message : "Application failed");
+      alert("Application failed. Please try again.");
     } finally {
       setSubmitting(false);
     }

@@ -75,7 +75,7 @@ export default function LoginPage() {
       // Optimistically navigate - the auth state will update in background
       navigate(nextPath, { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("auth.signinFailed"));
+      setError(t("auth.signinFailed"));
       setLoading(false);
     }
   };

@@ -200,7 +200,7 @@ export default function SellPage() {
                           status: "pending",
                           vendor_id: vendor.id,
                         });
-                      if (appErr) throw new Error(appErr.message);
+                      if (appErr) throw new Error("Application submission failed");
 
                       await refresh();
 
@@ -210,10 +210,9 @@ export default function SellPage() {
                       });
                       navigate("/seller");
                     } catch (error) {
-                      console.error("Error creating store:", error);
                       toast({
                         title: "Could not create store",
-                        description: error instanceof Error ? error.message : "Please try again.",
+                        description: "Something went wrong. Please try again.",
                         variant: "destructive",
                       });
                     } finally {

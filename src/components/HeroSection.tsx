@@ -42,12 +42,6 @@ export const HeroSection = () => {
             <div className="container relative mx-auto px-4 py-12 md:py-20">
                 <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-16">
                     <div className="lg:col-span-6 space-y-8">
-                        {/* Clean Badge */}
-                        <div className="inline-flex items-center gap-2 rounded-md bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-800 border border-gray-200">
-                            <div className="h-1.5 w-1.5 rounded-full bg-green-500"></div>
-                            Rwanda's Premier Marketplace
-                        </div>
-
                         {/* Solid, elegant heading */}
                         <h1 className="text-4xl font-bold tracking-tight text-gray-900 md:text-5xl lg:text-6xl text-balance">
                             {t("hero.title")}

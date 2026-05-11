@@ -142,7 +142,7 @@ export default function WalletPage() {
         toast({ title: "Deposit failed", description: result.message, variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Deposit failed", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Deposit failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     } finally {
       setIsProcessing(false);
     }
@@ -181,7 +181,7 @@ export default function WalletPage() {
       setWithdrawPhone("");
       if (typeof data.newBalance === "number") setBalance(data.newBalance);
     } catch (error) {
-      toast({ title: "Withdrawal failed", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Withdrawal failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     } finally {
       setIsWithdrawing(false);
     }
