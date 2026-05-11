@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data: transaction } = await supabase
         .from('wallet_transactions')
         .select('*')
-        .eq('external_transaction_id', transactionId)
+        .eq('reference', transactionId)
         .eq('user_id', user.id)
         .single();
       

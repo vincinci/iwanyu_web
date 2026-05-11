@@ -91,18 +91,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('wallet_transactions')
       .insert({
         user_id: user.id,
-        external_transaction_id: transactionId,
-        type: 'withdrawal',
+        reference: transactionId,
         kind: 'wallet_withdrawal',
-        amount_rwf: withdrawAmount,
-        previous_balance_rwf: currentBalance,
-        new_balance_rwf: newBalance,
+        amount: withdrawAmount,
         status: 'pending',
-        phone_number: phoneNumber,
-        payment_method: 'pawapay',
-        provider: correspondent || 'MTN_MOMO_RWA',
-        metadata: {},
-        description: `PawaPay withdrawal ${transactionId}`,
+        metadata: {
+          phone_number: phoneNumber,
+          payment_method: 'pawapay',
+          provider: correspondent || 'MTN_MOMO_RWA',
+          description: `PawaPay withdrawal ${transactionId}`,
+        },
       });
 
     if (txError) {

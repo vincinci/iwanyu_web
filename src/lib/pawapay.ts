@@ -211,8 +211,6 @@ export class PawaPay {
         return 0;
       }
 
-      console.log('Fetching wallet for user:', user.id);
-
       // Read from profiles table (same as Header)
       const { data, error } = await supabase
         .from('profiles')
@@ -226,7 +224,6 @@ export class PawaPay {
       }
 
       if (!data) {
-        console.log('No profile found');
         return 0;
       }
 
@@ -234,7 +231,6 @@ export class PawaPay {
       const locked = Number(data.locked_balance_rwf ?? 0);
       const available = Math.max(0, wallet - locked);
 
-      console.log('Wallet balance:', { wallet, locked, available });
       return available;
     } catch (error) {
       console.error('getBalance error:', error);
