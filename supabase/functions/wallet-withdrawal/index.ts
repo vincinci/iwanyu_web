@@ -63,21 +63,41 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    
     const body = await req.json() as {
       amountRwf: number;
       phoneNumber: string;
+      mobileNetwork?: string;
+      _adminOverride?: boolean;
+      _userId?: string;
+    };
+
+    let user: { id: string };
+
+    // Check if this is an admin call with service role key
+    const isServiceRole = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY.substring(0, 20));
+    
+    if (isServiceRole && body._adminOverride && body._userId) {
+      // Admin override - use provided user ID
+      user = { id: body._userId };
+      console.log("Admin override: Processing withdrawal for user", user.id);
+    } else {
+      // Normal user call - verify JWT
+      const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: { user: authUser }, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !authUser) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      user = authUser;
+    }
+
+    const { amountRwf, phoneNumber, mobileNetwork } = body;
       mobileNetwork?: string;
     };
 
