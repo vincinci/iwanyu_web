@@ -104,6 +104,13 @@ export default function AdminVendorsPage() {
     await refresh();
   }
 
+  async function toggleVendorVerified(vendorId: string, currentVerified: boolean) {
+    if (!supabase) throw new Error(t("admin.supabaseMissing"));
+    const { error } = await supabase.from("vendors").update({ verified: !currentVerified }).eq("id", vendorId);
+    if (error) throw new Error(error.message);
+    await refresh();
+  }
+
   async function deleteVendorWithReason() {
     if (!supabase) throw new Error(t("admin.supabaseMissing"));
     if (!user) throw new Error(t("admin.notSignedIn"));
@@ -324,6 +331,25 @@ export default function AdminVendorsPage() {
                           {t("admin.approve")}
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant={vendor.verified ? "outline" : "default"}
+                        className={`rounded-full flex-1 ${vendor.verified ? 'border-blue-600 text-blue-600 hover:bg-blue-50' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                        onClick={async () => {
+                          try {
+                            await toggleVendorVerified(vendor.id, vendor.verified ?? false);
+                            toast({ 
+                              title: vendor.verified ? t("admin.unverified") : t("admin.verified"), 
+                              description: vendor.verified ? `${vendor.name} is no longer verified` : `${vendor.name} is now verified with blue badge` 
+                            });
+                          } catch (e) {
+                            toast({ title: t("admin.failed"), description: e instanceof Error ? e.message : t("admin.unknownError"), variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <BadgeCheck size={14} className="mr-1" />
+                        {vendor.verified ? t("admin.unverify") : t("admin.verify")}
+                      </Button>
                       <Button
                         size="sm"
                         variant={vendor.revoked ? "outline" : "destructive"}
