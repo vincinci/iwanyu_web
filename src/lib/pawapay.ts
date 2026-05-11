@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabaseClient';
 
 export interface PaymentResponse {
   success: boolean;
@@ -13,6 +13,9 @@ export class PawaPay {
    */
   static async deposit(amount: number, phoneNumber: string): Promise<PaymentResponse> {
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error('Supabase client not available');
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -51,6 +54,9 @@ export class PawaPay {
    */
   static async withdraw(amount: number, phoneNumber: string): Promise<PaymentResponse> {
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error('Supabase client not available');
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -89,6 +95,9 @@ export class PawaPay {
    */
   static async payOrder(orderId: string, phoneNumber: string): Promise<PaymentResponse> {
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error('Supabase client not available');
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -127,6 +136,9 @@ export class PawaPay {
    */
   static async checkStatus(transactionId: string): Promise<any> {
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error('Supabase client not available');
+
       const { data, error } = await supabase
         .from('wallet_transactions')
         .select('*')
@@ -146,6 +158,9 @@ export class PawaPay {
    */
   static async getBalance(): Promise<number> {
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error('Supabase client not available');
+
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) throw new Error('Not authenticated');
