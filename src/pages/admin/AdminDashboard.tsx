@@ -24,7 +24,7 @@ import { createId } from "@/lib/ids";
 import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 import { canAccessAdmin } from "@/lib/adminAccess";
-import { uploadMediaToCloudinary } from "@/lib/cloudinary";
+import { uploadMediaToCloudinary, testCloudinaryConnectivity } from "@/lib/cloudinary";
 
 const nav = [
   { labelKey: "admin.overview", icon: ClipboardList, href: "/admin", active: true },
@@ -452,6 +452,14 @@ export default function AdminDashboardPage() {
     setHeroMediaUploadProgress(0);
 
     try {
+      // Test Cloudinary connectivity first
+      console.log("Testing Cloudinary connectivity...");
+      const connectivityTest = await testCloudinaryConnectivity();
+      if (!connectivityTest.reachable) {
+        throw new Error(connectivityTest.message);
+      }
+      console.log("Cloudinary is reachable, proceeding with upload...");
+
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
       if (!accessToken) {
