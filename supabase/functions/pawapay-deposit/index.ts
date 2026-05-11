@@ -47,7 +47,7 @@ serve(async (req) => {
         depositId: transactionId,
         amount: amount.toString(),
         currency: "ZMW", // Zambian Kwacha
-        correspondent: "MTN_MOMO_ZMB", // Adjust based on your country
+        correspondent: "MTN_MOMO_RWA", // Rwanda MTN Mobile Money
         payer: {
           type: "MSISDN",
           address: {

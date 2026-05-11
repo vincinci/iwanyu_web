@@ -61,7 +61,7 @@ serve(async (req) => {
         payoutId: transactionId,
         amount: amount.toString(),
         currency: "ZMW",
-        correspondent: "MTN_MOMO_ZMB",
+        correspondent: "MTN_MOMO_RWA", // Rwanda MTN Mobile Money
         recipient: {
           type: "MSISDN",
           address: {

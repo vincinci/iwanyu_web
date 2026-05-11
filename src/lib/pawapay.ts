@@ -173,10 +173,11 @@ export class PawaPay {
 
       console.log('Fetching wallet for user:', user.id);
 
+      // Read from profiles table (same as Header)
       const { data, error } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
+        .from('profiles')
+        .select('wallet_balance_rwf, locked_balance_rwf')
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error) {
@@ -185,24 +186,16 @@ export class PawaPay {
       }
 
       if (!data) {
-        console.log('No wallet found - creating one');
-        // Create wallet if it doesn't exist
-        const { data: newWallet, error: createError } = await supabase
-          .from('wallets')
-          .insert({ user_id: user.id, balance: 0 })
-          .select('balance')
-          .single();
-        
-        if (createError) {
-          console.error('Wallet creation error:', createError);
-          return 0;
-        }
-        
-        return newWallet?.balance || 0;
+        console.log('No profile found');
+        return 0;
       }
 
-      console.log('Wallet balance:', data.balance);
-      return data.balance || 0;
+      const wallet = Number(data.wallet_balance_rwf ?? 0);
+      const locked = Number(data.locked_balance_rwf ?? 0);
+      const available = Math.max(0, wallet - locked);
+
+      console.log('Wallet balance:', { wallet, locked, available });
+      return available;
     } catch (error) {
       console.error('getBalance error:', error);
       return 0;
@@ -212,7 +205,7 @@ export class PawaPay {
   /**
    * Format phone number for PawaPay (remove spaces, add country code if missing)
    */
-  static formatPhoneNumber(phone: string, countryCode: string = '260'): string {
+  static formatPhoneNumber(phone: string, countryCode: string = '250'): string {
     // Remove all non-digit characters
     let cleaned = phone.replace(/\D/g, '');
     
