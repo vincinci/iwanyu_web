@@ -16,12 +16,14 @@ const corsHeaders = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS
+  // Set CORS headers first
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(204).setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
-      .end();
+    return res.status(204).end();
   }
 
   if (req.method !== 'POST') {
@@ -31,7 +33,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { amount, phoneNumber, correspondent } = req.body;
 
-    console.log('[PawaPay Deposit] Request received:', { amount, phoneNumber: phoneNumber?.substring(0, 7) + '***', correspondent });
+    console.log('[PawaPay Deposit] Request received:', { 
+      amount, 
+      phoneNumber: phoneNumber?.substring(0, 7) + '***', 
+      correspondent,
+      hasAuth: !!req.headers.authorization
+    });
 
     if (!amount || !phoneNumber) {
       console.error('[PawaPay Deposit] Missing required fields');
@@ -60,11 +67,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    
+    let user;
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError) {
+        console.error('[PawaPay Deposit] Auth error:', userError);
+        return res.status(401).json({ error: 'Invalid authentication token' });
+      }
+      user = userData.user;
+    } catch (authErr: any) {
+      console.error('[PawaPay Deposit] Auth exception:', authErr);
+      return res.status(401).json({ error: 'Authentication failed' });
     }
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    console.log('[PawaPay Deposit] User authenticated:', user.id);
 
     // Generate unique transaction ID
     const transactionId = `dep_${Date.now()}_${user.id.substring(0, 8)}`;
@@ -103,6 +124,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Call PawaPay Deposits API
     // Reference: POST https://api.pawapay.io/deposits
+    console.log('[PawaPay Deposit] Calling PawaPay API...');
+    
     const pawapayResponse = await fetch(`${PAWAPAY_API_BASE}/deposits`, {
       method: 'POST',
       headers: {
@@ -112,8 +135,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         depositId: transactionId,
         amount: amount.toString(),
-        currency: 'RWF', // Rwanda Francs
-        correspondent: correspondent || 'MTN_MOMO_RWA', // Mobile money provider
+        currency: 'RWF',
+        correspondent: correspondent || 'MTN_MOMO_RWA',
         payer: {
           type: 'MSISDN',
           address: {
@@ -124,6 +147,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         statementDescription: 'Wallet Deposit',
       }),
     });
+
+    console.log('[PawaPay Deposit] PawaPay response status:', pawapayResponse.status);
 
     if (!pawapayResponse.ok) {
       const errorText = await pawapayResponse.text();
@@ -147,16 +172,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await supabase
       .from('wallet_transactions')
       .update({
-        metadata: pawapayData,
-      })
-      .eq('external_transaction_id', transactionId);
-
-    return res.status(200).setHeader('Access-Control-Allow-Origin', '*').json({
+        metadata: pawapayDajson({
       success: true,
       transactionId,
       message: 'Deposit initiated. Check your phone to complete payment.',
       pawapayData,
     });
+  } catch (error: any) {
+    console.error('[PawaPay Deposit] Unhandled error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
+    
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message
   } catch (error: any) {
     console.error('[PawaPay Deposit] Error:', error);
     return res.status(500).json({ 
