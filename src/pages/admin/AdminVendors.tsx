@@ -126,7 +126,7 @@ export default function AdminVendorsPage() {
     // Soft-delete vendor and revoke access
     const { error: vendorErr } = await supabase
       .from("vendors")
-      .update({ deleted_at: now, revoked: true, verified: false, status: "deleted" })
+      .update({ deleted_at: now, revoked: true, verified: false })
       .eq("id", vendorToDelete.id);
     if (vendorErr) throw new Error(vendorErr.message);
 
