@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const pawapayApiKey = process.env.PAWAPAY_API_KEY || '';
 
 const PAWAPAY_API_BASE = 'https://api.pawapay.io';
@@ -58,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'PawaPay API key missing. Please set PAWAPAY_API_KEY in Vercel environment variables.' });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseServiceRoleClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get authenticated user
     const authHeader = req.headers.authorization;
@@ -66,11 +67,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Authorization header missing' });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace('Bearer ', '').trim();
+    
+    // Create client with user's token to verify authentication
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
     
     let user;
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      const { data: userData, error: userError } = await userSupabase.auth.getUser();
       if (userError) {
         console.error('[PawaPay Deposit] Auth error:', userError);
         return res.status(401).json({ error: 'Invalid authentication token' });
@@ -86,6 +96,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log('[PawaPay Deposit] User authenticated:', user.id);
+
+    // Use service role client for database operations
+    const supabase = supabaseServiceRoleClient;
 
     // Generate unique transaction ID
     const transactionId = `dep_${Date.now()}_${user.id.substring(0, 8)}`;

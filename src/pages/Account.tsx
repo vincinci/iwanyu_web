@@ -21,10 +21,10 @@ type ProfileFormState = {
 
 type WalletTx = {
   id: string;
-  kind: string;
-  amount: number;
-  reference: string;
-  metadata: Record<string, unknown>;
+  type: string;
+  amount_rwf: number;
+  external_transaction_id: string;
+  description: string;
   created_at: string;
 };
 
@@ -112,7 +112,7 @@ export default function AccountPage() {
     try {
       const { data } = await supabase
         .from("wallet_transactions")
-        .select("id, kind, amount, reference, metadata, created_at")
+        .select("id, type, amount_rwf, external_transaction_id, description, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(20);
