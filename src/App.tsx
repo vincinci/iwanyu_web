@@ -49,6 +49,8 @@ import LogoutPage from "./pages/Logout";
 const VendorApplicationPage = lazy(() => import("./pages/VendorApplication"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfService"));
+const CheckoutPage = lazy(() => import("./pages/Checkout"));
+const WalletPage = lazy(() => import("./pages/Wallet"));
 import RequireAuth from "./components/RequireAuth";
 import ScrollToTop from "@/components/ScrollToTop";
 
@@ -119,6 +121,8 @@ const AppContent = () => {
         <Route path="/category/:categoryId" element={withSuspense(<CategoryPage />)} />
         <Route path="/product/:productId" element={withSuspense(<ProductPage />)} />
         <Route path="/cart" element={withSuspense(<CartPage />)} />
+        <Route path="/checkout" element={withSuspense(<CheckoutPage />)} />
+        <Route path="/wallet" element={withSuspense(<WalletPage />)} />
         <Route path="/account" element={withSuspense(<AccountPage />)} />
         <Route path="/orders" element={withSuspense(<OrdersPage />)} />
         <Route path="/wishlist" element={withSuspense(<WishlistPage />)} />
