@@ -739,8 +739,6 @@ export default function AdminDashboardPage() {
                     </div>
                   )}
                 </div>
-                  </div>
-                ) : null}
               </div>
             </div>
 
