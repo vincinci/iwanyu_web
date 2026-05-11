@@ -557,4 +557,42 @@ export const TEMPLATES: Record<string, EmailTemplate> = {
     `),
   },
 
+  product_removed: {
+    subject: (ctx) => `Product removed: ${ctx.productTitle || "Your product"}`,
+    preheader: (ctx) => `Your product "${ctx.productTitle || "item"}" was removed by iwanyu admin.`,
+    html: (ctx) => emailLayout(`
+      ${statusBadge("Product Removed", "#dc2626")}
+      <h1 style="margin:16px 0 10px;font-size:22px;font-weight:800;color:#111111;line-height:1.3;">
+        A product has been removed from your store
+      </h1>
+      <p style="margin:0;font-size:15px;color:#4b5563;line-height:1.7;">
+        Our admin team has removed <strong>"${ctx.productTitle || "one of your products"}"</strong> from your ${ctx.storeName ? `store "${ctx.storeName}"` : "store"}.
+      </p>
+
+      ${divider()}
+
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:20px 0;">
+        <tr>
+          <td style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:20px 24px;">
+            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.08em;">Reason for removal</p>
+            <p style="margin:0;font-size:14px;color:#4b5563;line-height:1.6;">${ctx.reason || "No reason provided."}</p>
+          </td>
+        </tr>
+      </table>
+
+      ${divider()}
+
+      <p style="margin:0;font-size:14px;color:#4b5563;line-height:1.7;">
+        <strong>What this means:</strong> This product is no longer visible on iwanyu and cannot be sold. If you believe this was a mistake or would like more information, please contact us.
+      </p>
+
+      ${ctaButton("Contact Support", `mailto:${SUPPORT_EMAIL}`)}
+
+      ${divider()}
+      <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
+        Questions? Reply to this email or visit <a href="${SITE_URL}/help" style="color:${BRAND_ORANGE};text-decoration:none;">our Help Center</a>.
+      </p>
+    `),
+  },
+
 };

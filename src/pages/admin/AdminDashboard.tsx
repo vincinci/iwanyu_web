@@ -355,19 +355,32 @@ export default function AdminDashboardPage() {
     const reason = deleteReason.trim();
     if (reason.length < 5) throw new Error(t("admin.reasonMin"));
 
-    const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? t("admin.vendor");
-    const title = `Product removed: ${productToDelete.title}`;
-    const message = `Your product was removed by admin (${vendorName}). Reason: ${reason}`;
+    const vendor = vendors.find((v) => v.id === vendorId);
+    const storeName = vendor?.name ?? t("admin.vendor");
 
-    const { error: notifyErr } = await supabase.from("vendor_notifications").insert({
-      vendor_id: vendorId,
-      product_id: productToDelete.id,
-      type: "product_removed",
-      title,
-      message,
-      created_by: user.id,
-    });
-    if (notifyErr) throw new Error("Failed to notify vendor");
+    // Get vendor owner email
+    if (vendor?.ownerUserId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", vendor.ownerUserId)
+        .single();
+
+      // Send email notification to vendor
+      if (profile?.email) {
+        supabase.functions.invoke("send-email", {
+          body: {
+            template: "product_removed",
+            to: profile.email,
+            data: {
+              productTitle: productToDelete.title,
+              storeName,
+              reason,
+            },
+          },
+        }).catch(() => {}); // Fire-and-forget
+      }
+    }
 
     const { error: deleteErr } = await supabase
       .from("products")
