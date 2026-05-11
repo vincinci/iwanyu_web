@@ -519,6 +519,7 @@ const translations: Record<Language, Record<string, string>> = {
     "sellerNew.checkingProfileCompleteness": "Checking store profile completeness...",
     "sellerNew.profileCompletePublishEnabled": "Store profile complete. Publishing is enabled.",
     "sellerNew.completeSettingsBeforePublish": "Complete store settings before publishing",
+    "sellerNew.recommended": "Recommended for better visibility",
     "sellerNew.openStoreSettings": "Open Store Settings",
 
     // Admin dashboard/pages
@@ -1178,6 +1179,7 @@ const translations: Record<Language, Record<string, string>> = {
     "sellerNew.checkingProfileCompleteness": "Birimo kureba niba umwirondoro w'iduka wuzuye...",
     "sellerNew.profileCompletePublishEnabled": "Umwirondoro w'iduka uruzuye. Gutangaza biremewe.",
     "sellerNew.completeSettingsBeforePublish": "Banza wuzuze Store Settings mbere yo gutangaza",
+    "sellerNew.recommended": "Birasabwa kugira ngo bigaragare neza",
     "sellerNew.openStoreSettings": "Fungura Store Settings",
 
     // Admin dashboard/pages

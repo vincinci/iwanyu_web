@@ -715,12 +715,12 @@ export default function SellerNewProductPage() {
                 </div>
 
                 {!isAdmin && vendorId ? (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <div className={`rounded-lg border p-3 text-xs ${isProfileCompleteForPublish ? 'border-green-200 bg-green-50 text-green-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
                     {profileCheckLoading
                       ? t("sellerNew.checkingProfileCompleteness")
                       : isProfileCompleteForPublish
                       ? t("sellerNew.profileCompletePublishEnabled")
-                      : `${t("sellerNew.completeSettingsBeforePublish")}: ${profileMissingFields.join(", ")}.`}
+                      : `💡 ${t("sellerNew.recommended")}: ${profileMissingFields.join(", ")}.`}
                     {!profileCheckLoading && !isProfileCompleteForPublish ? (
                       <div className="mt-2">
                         <Link to="/seller/settings" className="font-semibold underline underline-offset-2">
@@ -744,7 +744,7 @@ export default function SellerNewProductPage() {
 
                 <Button
                   className="w-full rounded-md"
-                  disabled={!canSubmit || uploading || uploadingCount > 0 || (!isAdmin && vendorOptions.length === 0) || !isProfileCompleteForPublish || profileCheckLoading}
+                  disabled={!canSubmit || uploading || uploadingCount > 0 || (!isAdmin && vendorOptions.length === 0)}
                   onClick={async () => {
                     try {
                       const actorUserId = user?.id ?? (isLocalE2E ? E2E_SELLER_ID : undefined);
@@ -768,10 +768,6 @@ export default function SellerNewProductPage() {
                       }
 
                       if (!resolvedVendorId) throw new Error(t("sellerNew.missingVendor"));
-
-                      if (!isAdmin && !isProfileCompleteForPublish) {
-                        throw new Error(`${t("sellerNew.completeSettingsBeforePublish")}: ${profileMissingFields.join(", ")}.`);
-                      }
 
                       if (isLocalE2EPublish) {
                         const productId = createId("p");
