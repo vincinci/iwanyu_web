@@ -213,8 +213,8 @@ Deno.serve(async (req: Request) => {
     step = "order.create";
     // 3. Create the order with server-computed totals
     const paymentMeta = {
-      provider: "pawapay",
-      mode: "mobile_money",
+      provider: "unknown",
+      mode: "payment",
       selected: paymentMethod,
       phone: phone.trim(),
       discount_code: discountCode ?? null,

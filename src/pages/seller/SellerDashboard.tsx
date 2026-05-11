@@ -272,19 +272,7 @@ export default function SellerDashboardPage() {
                   <p className="text-gray-600 text-sm">{t("seller.overviewDesc")}</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                  <div className="dashboard-card p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-green-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-green-700">Wallet Balance (PawaPay)</p>
-                      <Wallet size={18} className="text-green-600" />
-                    </div>
-                    <div className="text-2xl font-semibold text-green-900">
-                      {metricsLoading ? "..." : formatMoney(metrics.walletBalanceRwf)}
-                    </div>
-                    <Link to="/seller/payouts" className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-800 mt-2 font-medium">
-                      Request payout <ArrowRight size={12} />
-                    </Link>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
                   <div className="dashboard-card p-5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-500">{t("seller.sales")}</p>

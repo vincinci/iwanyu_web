@@ -133,7 +133,6 @@ The comprehensive test suite revealed **major schema inconsistencies** between t
    - Order fulfillment workflow
    - Seller payout processing
    - Wallet withdrawal flows
-   - PawaPay integration (already tested separately)
 
 4. **Add Missing Test Coverage**
    - Product search functionality
@@ -191,7 +190,6 @@ The current schema is functional and used by the production frontend. Changing i
 2. **Short Term (This Week):**
    - Complete cart JSONB test rewrites
    - Add integration tests for order workflow
-   - Test PawaPay flows (deposit, withdrawal, payout)
    - Manual UI/UX testing on staging
 
 3. **Before Production Launch:**

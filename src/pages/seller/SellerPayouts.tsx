@@ -7,7 +7,6 @@ import { useAuth } from "@/context/auth";
 import { useLanguage } from "@/context/languageContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/money";
-import { paymentService } from "@/lib/payment";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -259,37 +258,10 @@ export default function SellerPayoutsPage() {
 
         setSubmittingRequest(true);
         try {
-            const result = await paymentService.withdraw(
-                {
-                    amount,
-                    phone: payoutSettings.mobile_number,
-                    network: payoutSettings.mobile_provider || "MTN",
-                },
-                user.id,
-            );
-
-            if (!result.success) {
-                throw new Error(result.message);
-            }
-
-            const inserted: WithdrawalRequestRow = {
-                id: result.referenceId || crypto.randomUUID(),
-                vendor_id: ownedVendorIds[0],
-                amount_rwf: amount,
-                mobile_network: payoutSettings.mobile_provider,
-                phone_number: payoutSettings.mobile_number,
-                reason: requestNote.trim() || null,
-                status: "processing",
-                created_at: new Date().toISOString(),
-                completed_at: null,
-            };
-
-            setRequests((prev) => [inserted, ...prev]);
-            setRequestAmount("");
-            setRequestNote("");
             toast({
-                title: "Withdrawal started",
-                description: result.message,
+                title: "Withdrawals disabled",
+                description: "Payment functionality has been removed from the platform.",
+                variant: "destructive",
             });
         } catch (error) {
             toast({
@@ -335,33 +307,10 @@ export default function SellerPayoutsPage() {
 
         setSubmittingWalletWithdrawal(true);
         try {
-            const result = await paymentService.withdrawWalletBalance(
-                {
-                    amount,
-                    phone: payoutSettings.mobile_number,
-                    network: payoutSettings.mobile_provider || "MTN",
-                },
-                user.id,
-            );
-
-            if (!result.success) {
-                throw new Error(result.message);
-            }
-
-            // Refresh wallet balance
-            const { data: profileData } = await supabase
-                .from("profiles")
-                .select("wallet_balance_rwf")
-                .eq("id", user.id)
-                .single();
-
-            setWalletBalanceRwf(Number(profileData?.wallet_balance_rwf ?? 0));
-            setRequestAmount("");
-            setRequestNote("");
-            
             toast({
-                title: "Wallet withdrawal started",
-                description: result.message,
+                title: "Withdrawals disabled",
+                description: "Payment functionality has been removed from the platform.",
+                variant: "destructive",
             });
         } catch (error) {
             toast({
@@ -392,37 +341,9 @@ export default function SellerPayoutsPage() {
             </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Wallet Balance Card - PawaPay */}
-            <Card className="dashboard-card bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-                <CardHeader>
-                    <CardTitle className="text-green-700 font-normal text-sm uppercase tracking-wider flex items-center gap-2">
-                        <Wallet size={16} />
-                        PawaPay Wallet Balance
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-4xl font-semibold text-green-900 mb-2">
-                      {loading ? "..." : formatMoney(walletBalanceRwf)}
-                    </div>
-                    <div className="text-sm text-green-700 mb-4">
-                      Available to withdraw now
-                    </div>
-                    <Button
-                        onClick={() => void handleWalletWithdrawClick()}
-                        disabled={loading || walletBalanceRwf <= 0 || submittingWalletWithdrawal}
-                        className="bg-green-700 text-white hover:bg-green-800 font-semibold rounded-full mb-3 w-full"
-                    >
-                        {submittingWalletWithdrawal ? "Processing..." : "Withdraw from Wallet"} <ArrowUpRight size={16} className="ml-2" />
-                    </Button>
-                    <div className="text-xs text-gray-600 bg-white/60 rounded-lg p-3 border border-green-100">
-                      💡 This is your mobile money wallet balance that you can withdraw instantly to your phone.
-                    </div>
-                </CardContent>
-            </Card>
-
+        <div className="grid grid-cols-1 gap-8">
             {/* Balance Card - Sales */}
-            <Card className="dashboard-card lg:col-span-2">
+            <Card className="dashboard-card">
                 <CardHeader>
                     <CardTitle className="text-gray-500 font-normal text-sm uppercase tracking-wider">{t("seller.availableBalance")} (Sales)</CardTitle>
                 </CardHeader>

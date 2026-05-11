@@ -144,11 +144,7 @@ export default function OrdersPage() {
 
   const getPaymentMethodLabel = (method: string | null) => {
     if (!method) return "N/A";
-    switch (method) {
-      case "wallet": return "Wallet";
-      case "pawapay_momo": return "Mobile Money";
-      default: return method;
-    }
+    return method;
   };
 
   return (

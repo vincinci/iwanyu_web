@@ -16,7 +16,6 @@ Implemented client contract methods include:
 - Carts: `carts`
 - Edge functions:
   - `create-order`
-  - `pawapay-deposit`
 
 ## iOS (SwiftUI)
 

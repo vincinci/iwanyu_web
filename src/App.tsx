@@ -15,10 +15,6 @@ const Search = lazy(() => import("./pages/Search"));
 const CategoryPage = lazy(() => import("./pages/Category"));
 const ProductPage = lazy(() => import("./pages/Product"));
 const CartPage = lazy(() => import("./pages/Cart"));
-const CheckoutPage = lazy(() => import("./pages/Checkout"));
-const PaymentCallbackPage = lazy(() => import("./pages/PaymentCallback"));
-const WalletPage = lazy(() => import("./pages/Wallet"));
-const WalletCallbackPage = lazy(() => import("./pages/WalletCallback"));
 const AccountPage = lazy(() => import("./pages/Account"));
 const OrdersPage = lazy(() => import("./pages/Orders"));
 const WishlistPage = lazy(() => import("./pages/Wishlist"));
@@ -123,10 +119,6 @@ const AppContent = () => {
         <Route path="/category/:categoryId" element={withSuspense(<CategoryPage />)} />
         <Route path="/product/:productId" element={withSuspense(<ProductPage />)} />
         <Route path="/cart" element={withSuspense(<CartPage />)} />
-        <Route path="/checkout" element={withSuspense(<CheckoutPage />)} />
-        <Route path="/payment-callback" element={withSuspense(<PaymentCallbackPage />)} />
-        <Route path="/wallet" element={withSuspense(<WalletPage />)} />
-        <Route path="/wallet-callback" element={withSuspense(<WalletCallbackPage />)} />
         <Route path="/account" element={withSuspense(<AccountPage />)} />
         <Route path="/orders" element={withSuspense(<OrdersPage />)} />
         <Route path="/wishlist" element={withSuspense(<WishlistPage />)} />

@@ -6,8 +6,7 @@ type SeedContext = {
   vendorId: string;
 };
 
-// Official pawaPay sandbox Rwanda success MSISDN from the payout docs.
-const PAWAPAY_SANDBOX_SUCCESS_MSISDN = "+250783456789";
+const TEST_PHONE_NUMBER = "+250783456789";
 
 const hasSupabase = process.env.E2E_SUPABASE_ENABLED === "1";
 const isSupabaseRuntimeEnabled = process.env.VITE_E2E_DISABLE_SUPABASE !== "1";
@@ -204,7 +203,7 @@ test.describe("seller publish guard + live payout initiation", () => {
 
     if (itemError) throw new Error(`Unable to seed payout order item: ${itemError.message}`);
 
-    const savedMobile = PAWAPAY_SANDBOX_SUCCESS_MSISDN;
+    const savedMobile = TEST_PHONE_NUMBER;
     let requestSeen = false;
 
     await page.route("**/functions/v1/seller-withdrawal-callback", async (route) => {

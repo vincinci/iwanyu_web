@@ -314,10 +314,7 @@ export default function OrderConfirmationPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Method</span>
                 <span className="font-medium text-gray-900">
-                  {order.payment_method === "wallet" ? "Wallet" :
-                   order.payment_method === "pawapay_momo" ? "Mobile Money" :
-                   order.payment_method?.includes("card") ? "Card" :
-                   order.payment_method || "N/A"}
+                  {order.payment_method || "N/A"}
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
