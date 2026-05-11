@@ -80,6 +80,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     apiSecret
   );
 
+  // Log for debugging (remove sensitive data in production)
+  console.log('Cloudinary signature generated:', {
+    cloudName,
+    apiKey: apiKey.substring(0, 8) + '***',
+    timestamp,
+    folder,
+    signaturePreview: signature.substring(0, 10) + '***'
+  });
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   return res.status(200).json({ cloudName, apiKey, timestamp, folder, signature });
 }
