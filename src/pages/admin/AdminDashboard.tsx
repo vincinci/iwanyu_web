@@ -443,7 +443,10 @@ export default function AdminDashboardPage() {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    if (!supabase) return;
+    if (!supabase) {
+      toast({ title: "Error", description: "Database not available", variant: "destructive" });
+      return;
+    }
 
     setHeroMediaUploading(true);
     setHeroMediaUploadProgress(0);
@@ -451,7 +454,9 @@ export default function AdminDashboardPage() {
     try {
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
-      if (!accessToken) throw new Error("Not authenticated");
+      if (!accessToken) {
+        throw new Error("Not authenticated. Please sign in again.");
+      }
 
       const uploadedItems: Array<{url: string; type: 'image' | 'video'}> = [];
       
@@ -482,30 +487,46 @@ export default function AdminDashboardPage() {
           continue;
         }
 
-        const result = await uploadMediaToCloudinary(file, {
-          kind: isVideo ? "video" : "image",
-          folder: "hero",
-          accessToken,
-          onProgress: (progress) => {
-            const totalProgress = ((i + progress / 100) / files.length) * 100;
-            setHeroMediaUploadProgress(Math.round(totalProgress));
-          },
-        });
+        try {
+          const result = await uploadMediaToCloudinary(file, {
+            kind: isVideo ? "video" : "image",
+            folder: "hero",
+            accessToken,
+            onProgress: (progress) => {
+              const totalProgress = ((i + progress / 100) / files.length) * 100;
+              setHeroMediaUploadProgress(Math.round(totalProgress));
+            },
+          });
 
-        uploadedItems.push({ url: result.url, type: isVideo ? 'video' : 'image' });
+          uploadedItems.push({ url: result.url, type: isVideo ? 'video' : 'image' });
+        } catch (fileError) {
+          console.error(`Failed to upload ${file.name}:`, fileError);
+          toast({
+            title: `Upload failed: ${file.name}`,
+            description: fileError instanceof Error ? fileError.message : "Network error - check your connection",
+            variant: "destructive",
+          });
+        }
       }
 
       if (uploadedItems.length > 0) {
         setHeroMediaItems(prev => [...prev, ...uploadedItems]);
         toast({
           title: "Upload complete",
-          description: `${uploadedItems.length} item(s) uploaded. Click Save to apply changes.`,
+          description: `${uploadedItems.length} item(s) uploaded. Click "Save Changes" to apply.`,
+        });
+      } else if (files.length > 0) {
+        toast({
+          title: "No files uploaded",
+          description: "All uploads failed. Check file sizes and your network connection.",
+          variant: "destructive",
         });
       }
     } catch (error) {
+      console.error("Upload error:", error);
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload media",
+        description: error instanceof Error ? error.message : "Network error - please try again",
         variant: "destructive",
       });
     } finally {
@@ -725,7 +746,17 @@ export default function AdminDashboardPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                          <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
+                          {/* Always visible delete button for better UX */}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="absolute top-2 right-2 rounded-full h-7 w-7 p-0 shadow-lg"
+                            onClick={() => removeHeroMedia(index)}
+                            title="Delete this media"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
                             {item.type === 'video' ? '🎥' : '📷'} {index + 1}
                           </div>
                         </div>
