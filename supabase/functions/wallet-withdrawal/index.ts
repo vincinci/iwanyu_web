@@ -113,8 +113,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Find original deposit transaction (FIFO) for refund
-    const { data: depositTxns, error: depositErr } = await supabase
+    // Find original deposit transaction (FIFO) for refund (optional for earnings)
+    const { data: depositTxns } = await supabase
       .from("wallet_transactions")
       .select("id, external_transaction_id, amount")
       .eq("user_id", user.id)
@@ -122,25 +122,13 @@ Deno.serve(async (req: Request) => {
       .eq("status", "completed")
       .order("created_at", { ascending: true });
 
-    if (depositErr || !depositTxns || depositTxns.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No completed deposits found for refund. Please contact support." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const originalDeposit = depositTxns[0];
-    const originalDepositId = originalDeposit.external_transaction_id;
-
-    if (!originalDepositId) {
-      return new Response(
-        JSON.stringify({ error: "Original deposit has no external transaction ID. Please contact support." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const refundId = crypto.randomUUID();
-    const correlationId = `refund-${user.id}-${Date.now()}`;
+    // Check if this is a refund (has deposit) or payout (seller earnings)
+    const hasDeposit = depositTxns && depositTxns.length > 0 && depositTxns[0].external_transaction_id;
+    const originalDepositId = hasDeposit ? depositTxns[0].external_transaction_id : null;
+    const withdrawalId = crypto.randomUUID();
+    const correlationId = hasDeposit 
+      ? `refund-${user.id}-${Date.now()}`
+      : `payout-${user.id}-${Date.now()}`;
 
     // ATOMIC DEDUCT: only deduct if balance is still sufficient (prevents race conditions)
     const { data: deductedRows, error: deductErr } = await supabase
@@ -166,13 +154,14 @@ Deno.serve(async (req: Request) => {
         type: "withdrawal",
         amount: amountRwf,
         amount_rwf: amountRwf,
-        external_transaction_id: refundId,
+        external_transaction_id: withdrawalId,
         status: "pending",
         metadata: {
-          payment_method: "pawapay_refund",
+          payment_method: hasDeposit ? "pawapay_refund" : "pawapay_payout",
           phone: phoneNumber,
           correlationId,
           original_deposit_id: originalDepositId,
+          withdrawal_type: hasDeposit ? "refund" : "payout",
         },
       })
       .select("id")
@@ -205,36 +194,62 @@ Deno.serve(async (req: Request) => {
 
     const normalizedPhone = phoneNumber.replace(/\D/g, "");
 
-    // PawaPay V2 refund payload (no notificationUrl - refunds API doesn't support webhooks)
-    const refundPayload = {
-      refundId,
-      depositId: originalDepositId,
-      amount: String(Math.trunc(amountRwf)),
-      currency: "RWF",
-    };
+    let pawaPayRes: Response;
+    let apiEndpoint: string;
+    let requestPayload: Record<string, unknown>;
 
-    console.log(`Initiating PawaPay refund: ${refundId}, deposit: ${originalDepositId}, phone: ${normalizedPhone}, amount: ${amountRwf}`);
+    if (hasDeposit) {
+      // PawaPay V2 refund payload (refund original deposit)
+      apiEndpoint = `${getPawaPayEndpoint()}/v2/refunds`;
+      requestPayload = {
+        refundId: withdrawalId,
+        depositId: originalDepositId,
+        amount: String(Math.trunc(amountRwf)),
+        currency: "RWF",
+      };
+      console.log(`Initiating PawaPay refund: ${withdrawalId}, deposit: ${originalDepositId}, amount: ${amountRwf}`);
+    } else {
+      // PawaPay V1 payout payload (seller earnings withdrawal)
+      apiEndpoint = `${getPawaPayEndpoint()}/v1/payouts`;
+      requestPayload = {
+        payoutId: withdrawalId,
+        amount: String(Math.trunc(amountRwf)),
+        currency: "RWF",
+        correspondent: mobileNetwork || "MTN_RWANDA",
+        recipient: {
+          type: "MSISDN",
+          address: {
+            value: normalizedPhone,
+          },
+        },
+        customerTimestamp: new Date().toISOString(),
+        statementDescription: "Iwanyu seller payout",
+      };
+      console.log(`Initiating PawaPay payout: ${withdrawalId}, phone: ${normalizedPhone}, amount: ${amountRwf}`);
+    }
 
-    const refundRes = await fetch(`${getPawaPayEndpoint()}/v2/refunds`, {
+    pawaPayRes = await fetch(apiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${credential}`,
       },
-      body: JSON.stringify(refundPayload),
+      body: JSON.stringify(requestPayload),
     });
 
-    const refundText = await refundRes.text();
-    let refundData: Record<string, unknown> = {};
-    try { refundData = refundText ? JSON.parse(refundText) : {}; } catch { /* ignore */ }
+    const responseText = await pawaPayRes.text();
+    let responseData: Record<string, unknown> = {};
+    try { responseData = responseText ? JSON.parse(responseText) : {}; } catch { /* ignore */ }
 
-    console.log(`PawaPay refund response: HTTP ${refundRes.status}, status=${refundData.status}, body=${refundText.slice(0, 300)}`);
+    console.log(`PawaPay ${hasDeposit ? 'refund' : 'payout'} response: HTTP ${pawaPayRes.status}, status=${responseData.status}, body=${responseText.slice(0, 300)}`);
 
-    // PawaPay returns HTTP 200 even for REJECTED refunds — must check body status
-    const isRejected = !refundRes.ok || refundData.status === "REJECTED";
+    console.log(`PawaPay ${hasDeposit ? 'refund' : 'payout'} response: HTTP ${pawaPayRes.status}, status=${responseData.status}, body=${responseText.slice(0, 300)}`);
+
+    // PawaPay returns HTTP 200 even for REJECTED - must check body status
+    const isRejected = !pawaPayRes.ok || responseData.status === "REJECTED";
 
     if (isRejected) {
-      console.error("PawaPay refund rejected:", refundData);
+      console.error(`PawaPay ${hasDeposit ? 'refund' : 'payout'} rejected:`, responseData);
       // Refund balance
       await supabase
         .from("profiles")
@@ -246,22 +261,23 @@ Deno.serve(async (req: Request) => {
           .update({ status: "failed" })
           .eq("id", txnId);
       }
-      const failureReason = refundData.failureReason as Record<string, unknown> | undefined;
-      const errMsg = (failureReason?.failureMessage || refundData.message || refundData.error || "Refund rejected by payment provider") as string;
+      const failureReason = responseData.failureReason as Record<string, unknown> | undefined;
+      const errMsg = (failureReason?.failureMessage || responseData.message || responseData.error || "Withdrawal rejected by payment provider") as string;
       return new Response(
-        JSON.stringify({ error: `Withdrawal failed: ${errMsg}`, details: refundData }),
+        JSON.stringify({ error: `Withdrawal failed: ${errMsg}`, details: responseData }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Refund initiated: ${refundId}, user: ${user.id}, amount: ${amountRwf}`);
+    console.log(`Withdrawal initiated: ${withdrawalId}, user: ${user.id}, amount: ${amountRwf}, type: ${hasDeposit ? 'refund' : 'payout'}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        refundId,
+        withdrawalId,
         amountRwf,
         newBalance: currentBalance - amountRwf,
+        withdrawalType: hasDeposit ? 'refund' : 'payout',
         message: `${amountRwf.toLocaleString()} RWF withdrawal initiated to +${normalizedPhone}`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
