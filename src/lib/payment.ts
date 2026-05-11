@@ -297,29 +297,31 @@ export const paymentService = {
 
       idempotencyManager.markInProgress(userId, request.amount);
 
-      // Get user's wallet
-      const { data: wallet } = await supabase
-        .from("wallets")
-        .select("id, available_rwf")
-        .eq("user_id", userId)
-        .maybeSingle();
+      // Get user's wallet balance from profiles
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, wallet_balance_rwf")
+        .eq("id", userId)
+        .single();
 
-      if (!wallet) {
+      if (!profile) {
         throw new PaymentError(
-          "No wallet found. Please contact support.",
-          "NO_WALLET",
+          "Profile not found. Please contact support.",
+          "NO_PROFILE",
           false
         );
       }
 
-      if ((wallet.available_rwf ?? 0) < request.amount) {
+      const availableBalance = Number(profile.wallet_balance_rwf ?? 0);
+
+      if (availableBalance < request.amount) {
         throw new InsufficientFundsError(
-          wallet.available_rwf ?? 0,
+          availableBalance,
           request.amount
         );
       }
 
-      // Call withdrawal edge function
+      // Call PawaPay withdrawal via edge function
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wallet-withdrawal`,
         {
@@ -329,10 +331,9 @@ export const paymentService = {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            walletId: wallet.id,
             amountRwf: Math.round(request.amount),
-            mobileNetwork: request.network,
             phoneNumber: request.phone,
+            mobileNetwork: request.network,
           }),
         }
       );
