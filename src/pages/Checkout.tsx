@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { 
   ShoppingBag, Smartphone, ArrowLeft, Lock, Truck, 
-  ChevronRight, Shield, Loader2
+  ChevronRight, Shield, Loader2, Wallet
 } from "lucide-react";
 import StorefrontPage from "@/components/StorefrontPage";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { initializePawaPayDeposit } from "@/lib/pawapay";
 import { getPaymentConfig, getUserCountry, detectCountryFromPhone, type CountryCode, type MobileNetwork } from "@/lib/region";
 import { usePreventDoubleClick } from "@/hooks/useRateLimit";
 import { validateEmail, validatePhone } from "@/lib/security";
+import { getUserWalletBalance } from "@/lib/liveSessions";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -38,6 +39,9 @@ export default function CheckoutPage() {
   const [mobileNetworks, setMobileNetworks] = useState<MobileNetwork[]>(paymentConfig.mobileNetworks);
   const [selectedNetwork, setSelectedNetwork] = useState<MobileNetwork>(paymentConfig.mobileNetworks[0]);
   const [isLoadingRegion, setIsLoadingRegion] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "momo">("momo");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [loadingWallet, setLoadingWallet] = useState(true);
 
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<null | {
@@ -65,6 +69,24 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    const loadWallet = async () => {
+      if (!user || !supabase) {
+        setLoadingWallet(false);
+        return;
+      }
+      try {
+        const balance = await getUserWalletBalance(user.id, supabase);
+        setWalletBalance(balance);
+      } catch {
+        setWalletBalance(0);
+      } finally {
+        setLoadingWallet(false);
+      }
+    };
+    void loadWallet();
+  }, [user, supabase]);
+
+  useEffect(() => {
     const detected = detectCountryFromPhone(phone);
     if (detected && detected !== countryCode) {
       const config = getPaymentConfig(detected);
@@ -78,8 +100,13 @@ export default function CheckoutPage() {
   const discountRwf = appliedDiscount?.discountRwf ?? 0;
   const discountedSubtotal = Math.max(0, Math.round(subtotal - discountRwf));
 
+  // Calculate shipping fee based on city
+  const normalizedCity = (city || "").trim().toLowerCase();
+  const isKigali = normalizedCity === "kigali" || normalizedCity.includes("kigali");
+  const shippingFee = city.trim() ? (isKigali ? 2000 : 5000) : 2000; // Default to Kigali rate if no city
+
   const serviceFee = calculateServiceFee(discountedSubtotal);
-  const total = discountedSubtotal + serviceFee;
+  const total = discountedSubtotal + serviceFee + shippingFee;
 
   const canPlaceOrder = useMemo(
     () => items.length > 0 && email.trim().length > 3 && address.trim().length > 5 && phone.trim().length >= 10,
@@ -184,7 +211,8 @@ export default function CheckoutPage() {
               email: trimmedEmail,
               phone: trimmedPhone,
               address: trimmedAddress,
-              paymentMethod: "momo",
+              city: city.trim() || "Kigali",
+              paymentMethod: paymentMethod,
               discountCode: appliedDiscount?.code ?? null,
             }),
           }
@@ -213,6 +241,16 @@ export default function CheckoutPage() {
 
         // Order is persisted; clear cart.
         clear();
+
+        // Handle wallet payment (already completed in create-order)
+        if (paymentMethod === "wallet") {
+          toast({
+            title: t("checkout.orderPlaced"),
+            description: t("checkout.orderPlacedDesc"),
+          });
+          navigate(`/orders`);
+          return;
+        }
 
         // Initialize PawaPay mobile money deposit
         const paymentCountry = detectCountryFromPhone(trimmedPhone) ?? countryCode;
@@ -384,45 +422,112 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
-                    <div className="h-12 w-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
-                      <Smartphone className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">{t("checkout.mobileMoney")}</div>
-                      <div className="text-xs text-gray-500">{t("checkout.mobileMoneyHint")}</div>
-                    </div>
+                  {/* Payment Method Selector */}
+                  <div className="space-y-3 mb-4">
+                    {/* Wallet Option */}
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("wallet")}
+                      className={`w-full flex items-center gap-4 rounded-xl border-2 p-4 transition ${
+                        paymentMethod === "wallet"
+                          ? "border-green-500 bg-green-50"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
+                        paymentMethod === "wallet" ? "bg-green-500" : "bg-gray-200"
+                      }`}>
+                        <Wallet className={`h-6 w-6 ${paymentMethod === "wallet" ? "text-white" : "text-gray-600"}`} />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-semibold text-gray-900">Wallet</div>
+                        <div className="text-xs text-gray-500">
+                          {loadingWallet ? "Loading..." : `Balance: ${formatMoney(walletBalance ?? 0)}`}
+                        </div>
+                      </div>
+                      {paymentMethod === "wallet" && (
+                        <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
+                          <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Mobile Money Option */}
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("momo")}
+                      className={`w-full flex items-center gap-4 rounded-xl border-2 p-4 transition ${
+                        paymentMethod === "momo"
+                          ? "border-amber-500 bg-amber-50"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
+                        paymentMethod === "momo" ? "bg-amber-500" : "bg-gray-200"
+                      }`}>
+                        <Smartphone className={`h-6 w-6 ${paymentMethod === "momo" ? "text-white" : "text-gray-600"}`} />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-semibold text-gray-900">{t("checkout.mobileMoney")}</div>
+                        <div className="text-xs text-gray-500">{t("checkout.mobileMoneyHint")}</div>
+                      </div>
+                      {paymentMethod === "momo" && (
+                        <div className="h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center">
+                          <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                    <p className="text-sm font-medium text-gray-900 mb-3">Select network</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {isLoadingRegion ? (
-                        <p className="col-span-2 text-xs text-gray-400">Detecting region...</p>
-                      ) : mobileNetworks.map((network) => (
-                        <button
-                          key={network.id}
-                          type="button"
-                          onClick={() => setSelectedNetwork(network)}
-                          className={`rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
-                            selectedNetwork?.id === network.id
-                              ? "border-amber-500 bg-amber-50 text-gray-900"
-                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                          }`}
-                        >
-                          {network.name}
-                        </button>
-                      ))}
+                  {/* Mobile Money Network Selector (only show if momo is selected) */}
+                  {paymentMethod === "momo" && (
+                    <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-sm font-medium text-gray-900 mb-3">Select network</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {isLoadingRegion ? (
+                          <p className="col-span-2 text-xs text-gray-400">Detecting region...</p>
+                        ) : mobileNetworks.map((network) => (
+                          <button
+                            key={network.id}
+                            type="button"
+                            onClick={() => setSelectedNetwork(network)}
+                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
+                              selectedNetwork?.id === network.id
+                                ? "border-amber-500 bg-amber-50 text-gray-900"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                            }`}
+                          >
+                            {network.name}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs text-gray-500">
+                        Region: {paymentConfig.country.flag} {paymentConfig.country.name}
+                      </p>
                     </div>
-                    <p className="mt-3 text-xs text-gray-500">
-                      Region: {paymentConfig.country.flag} {paymentConfig.country.name}
-                    </p>
-                  </div>
+                  )}
 
-                  <div className="mt-3 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
-                    <Lock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-blue-700">{t("checkout.redirectHint")}</p>
-                  </div>
+                  {/* Insufficient Balance Warning for Wallet */}
+                  {paymentMethod === "wallet" && !loadingWallet && (walletBalance ?? 0) < total && (
+                    <div className="mt-3 p-3 bg-red-50 rounded-xl flex items-start gap-3">
+                      <Lock className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-red-700">
+                        Insufficient wallet balance. Required: {formatMoney(total)}, Available: {formatMoney(walletBalance ?? 0)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Payment Hint */}
+                  {paymentMethod === "momo" && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
+                      <Lock className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-blue-700">{t("checkout.redirectHint")}</p>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -518,8 +623,8 @@ export default function CheckoutPage() {
                       <span className="font-medium text-gray-900">{formatMoney(serviceFee)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{t("cart.shipping")}</span>
-                      <span className="font-medium text-green-600">{t("checkout.free")}</span>
+                      <span className="text-gray-500">{t("cart.shipping")} {city && `(${isKigali ? "Kigali" : "Outside Kigali"})`}</span>
+                      <span className="font-medium text-gray-900">{formatMoney(shippingFee)}</span>
                     </div>
                   </div>
 
@@ -533,7 +638,12 @@ export default function CheckoutPage() {
                   {/* Checkout Button */}
                   <Button
                     onClick={handleCheckout}
-                    disabled={!canPlaceOrder || isPlacing || isCheckoutProcessing}
+                    disabled={
+                      !canPlaceOrder || 
+                      isPlacing || 
+                      isCheckoutProcessing || 
+                      (paymentMethod === "wallet" && (loadingWallet || (walletBalance ?? 0) < total))
+                    }
                     className="w-full mt-6 h-12 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-base rounded-xl disabled:opacity-50"
                   >
                     {isPlacing || isCheckoutProcessing ? (

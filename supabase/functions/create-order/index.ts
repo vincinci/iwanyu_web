@@ -16,6 +16,7 @@ interface CreateOrderRequest {
   email: string;
   phone: string;
   address: string;
+  city?: string;
   paymentMethod: "momo" | "wallet" | "cod";
   discountCode?: string | null;
 }
@@ -91,7 +92,7 @@ Deno.serve(async (req: Request) => {
 
     step = "request.parse";
     const body: CreateOrderRequest = await req.json();
-    const { items, email, phone, address, paymentMethod, discountCode } = body;
+    const { items, email, phone, address, city, paymentMethod, discountCode } = body;
 
     if (!items?.length || !email?.trim() || !phone?.trim() || !address?.trim()) {
       return new Response(
@@ -113,6 +114,7 @@ Deno.serve(async (req: Request) => {
     const { data: totals, error: totalsErr } = await supabase.rpc("compute_order_totals", {
       p_items: itemsPayload,
       p_discount_code: discountCode ?? null,
+      p_city: city ?? null,
     });
     if (totalsErr) {
       return new Response(
@@ -126,6 +128,7 @@ Deno.serve(async (req: Request) => {
       discount_rwf: discountRwf,
       effective_subtotal: effectiveSubtotal,
       service_fee: serviceFee,
+      shipping_fee: shippingFee,
       total,
       vendor_payout: vendorPayout,
       line_items: lineItems,
@@ -134,6 +137,7 @@ Deno.serve(async (req: Request) => {
       discount_rwf: number;
       effective_subtotal: number;
       service_fee: number;
+      shipping_fee: number;
       total: number;
       vendor_payout: number;
       line_items: Array<{
@@ -226,6 +230,7 @@ Deno.serve(async (req: Request) => {
         status: "Placed",
         total_rwf: total,
         service_fee_rwf: serviceFee,
+        shipping_fee_rwf: shippingFee,
         vendor_payout_rwf: vendorPayout,
         discount_code: discountCode ?? null,
         discount_rwf: discountRwf,
