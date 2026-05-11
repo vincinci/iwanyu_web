@@ -452,19 +452,22 @@ export default function AdminDashboardPage() {
     setHeroMediaUploadProgress(0);
 
     try {
-      // Test Cloudinary connectivity first
-      console.log("Testing Cloudinary connectivity...");
-      const connectivityTest = await testCloudinaryConnectivity();
-      if (!connectivityTest.reachable) {
-        throw new Error(connectivityTest.message);
-      }
-      console.log("Cloudinary is reachable, proceeding with upload...");
-
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
       if (!accessToken) {
         throw new Error("Not authenticated. Please sign in again.");
       }
+      
+      // Test Cloudinary connectivity (non-blocking, just for diagnostics)
+      testCloudinaryConnectivity().then(result => {
+        if (result.reachable) {
+          console.log("✓ Cloudinary connectivity test passed");
+        } else {
+          console.warn("⚠ Cloudinary connectivity test failed (this is normal due to CORS):", result.message);
+        }
+      }).catch(err => {
+        console.warn("⚠ Connectivity test error (can be ignored):", err);
+      });
 
       const uploadedItems: Array<{url: string; type: 'image' | 'video'}> = [];
       
