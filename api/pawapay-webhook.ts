@@ -154,7 +154,7 @@ async function handleWalletDepositCallback(
         .single();
 
       const currentBalance = profile?.wallet_balance_rwf || 0;
-      const depositAmount = parseInt(amount);
+      const depositAmount = transaction.amount_rwf;
       const newBalance = currentBalance + depositAmount;
 
       // Update wallet balance
@@ -164,6 +164,14 @@ async function handleWalletDepositCallback(
           wallet_balance_rwf: newBalance,
         })
         .eq('id', transaction.user_id);
+
+      // Update transaction with new balance
+      await supabase
+        .from('wallet_transactions')
+        .update({
+          new_balance_rwf: newBalance,
+        })
+        .eq('external_transaction_id', transactionId);
 
       console.log(`Wallet deposit completed for user ${transaction.user_id}: +${depositAmount} RWF`);
     } else {
@@ -189,7 +197,7 @@ async function handleWalletWithdrawalCallback(
     const { data: transaction, error: fetchError } = await supabase
       .from('wallet_transactions')
       .select('*')
-      .eq('reference', transactionId)
+      .eq('external_transaction_id', transactionId)
       .single();
 
     if (fetchError || !transaction) {
@@ -207,27 +215,18 @@ async function handleWalletWithdrawalCallback(
         status: txStatus,
         metadata: { ...transaction.metadata, ...payload },
       })
-      .eq('reference', transactionId);
+      .eq('external_transaction_id', transactionId);
 
     // If failed, refund the wallet (we deducted optimistically)
     if (status === 'FAILED' || status === 'REJECTED' || status === 'CANCELLED') {
-      const withdrawAmount = transaction.amount;
-
-      // Get current balance
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('wallet_balance_rwf')
-        .eq('id', transaction.user_id)
-        .single();
-
-      const currentBalance = profile?.wallet_balance_rwf || 0;
-      const refundedBalance = currentBalance + withdrawAmount;
+      const withdrawAmount = transaction.amount_rwf;
+      const previousBalance = transaction.previous_balance_rwf;
 
       // Refund to wallet
       await supabase
         .from('profiles')
         .update({
-          wallet_balance_rwf: refundedBalance,
+          wallet_balance_rwf: previousBalance,
         })
         .eq('id', transaction.user_id);
 

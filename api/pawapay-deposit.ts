@@ -104,16 +104,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('wallet_transactions')
       .insert({
         user_id: user.id,
-        reference: transactionId,
-        kind: 'wallet_deposit',
-        amount: parseInt(amount),
+        external_transaction_id: transactionId,
+        type: 'deposit',
+        amount_rwf: parseInt(amount),
+        previous_balance_rwf: currentBalance,
+        new_balance_rwf: currentBalance,
         status: 'pending',
-        metadata: {
-          phone_number: phoneNumber,
-          payment_method: 'pawapay',
-          provider: correspondent || 'MTN_MOMO_RWA',
-          description: `PawaPay wallet deposit ${transactionId}`,
-        },
+        phone_number: phoneNumber,
+        payment_method: 'pawapay',
+        provider: correspondent || 'MTN_MOMO_RWA',
+        metadata: {},
+        description: `PawaPay wallet deposit ${transactionId}`,
       });
 
     if (dbError) {
