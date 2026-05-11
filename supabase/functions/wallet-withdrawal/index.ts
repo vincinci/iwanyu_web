@@ -116,9 +116,9 @@ Deno.serve(async (req: Request) => {
     // Find original deposit transaction (FIFO) for refund
     const { data: depositTxns, error: depositErr } = await supabase
       .from("wallet_transactions")
-      .select("id, external_transaction_id, amount_rwf")
+      .select("id, external_transaction_id, amount")
       .eq("user_id", user.id)
-      .eq("type", "deposit")
+      .eq("kind", "deposit")
       .eq("status", "completed")
       .order("created_at", { ascending: true });
 
@@ -157,12 +157,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create withdrawal record using new schema
+    // Create withdrawal record using legacy schema
     const { data: txnRow, error: txnErr } = await supabase
       .from("wallet_transactions")
       .insert({
         user_id: user.id,
+        kind: "withdrawal",
         type: "withdrawal",
+        amount: amountRwf,
         amount_rwf: amountRwf,
         external_transaction_id: refundId,
         status: "pending",
