@@ -113,8 +113,34 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const payoutId = crypto.randomUUID();
-    const correlationId = `withdrawal-${user.id}-${Date.now()}`;
+    // Find original deposit transaction (FIFO) for refund
+    const { data: depositTxns, error: depositErr } = await supabase
+      .from("wallet_transactions")
+      .select("id, external_transaction_id, amount_rwf")
+      .eq("user_id", user.id)
+      .eq("type", "deposit")
+      .eq("status", "completed")
+      .order("created_at", { ascending: true });
+
+    if (depositErr || !depositTxns || depositTxns.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No completed deposits found for refund. Please contact support." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const originalDeposit = depositTxns[0];
+    const originalDepositId = originalDeposit.external_transaction_id;
+
+    if (!originalDepositId) {
+      return new Response(
+        JSON.stringify({ error: "Original deposit has no external transaction ID. Please contact support." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const refundId = crypto.randomUUID();
+    const correlationId = `refund-${user.id}-${Date.now()}`;
 
     // ATOMIC DEDUCT: only deduct if balance is still sufficient (prevents race conditions)
     const { data: deductedRows, error: deductErr } = await supabase
@@ -131,19 +157,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create withdrawal record using legacy schema
+    // Create withdrawal record using new schema
     const { data: txnRow, error: txnErr } = await supabase
       .from("wallet_transactions")
       .insert({
         user_id: user.id,
-        kind: "withdrawal",
-        amount: amountRwf,
-        reference: payoutId,
+        type: "withdrawal",
+        amount_rwf: amountRwf,
+        external_transaction_id: refundId,
+        status: "pending",
         metadata: {
-          status: "processing",
-          payment_method: "pawapay_momo",
+          payment_method: "pawapay_refund",
           phone: phoneNumber,
           correlationId,
+          original_deposit_id: originalDepositId,
         },
       })
       .select("id")
@@ -162,94 +189,79 @@ Deno.serve(async (req: Request) => {
         .from("profiles")
         .update({ wallet_balance_rwf: currentBalance })
         .eq("id", user.id);
+      if (txnId) {
+        await supabase
+          .from("wallet_transactions")
+          .update({ status: "failed" })
+          .eq("id", txnId);
+      }
       return new Response(
         JSON.stringify({ error: "Payment gateway not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Determine provider from phone number (Rwanda only)
-    // Normalize short names to PawaPay provider IDs
-    let provider = (mobileNetwork || "").toUpperCase();
-    if (provider === "MTN") provider = "MTN_MOMO_RWA";
-    else if (provider === "AIRTEL" || provider === "AIRTELMONEY" || provider === "AIRTEL_OAPI_RWA") provider = "AIRTEL_RWA";
-
-    if (!provider || !provider.includes("_")) {
-      // Auto-detect from phone prefix
-      const digits = phoneNumber.replace(/\D/g, "");
-      if (digits.startsWith("25078") || digits.startsWith("25079")) provider = "MTN_MOMO_RWA";
-      else if (digits.startsWith("25073") || digits.startsWith("25072")) provider = "AIRTEL_RWA";
-      else provider = "MTN_MOMO_RWA"; // default Rwanda
-    }
-
     const normalizedPhone = phoneNumber.replace(/\D/g, "");
 
-    // PawaPay V2 payout payload
-    const payoutPayload = {
-      payoutId,
+    // PawaPay V2 refund payload
+    const refundPayload = {
+      refundId,
+      depositId: originalDepositId,
       amount: String(Math.trunc(amountRwf)),
       currency: "RWF",
-      recipient: {
-        type: "MMO",
-        accountDetails: {
-          phoneNumber: normalizedPhone,
-          provider,
-        },
-      },
-      customerMessage: "Wallet withdrawal",
+      notificationUrl: `${SUPABASE_URL}/functions/v1/pawapay-refund-callback`,
     };
 
-    console.log(`Initiating PawaPay payout: ${payoutId}, provider: ${provider}, phone: ${normalizedPhone}, amount: ${amountRwf}`);
+    console.log(`Initiating PawaPay refund: ${refundId}, deposit: ${originalDepositId}, phone: ${normalizedPhone}, amount: ${amountRwf}`);
 
-    const payoutRes = await fetch(`${getPawaPayEndpoint()}/v2/payouts`, {
+    const refundRes = await fetch(`${getPawaPayEndpoint()}/v2/refunds`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${credential}`,
       },
-      body: JSON.stringify(payoutPayload),
+      body: JSON.stringify(refundPayload),
     });
 
-    const payoutText = await payoutRes.text();
-    let payoutData: Record<string, unknown> = {};
-    try { payoutData = payoutText ? JSON.parse(payoutText) : {}; } catch { /* ignore */ }
+    const refundText = await refundRes.text();
+    let refundData: Record<string, unknown> = {};
+    try { refundData = refundText ? JSON.parse(refundText) : {}; } catch { /* ignore */ }
 
-    console.log(`PawaPay payout response: HTTP ${payoutRes.status}, status=${payoutData.status}, body=${payoutText.slice(0, 300)}`);
+    console.log(`PawaPay refund response: HTTP ${refundRes.status}, status=${refundData.status}, body=${refundText.slice(0, 300)}`);
 
-    // PawaPay returns HTTP 200 even for REJECTED payouts — must check body status
-    const isRejected = !payoutRes.ok || payoutData.status === "REJECTED";
+    // PawaPay returns HTTP 200 even for REJECTED refunds — must check body status
+    const isRejected = !refundRes.ok || refundData.status === "REJECTED";
 
     if (isRejected) {
-      console.error("PawaPay payout rejected:", payoutData);
+      console.error("PawaPay refund rejected:", refundData);
       // Refund balance
       await supabase
         .from("profiles")
         .update({ wallet_balance_rwf: currentBalance })
         .eq("id", user.id);
       if (txnId) {
-        const failureCode = (payoutData.failureReason as Record<string, unknown>)?.failureCode as string ?? "UNKNOWN";
         await supabase
           .from("wallet_transactions")
-          .update({ metadata: { status: "failed", payment_method: "pawapay_momo", phone: phoneNumber, correlationId, failureCode } })
+          .update({ status: "failed" })
           .eq("id", txnId);
       }
-      const failureReason = payoutData.failureReason as Record<string, unknown> | undefined;
-      const errMsg = (failureReason?.failureMessage || payoutData.message || payoutData.error || "Payout rejected by payment provider") as string;
+      const failureReason = refundData.failureReason as Record<string, unknown> | undefined;
+      const errMsg = (failureReason?.failureMessage || refundData.message || refundData.error || "Refund rejected by payment provider") as string;
       return new Response(
-        JSON.stringify({ error: `Withdrawal failed: ${errMsg}`, details: payoutData }),
+        JSON.stringify({ error: `Withdrawal failed: ${errMsg}`, details: refundData }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Payout initiated: ${payoutId}, user: ${user.id}, amount: ${amountRwf}`);
+    console.log(`Refund initiated: ${refundId}, user: ${user.id}, amount: ${amountRwf}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        payoutId,
+        refundId,
         amountRwf,
         newBalance: currentBalance - amountRwf,
-        message: `${amountRwf.toLocaleString()} RWF is on the way to +${normalizedPhone}`,
+        message: `${amountRwf.toLocaleString()} RWF withdrawal initiated to +${normalizedPhone}`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

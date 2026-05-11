@@ -156,6 +156,7 @@ export default function SellerSettingsPage() {
                 id: nextVendorId,
                 owner_user_id: user.id,
                 name: trimmedName,
+                shop_name: trimmedName,
                 email: form.supportEmail.trim() || null,
                 location: form.location.trim() || null,
                 phone: form.phone.trim() || null,
