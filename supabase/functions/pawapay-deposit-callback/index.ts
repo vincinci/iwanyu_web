@@ -39,23 +39,22 @@ serve(async (req) => {
 
     // If successful, update wallet balance
     if (status === "COMPLETED") {
-      const { data: wallet } = await supabaseClient
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", transaction.user_id)
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("wallet_balance_rwf")
+        .eq("id", transaction.user_id)
         .single();
 
-      const currentBalance = wallet?.balance || 0;
+      const currentBalance = profile?.wallet_balance_rwf || 0;
       const newBalance = currentBalance + parseInt(amount);
 
-      // Update wallet
+      // Update profile wallet balance
       await supabaseClient
-        .from("wallets")
-        .upsert({
-          user_id: transaction.user_id,
-          balance: newBalance,
-          updated_at: new Date().toISOString(),
-        });
+        .from("profiles")
+        .update({
+          wallet_balance_rwf: newBalance,
+        })
+        .eq("id", transaction.user_id);
 
       // Update transaction with new balance
       await supabaseClient

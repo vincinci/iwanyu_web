@@ -36,22 +36,21 @@ serve(async (req) => {
 
     // If failed, refund the wallet
     if (status === "FAILED") {
-      const { data: wallet } = await supabaseClient
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", transaction.user_id)
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("wallet_balance_rwf")
+        .eq("id", transaction.user_id)
         .single();
 
       const refundAmount = parseInt(amount);
-      const newBalance = wallet.balance + refundAmount;
+      const newBalance = (profile?.wallet_balance_rwf || 0) + refundAmount;
 
       await supabaseClient
-        .from("wallets")
+        .from("profiles")
         .update({
-          balance: newBalance,
-          updated_at: new Date().toISOString(),
+          wallet_balance_rwf: newBalance,
         })
-        .eq("user_id", transaction.user_id);
+        .eq("id", transaction.user_id);
 
       // Update transaction with refunded balance
       await supabaseClient

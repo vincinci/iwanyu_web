@@ -32,20 +32,26 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    // Check wallet balance
-    const { data: wallet } = await supabaseClient
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", user.id)
+    // Check wallet balance from profiles
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("wallet_balance_rwf, locked_balance_rwf")
+      .eq("id", user.id)
       .single();
 
-    if (!wallet || wallet.balance < parseInt(amount)) {
+    if (!profile) {
+      throw new Error("Profile not found");
+    }
+
+    const availableBalance = (profile.wallet_balance_rwf || 0) - (profile.locked_balance_rwf || 0);
+
+    if (availableBalance < parseInt(amount)) {
       throw new Error("Insufficient balance");
     }
 
     // Minimum withdrawal amount
     if (parseInt(amount) < 500) {
-      throw new Error("Minimum withdrawal is 500 ZMW");
+      throw new Error("Minimum withdrawal is 500 RWF");
     }
 
     const transactionId = `wth_${Date.now()}_${user.id.substring(0, 8)}`;
@@ -60,7 +66,7 @@ serve(async (req) => {
       body: JSON.stringify({
         payoutId: transactionId,
         amount: amount.toString(),
-        currency: "ZMW",
+        currency: "RWF",
         correspondent: "MTN_MOMO_RWA", // Rwanda MTN Mobile Money
         recipient: {
           type: "MSISDN",
@@ -80,17 +86,16 @@ serve(async (req) => {
 
     const pawapayData = await pawapayResponse.json();
 
-    const currentBalance = wallet.balance;
+    const currentBalance = profile.wallet_balance_rwf || 0;
     const newBalance = currentBalance - parseInt(amount);
 
     // Deduct from wallet immediately
     await supabaseClient
-      .from("wallets")
+      .from("profiles")
       .update({
-        balance: newBalance,
-        updated_at: new Date().toISOString(),
+        wallet_balance_rwf: newBalance,
       })
-      .eq("user_id", user.id);
+      .eq("id", user.id);
 
     // Record transaction
     await supabaseClient

@@ -46,7 +46,7 @@ serve(async (req) => {
       body: JSON.stringify({
         depositId: transactionId,
         amount: amount.toString(),
-        currency: "ZMW", // Zambian Kwacha
+        currency: "RWF", // Rwanda Francs
         correspondent: "MTN_MOMO_RWA", // Rwanda MTN Mobile Money
         payer: {
           type: "MSISDN",
@@ -66,14 +66,14 @@ serve(async (req) => {
 
     const pawapayData = await pawapayResponse.json();
 
-    // Get current wallet balance
-    const { data: wallet } = await supabaseClient
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", user.id)
+    // Get current wallet balance from profiles
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("wallet_balance_rwf")
+      .eq("id", user.id)
       .single();
 
-    const currentBalance = wallet?.balance || 0;
+    const currentBalance = profile?.wallet_balance_rwf || 0;
 
     // Store transaction in database
     const { error: dbError } = await supabaseClient

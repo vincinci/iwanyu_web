@@ -60,7 +60,7 @@ serve(async (req) => {
       body: JSON.stringify({
         depositId: transactionId,
         amount: order.total_amount.toString(),
-        currency: "ZMW",
+        currency: "RWF",
         correspondent: "MTN_MOMO_RWA", // Rwanda MTN Mobile Money
         payer: {
           type: "MSISDN",
