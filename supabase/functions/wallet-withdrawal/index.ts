@@ -156,13 +156,10 @@ Deno.serve(async (req: Request) => {
         amount_rwf: amountRwf,
         external_transaction_id: withdrawalId,
         status: "pending",
-        metadata: {
-          payment_method: hasDeposit ? "pawapay_refund" : "pawapay_payout",
-          phone: phoneNumber,
-          correlationId,
-          original_deposit_id: originalDepositId,
-          withdrawal_type: hasDeposit ? "refund" : "payout",
-        },
+        payment_method: hasDeposit ? "pawapay_refund" : "pawapay_payout",
+        description: hasDeposit 
+          ? `Refund withdrawal to ${phoneNumber}` 
+          : `Payout withdrawal to ${phoneNumber}`,
       })
       .select("id")
       .single();
