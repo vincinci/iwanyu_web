@@ -2,21 +2,23 @@ import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-const supabaseUrl =
+const supabaseUrl = (
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "";
+  ""
+).trim();
 
-const supabaseAnonKey =
+const supabaseAnonKey = (
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "";
+  ""
+).trim();
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || "";
-const apiKey = process.env.CLOUDINARY_API_KEY || process.env.VITE_CLOUDINARY_API_KEY || "";
-const apiSecret = process.env.CLOUDINARY_API_SECRET || process.env.VITE_CLOUDINARY_API_SECRET || "";
+const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || "").trim();
+const apiKey = (process.env.CLOUDINARY_API_KEY || process.env.VITE_CLOUDINARY_API_KEY || "").trim();
+const apiSecret = (process.env.CLOUDINARY_API_SECRET || process.env.VITE_CLOUDINARY_API_SECRET || "").trim();
 
 const ALLOW_HEADERS = "content-type, authorization, apikey, x-client-info";
 
