@@ -108,7 +108,11 @@ export async function uploadMediaToCloudinary(
         filename: file.name,
         size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
         type: input.kind,
-        cloudName: sig.cloudName
+        cloudName: sig.cloudName,
+        folder: sig.folder,
+        timestamp: sig.timestamp,
+        apiKey: sig.apiKey.substring(0, 8) + '***', // Partial key for debugging
+        signaturePreview: sig.signature.substring(0, 8) + '***' // Partial signature
       });
 
       const result = await new Promise<{ url: string; publicId: string }>((resolve, reject) => {
@@ -143,15 +147,40 @@ export async function uploadMediaToCloudinary(
               if (!data.secure_url || !data.public_id) {
                 reject(new Error("Cloudinary response missing secure_url/public_id"));
               } else {
-                console.log(`Upload successful in ${elapsed}s`);
+                console.log(`✓ Upload successful in ${elapsed}s`);
                 resolve({ url: data.secure_url, publicId: data.public_id });
               }
             } catch (e) {
               reject(new Error("Failed to parse Cloudinary response"));
             }
           } else {
-            const errorMsg = xhr.responseText ? ` - ${xhr.responseText}` : '';
-            reject(new Error(`Cloudinary upload failed with status ${xhr.status}${errorMsg}`));
+            // Log detailed error for debugging
+            console.error(`✗ Cloudinary upload failed (${xhr.status}) after ${elapsed}s:`, {
+              status: xhr.status,
+              statusText: xhr.statusText,
+              response: xhr.responseText,
+              timestamp: sig.timestamp,
+              folder: sig.folder,
+              cloudName: sig.cloudName
+            });
+            
+            // Parse error response if available
+            let errorDetail = xhr.statusText;
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              if (errorData.error && errorData.error.message) {
+                errorDetail = errorData.error.message;
+              }
+            } catch (e) {
+              // Response not JSON, use raw text
+              if (xhr.responseText) errorDetail = xhr.responseText;
+            }
+            
+            if (xhr.status === 403) {
+              reject(new Error(`Cloudinary rejected upload (403 Forbidden): ${errorDetail}. This may indicate an invalid signature or account settings issue. Check Cloudinary dashboard settings.`));
+            } else {
+              reject(new Error(`Cloudinary upload failed (${xhr.status}): ${errorDetail}`));
+            }
           }
         });
 
