@@ -172,13 +172,6 @@ export async function uploadMediaToCloudinary(
         xhr.open("POST", uploadUrl);
         xhr.send(form);
       });
-            reject(new Error("Upload cancelled"));
-          }
-        });
-
-        xhr.open("POST", uploadUrl);
-        xhr.send(form);
-      });
       
       return result; // Success!
       
