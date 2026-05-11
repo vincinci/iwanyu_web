@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle, Percent, Wallet } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Boxes, ClipboardList, CreditCard, ShieldAlert, Users, X, Tag, Trash2, Eye, TrendingUp, DollarSign, ShoppingCart, Package, Star, AlertCircle, Percent, Wallet, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { createId } from "@/lib/ids";
 import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 import { canAccessAdmin } from "@/lib/adminAccess";
+import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 
 const nav = [
   { labelKey: "admin.overview", icon: ClipboardList, href: "/admin", active: true },
@@ -73,6 +74,8 @@ export default function AdminDashboardPage() {
   const [heroImageInput, setHeroImageInput] = useState("");
   const [heroImageLoading, setHeroImageLoading] = useState(false);
   const [heroImageSaving, setHeroImageSaving] = useState(false);
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
+  const [heroImageUploadProgress, setHeroImageUploadProgress] = useState(0);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
   const [withdrawals, setWithdrawals] = useState<AdminWithdrawalRow[]>([]);
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
@@ -421,6 +424,66 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleHeroImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Image must be less than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!supabase) return;
+
+    setHeroImageUploading(true);
+    setHeroImageUploadProgress(0);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) throw new Error("Not authenticated");
+
+      const result = await uploadMediaToCloudinary(file, {
+        kind: "image",
+        folder: "hero",
+        accessToken,
+        onProgress: (progress) => setHeroImageUploadProgress(progress),
+      });
+
+      setHeroImageInput(result.url);
+      toast({
+        title: "Image uploaded",
+        description: "Hero image uploaded successfully. Click Save to apply changes.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setHeroImageUploading(false);
+      setHeroImageUploadProgress(0);
+      // Reset file input
+      event.target.value = "";
+    }
+  }
+
   return (
     <div className="dashboard-shell">
       {/* Top Bar */}
@@ -559,30 +622,55 @@ export default function AdminDashboardPage() {
               <div className="dashboard-card mt-6 p-5">
                 <h3 className="text-sm font-semibold text-gray-900">{t("admin.heroImageTitle")}</h3>
                 <p className="mt-1 text-xs text-gray-500">{t("admin.heroImageDesc")}</p>
-                <div className="mt-3 flex flex-col gap-3 md:flex-row">
-                  <Input
-                    value={heroImageInput}
-                    onChange={(e) => setHeroImageInput(e.target.value)}
-                    placeholder={t("admin.imageUrlPlaceholder")}
-                    disabled={heroImageLoading || heroImageSaving}
-                  />
-                  <Button
-                    className="rounded-full bg-gray-900 text-white hover:bg-gray-800 md:px-6"
-                    disabled={heroImageLoading || heroImageSaving}
-                    onClick={async () => {
-                      try {
-                        await saveHeroImageSetting();
-                      } catch (e) {
-                        toast({
-                          title: t("admin.failed"),
-                          description: e instanceof Error ? e.message : t("admin.unknownError"),
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  >
-                    {heroImageSaving ? t("admin.saving") : t("admin.saveImage")}
-                  </Button>
+                <div className="mt-3 flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 md:flex-row">
+                    <Input
+                      value={heroImageInput}
+                      onChange={(e) => setHeroImageInput(e.target.value)}
+                      placeholder={t("admin.imageUrlPlaceholder")}
+                      disabled={heroImageLoading || heroImageSaving || heroImageUploading}
+                      className="flex-1"
+                    />
+                    <div className="flex gap-2">
+                      <label htmlFor="hero-image-upload">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-full border-gray-300 hover:bg-gray-50 w-full md:w-auto"
+                          disabled={heroImageLoading || heroImageSaving || heroImageUploading}
+                          onClick={() => document.getElementById("hero-image-upload")?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {heroImageUploading ? `${heroImageUploadProgress}%` : "Upload"}
+                        </Button>
+                      </label>
+                      <input
+                        id="hero-image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleHeroImageUpload}
+                        disabled={heroImageLoading || heroImageSaving || heroImageUploading}
+                      />
+                      <Button
+                        className="rounded-full bg-gray-900 text-white hover:bg-gray-800 md:px-6"
+                        disabled={heroImageLoading || heroImageSaving || heroImageUploading}
+                        onClick={async () => {
+                          try {
+                            await saveHeroImageSetting();
+                          } catch (e) {
+                            toast({
+                              title: t("admin.failed"),
+                              description: e instanceof Error ? e.message : t("admin.unknownError"),
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        {heroImageSaving ? t("admin.saving") : t("admin.saveImage")}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 {heroImageInput ? (
                   <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
