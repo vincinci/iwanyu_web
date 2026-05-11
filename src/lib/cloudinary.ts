@@ -75,57 +75,106 @@ export async function uploadMediaToCloudinary(
     folder?: string;
     accessToken: string;
     onProgress?: (progress: number) => void;
+    retries?: number;
   }
 ): Promise<{ url: string; publicId: string }> {
-  const sig = await getCloudinaryUploadSignature({ folder: input.folder, accessToken: input.accessToken });
-
-  const form = new FormData();
-  form.append("file", file);
-  form.append("api_key", sig.apiKey);
-  form.append("timestamp", String(sig.timestamp));
-  form.append("signature", sig.signature);
-  form.append("folder", sig.folder);
-
-  const uploadUrl = `https://api.cloudinary.com/v1_1/${sig.cloudName}/${input.kind}/upload`;
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable && input.onProgress) {
-        const percentComplete = Math.round((e.loaded / e.total) * 100);
-        input.onProgress(percentComplete);
+  const maxRetries = input.retries ?? 2;
+  const timeoutMs = input.kind === "video" ? 120000 : 60000; // 2 min for video, 1 min for images
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        // Wait before retry with exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-    });
+      
+      const sig = await getCloudinaryUploadSignature({ folder: input.folder, accessToken: input.accessToken });
 
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText) as { secure_url?: string; public_id?: string };
-          if (!data.secure_url || !data.public_id) {
-            reject(new Error("Cloudinary response missing secure_url/public_id"));
-          } else {
-            resolve({ url: data.secure_url, publicId: data.public_id });
+      const form = new FormData();
+      form.append("file", file);
+      form.append("api_key", sig.apiKey);
+      form.append("timestamp", String(sig.timestamp));
+      form.append("signature", sig.signature);
+      form.append("folder", sig.folder);
+
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${sig.cloudName}/${input.kind}/upload`;
+
+      const result = await new Promise<{ url: string; publicId: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        let timedOut = false;
+
+        // Set timeout
+        const timeoutId = setTimeout(() => {
+          timedOut = true;
+          xhr.abort();
+          reject(new Error(`Upload timeout after ${timeoutMs/1000}s - file may be too large or network is slow`));
+        }, timeoutMs);
+
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable && input.onProgress && !timedOut) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            input.onProgress(percentComplete);
           }
-        } catch (e) {
-          reject(new Error("Failed to parse Cloudinary response"));
-        }
-      } else {
-        reject(new Error(`Cloudinary upload failed (${xhr.status}): ${xhr.responseText}`));
+        });
+
+        xhr.addEventListener("load", () => {
+          clearTimeout(timeoutId);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText) as { secure_url?: string; public_id?: string };
+              if (!data.secure_url || !data.public_id) {
+                reject(new Error("Cloudinary response missing secure_url/public_id"));
+              } else {
+                resolve({ url: data.secure_url, publicId: data.public_id });
+              }
+            } catch (e) {
+              reject(new Error("Failed to parse Cloudinary response"));
+            }
+          } else {
+            reject(new Error(`Cloudinary upload failed (${xhr.status}): ${xhr.responseText}`));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          clearTimeout(timeoutId);
+          if (!timedOut) {
+            reject(new Error("Network error - check your internet connection"));
+          }
+        });
+
+        xhr.addEventListener("abort", () => {
+          clearTimeout(timeoutId);
+          if (!timedOut) {
+            reject(new Error("Upload cancelled"));
+          }
+        });
+
+        xhr.open("POST", uploadUrl);
+        xhr.send(form);
+      });
+      
+      return result; // Success!
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Don't retry on certain errors
+      if (lastError.message.includes("signature") || lastError.message.includes("401") || lastError.message.includes("403")) {
+        throw lastError;
       }
-    });
-
-    xhr.addEventListener("error", () => {
-      reject(new Error("Network error during upload"));
-    });
-
-    xhr.addEventListener("abort", () => {
-      reject(new Error("Upload aborted"));
-    });
-
-    xhr.open("POST", uploadUrl);
-    xhr.send(form);
-  });
+      
+      // If not last attempt, continue to retry
+      if (attempt < maxRetries) {
+        console.log(`Upload attempt ${attempt + 1} failed, retrying...`, lastError.message);
+      }
+    }
+  }
+  
+  // All retries exhausted
+  throw new Error(`Upload failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`);
 }
 
 export async function uploadImageToCloudinary(file: File, input: { folder?: string; accessToken: string }) {
