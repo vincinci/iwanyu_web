@@ -271,7 +271,7 @@ export default function AdminDashboardPage() {
     const next = category.trim();
     if (!next) throw new Error(t("admin.missingCategory"));
     const { error } = await supabase.from("products").update({ category: next }).eq("id", productId);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Failed to update category");
     await refresh();
   }
 
@@ -281,7 +281,7 @@ export default function AdminDashboardPage() {
       .from("vendors")
       .update({ status: "approved" })
       .eq("id", vendorId);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Failed to approve vendor");
     await refresh();
   }
 
@@ -291,7 +291,7 @@ export default function AdminDashboardPage() {
       .from("vendors")
       .update({ status: "rejected" })
       .eq("id", vendorId);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Failed to reject vendor");
     await refresh();
   }
 
@@ -307,19 +307,19 @@ export default function AdminDashboardPage() {
       owner_user_id: app.owner_user_id,
       status: "approved",
     });
-    if (vendorErr) throw new Error(vendorErr.message);
+    if (vendorErr) throw new Error("Failed to create vendor");
 
     const { error: profileErr } = await supabase
       .from("profiles")
       .update({ role: "seller", updated_at: new Date().toISOString() })
       .eq("id", app.owner_user_id);
-    if (profileErr) throw new Error(profileErr.message);
+    if (profileErr) throw new Error("Failed to update profile");
 
     const { error: appErr } = await supabase
       .from("vendor_applications")
       .update({ status: "approved", vendor_id: vendorId, updated_at: new Date().toISOString() })
       .eq("id", app.id);
-    if (appErr) throw new Error(appErr.message);
+    if (appErr) throw new Error("Failed to approve application");
 
     setApplications((prev) => prev.filter((x) => x.id !== app.id));
     await refresh();
@@ -331,7 +331,7 @@ export default function AdminDashboardPage() {
       .from("vendor_applications")
       .update({ status: "rejected", updated_at: new Date().toISOString() })
       .eq("id", app.id);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Failed to reject application");
 
     setApplications((prev) => prev.filter((x) => x.id !== app.id));
   }
@@ -342,7 +342,7 @@ export default function AdminDashboardPage() {
       .from("vendors")
       .update({ revoked: !currentRevoked })
       .eq("id", vendorId);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Failed to update vendor status");
     await refresh();
   }
 
@@ -367,13 +367,13 @@ export default function AdminDashboardPage() {
       message,
       created_by: user.id,
     });
-    if (notifyErr) throw new Error(notifyErr.message);
+    if (notifyErr) throw new Error("Failed to notify vendor");
 
     const { error: deleteErr } = await supabase
       .from("products")
       .update({ deleted_at: new Date().toISOString(), in_stock: false })
       .eq("id", productToDelete.id);
-    if (deleteErr) throw new Error(deleteErr.message);
+    if (deleteErr) throw new Error("Failed to delete product");
 
     setDeleteOpen(false);
     setDeleteProductId(null);
@@ -401,7 +401,7 @@ export default function AdminDashboardPage() {
           },
           { onConflict: "key" }
         );
-      if (error) throw new Error(error.message);
+      if (error) throw new Error("Failed to save hero image");
       toast({ title: t("admin.saved"), description: t("admin.heroImageSaved") });
     } finally {
       setHeroImageSaving(false);
@@ -717,6 +717,7 @@ export default function AdminDashboardPage() {
                       <th className="text-right px-4 py-3 font-medium text-gray-500">{t("admin.price")}</th>
                       <th className="text-right px-4 py-3 font-medium text-gray-500">{t("admin.soldTitle")}</th>
                       <th className="text-right px-4 py-3 font-medium text-gray-500">{t("admin.revenue")}</th>
+                      <th className="text-center px-4 py-3 font-medium text-gray-500">{t("admin.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -740,6 +741,21 @@ export default function AdminDashboardPage() {
                           <td className="px-4 py-3 text-right font-medium">{formatMoney(product.price)}</td>
                           <td className="px-4 py-3 text-right">{salesMetrics.productSales[product.id] ?? 0}</td>
                           <td className="px-4 py-3 text-right font-medium text-green-600">{formatMoney(salesMetrics.productRevenue[product.id] ?? 0)}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeleteProductId(product.id);
+                                  setDeleteOpen(true);
+                                }}
+                                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
