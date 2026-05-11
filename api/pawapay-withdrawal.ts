@@ -93,6 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user_id: user.id,
         external_transaction_id: transactionId,
         type: 'withdrawal',
+        kind: 'wallet_withdrawal',
         amount_rwf: withdrawAmount,
         previous_balance_rwf: currentBalance,
         new_balance_rwf: newBalance,

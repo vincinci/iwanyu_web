@@ -106,6 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user_id: user.id,
         external_transaction_id: transactionId,
         type: 'deposit',
+        kind: 'wallet_deposit',
         amount_rwf: parseInt(amount),
         previous_balance_rwf: currentBalance,
         new_balance_rwf: currentBalance, // Will be updated on callback
