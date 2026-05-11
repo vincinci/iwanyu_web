@@ -71,11 +71,11 @@ export default function AdminDashboardPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
-  const [heroImageInput, setHeroImageInput] = useState("");
-  const [heroImageLoading, setHeroImageLoading] = useState(false);
-  const [heroImageSaving, setHeroImageSaving] = useState(false);
-  const [heroImageUploading, setHeroImageUploading] = useState(false);
-  const [heroImageUploadProgress, setHeroImageUploadProgress] = useState(0);
+  const [heroMediaItems, setHeroMediaItems] = useState<Array<{url: string; type: 'image' | 'video'}>>([]);
+  const [heroMediaLoading, setHeroMediaLoading] = useState(false);
+  const [heroMediaSaving, setHeroMediaSaving] = useState(false);
+  const [heroMediaUploading, setHeroMediaUploading] = useState(false);
+  const [heroMediaUploadProgress, setHeroMediaUploadProgress] = useState(0);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
   const [withdrawals, setWithdrawals] = useState<AdminWithdrawalRow[]>([]);
   const categoryOptions = useMemo(() => getAllCategoryOptions(), []);
@@ -158,22 +158,34 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadHeroSetting() {
+    async function loadHeroMedia() {
       if (!supabase) return;
-      setHeroImageLoading(true);
+      setHeroMediaLoading(true);
       const { data } = await supabase
         .from("site_settings")
-        .select("value_text")
-        .eq("key", "hero_image_url")
+        .select("value_json, value_text")
+        .eq("key", "hero_media")
         .maybeSingle();
 
       if (!cancelled) {
-        setHeroImageInput(data?.value_text ?? "");
-        setHeroImageLoading(false);
+        if (data?.value_json && Array.isArray(data.value_json)) {
+          setHeroMediaItems(data.value_json);
+        } else {
+          // Fallback to old single image format
+          const fallback = await supabase
+            .from("site_settings")
+            .select("value_text")
+            .eq("key", "hero_image_url")
+            .maybeSingle();
+          if (fallback.data?.value_text) {
+            setHeroMediaItems([{ url: fallback.data.value_text, type: 'image' }]);
+          }
+        }
+        setHeroMediaLoading(false);
       }
     }
 
-    void loadHeroSetting();
+    void loadHeroMedia();
     return () => {
       cancelled = true;
     };
@@ -397,87 +409,107 @@ export default function AdminDashboardPage() {
     await refresh();
   }
 
-  async function saveHeroImageSetting() {
+  async function saveHeroMedia() {
     if (!supabase) throw new Error(t("admin.supabaseMissing"));
     if (!user) throw new Error(t("admin.notSignedIn"));
 
-    const next = heroImageInput.trim();
-    if (!next) throw new Error(t("admin.heroImageRequired"));
+    if (heroMediaItems.length === 0) throw new Error("Please add at least one image or video");
 
-    setHeroImageSaving(true);
+    setHeroMediaSaving(true);
     try {
       const { error } = await supabase
         .from("site_settings")
         .upsert(
           {
-            key: "hero_image_url",
-            value_text: next,
+            key: "hero_media",
+            value_json: heroMediaItems,
             updated_by: user.id,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "key" }
         );
-      if (error) throw new Error("Failed to save hero image");
-      toast({ title: t("admin.saved"), description: t("admin.heroImageSaved") });
+      if (error) throw new Error("Failed to save hero media");
+      toast({ title: t("admin.saved"), description: "Hero media saved successfully" });
     } finally {
-      setHeroImageSaving(false);
+      setHeroMediaSaving(false);
     }
   }
 
-  async function handleHeroImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function removeHeroMedia(index: number) {
+    setHeroMediaItems(prev => prev.filter((_, i) => i !== index));
+  }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file",
-        description: "Please select an image file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Image must be less than 10MB",
-        variant: "destructive",
-      });
-      return;
-    }
+  async function handleHeroMediaUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     if (!supabase) return;
 
-    setHeroImageUploading(true);
-    setHeroImageUploadProgress(0);
+    setHeroMediaUploading(true);
+    setHeroMediaUploadProgress(0);
 
     try {
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
       if (!accessToken) throw new Error("Not authenticated");
 
-      const result = await uploadMediaToCloudinary(file, {
-        kind: "image",
-        folder: "hero",
-        accessToken,
-        onProgress: (progress) => setHeroImageUploadProgress(progress),
-      });
+      const uploadedItems: Array<{url: string; type: 'image' | 'video'}> = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file type
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+        
+        if (!isImage && !isVideo) {
+          toast({
+            title: "Invalid file",
+            description: `${file.name} is not an image or video`,
+            variant: "destructive",
+          });
+          continue;
+        }
 
-      setHeroImageInput(result.url);
-      toast({
-        title: "Image uploaded",
-        description: "Hero image uploaded successfully. Click Save to apply changes.",
-      });
+        // Validate file size (max 50MB for videos, 10MB for images)
+        const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+          toast({
+            title: "File too large",
+            description: `${file.name} exceeds ${isVideo ? '50MB' : '10MB'} limit`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        const result = await uploadMediaToCloudinary(file, {
+          kind: isVideo ? "video" : "image",
+          folder: "hero",
+          accessToken,
+          onProgress: (progress) => {
+            const totalProgress = ((i + progress / 100) / files.length) * 100;
+            setHeroMediaUploadProgress(Math.round(totalProgress));
+          },
+        });
+
+        uploadedItems.push({ url: result.url, type: isVideo ? 'video' : 'image' });
+      }
+
+      if (uploadedItems.length > 0) {
+        setHeroMediaItems(prev => [...prev, ...uploadedItems]);
+        toast({
+          title: "Upload complete",
+          description: `${uploadedItems.length} item(s) uploaded. Click Save to apply changes.`,
+        });
+      }
     } catch (error) {
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload image",
+        description: error instanceof Error ? error.message : "Failed to upload media",
         variant: "destructive",
       });
     } finally {
-      setHeroImageUploading(false);
+      setHeroMediaUploading(false);
       setHeroImageUploadProgress(0);
       // Reset file input
       event.target.value = "";
@@ -620,61 +652,93 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="dashboard-card mt-6 p-5">
-                <h3 className="text-sm font-semibold text-gray-900">{t("admin.heroImageTitle")}</h3>
-                <p className="mt-1 text-xs text-gray-500">{t("admin.heroImageDesc")}</p>
-                <div className="mt-3 flex flex-col gap-3">
-                  <div className="flex flex-col gap-3 md:flex-row">
-                    <Input
-                      value={heroImageInput}
-                      onChange={(e) => setHeroImageInput(e.target.value)}
-                      placeholder={t("admin.imageUrlPlaceholder")}
-                      disabled={heroImageLoading || heroImageSaving || heroImageUploading}
-                      className="flex-1"
-                    />
-                    <div className="flex gap-2">
-                      <label htmlFor="hero-image-upload">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="rounded-full border-gray-300 hover:bg-gray-50 w-full md:w-auto"
-                          disabled={heroImageLoading || heroImageSaving || heroImageUploading}
-                          onClick={() => document.getElementById("hero-image-upload")?.click()}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {heroImageUploading ? `${heroImageUploadProgress}%` : "Upload"}
-                        </Button>
-                      </label>
-                      <input
-                        id="hero-image-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleHeroImageUpload}
-                        disabled={heroImageLoading || heroImageSaving || heroImageUploading}
-                      />
+                <h3 className="text-sm font-semibold text-gray-900">Hero Carousel Media</h3>
+                <p className="mt-1 text-xs text-gray-500">Upload multiple images and videos to display in a rotating carousel on the homepage</p>
+                
+                <div className="mt-4 flex flex-col gap-3">
+                  <div className="flex gap-2">
+                    <label htmlFor="hero-media-upload" className="flex-1">
                       <Button
-                        className="rounded-full bg-gray-900 text-white hover:bg-gray-800 md:px-6"
-                        disabled={heroImageLoading || heroImageSaving || heroImageUploading}
-                        onClick={async () => {
-                          try {
-                            await saveHeroImageSetting();
-                          } catch (e) {
-                            toast({
-                              title: t("admin.failed"),
-                              description: e instanceof Error ? e.message : t("admin.unknownError"),
-                              variant: "destructive",
-                            });
-                          }
-                        }}
+                        type="button"
+                        variant="outline"
+                        className="w-full rounded-full border-gray-300 hover:bg-gray-50"
+                        disabled={heroMediaLoading || heroMediaSaving || heroMediaUploading}
+                        onClick={() => document.getElementById("hero-media-upload")?.click()}
                       >
-                        {heroImageSaving ? t("admin.saving") : t("admin.saveImage")}
+                        <Upload className="h-4 w-4 mr-2" />
+                        {heroMediaUploading ? `Uploading ${heroMediaUploadProgress}%` : "Upload Images/Videos"}
                       </Button>
-                    </div>
+                    </label>
+                    <input
+                      id="hero-media-upload"
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleHeroMediaUpload}
+                      disabled={heroMediaLoading || heroMediaSaving || heroMediaUploading}
+                    />
+                    <Button
+                      className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-8"
+                      disabled={heroMediaLoading || heroMediaSaving || heroMediaUploading || heroMediaItems.length === 0}
+                      onClick={async () => {
+                        try {
+                          await saveHeroMedia();
+                        } catch (e) {
+                          toast({
+                            title: "Failed to save",
+                            description: e instanceof Error ? e.message : "Unknown error",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      {heroMediaSaving ? "Saving..." : "Save Changes"}
+                    </Button>
                   </div>
+
+                  {/* Media Items Grid */}
+                  {heroMediaItems.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {heroMediaItems.map((item, index) => (
+                        <div key={index} className="relative group overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                          {item.type === 'video' ? (
+                            <video
+                              src={item.url}
+                              className="h-32 w-full object-cover"
+                              muted
+                            />
+                          ) : (
+                            <img
+                              src={item.url}
+                              alt={`Hero ${index + 1}`}
+                              className="h-32 w-full object-cover"
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="rounded-full"
+                              onClick={() => removeHeroMedia(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
+                            {item.type === 'video' ? '🎥' : '📷'} {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {heroMediaItems.length === 0 && !heroMediaLoading && (
+                    <div className="mt-3 text-center py-8 border border-dashed border-gray-300 rounded-lg">
+                      <p className="text-sm text-gray-500">No media uploaded yet. Upload images or videos to get started.</p>
+                    </div>
+                  )}
                 </div>
-                {heroImageInput ? (
-                  <div className="mt-3 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                    <img src={heroImageInput} alt={t("admin.heroPreview")} className="h-36 w-full object-cover" />
                   </div>
                 ) : null}
               </div>

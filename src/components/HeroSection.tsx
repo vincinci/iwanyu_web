@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/context/languageContext';
 import { useAuth } from '@/context/auth';
 import { useEffect, useState } from 'react';
@@ -8,34 +8,79 @@ import { getPublicSupabaseClient } from '@/lib/supabaseClient';
 
 const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1600&auto=format&fit=crop';
 
+type HeroMedia = {
+    url: string;
+    type: 'image' | 'video';
+};
+
 export const HeroSection = () => {
     const { t } = useLanguage();
     const { user } = useAuth();
     const isSeller = user?.role === 'seller' || user?.role === 'admin';
-    const [heroImageUrl, setHeroImageUrl] = useState(DEFAULT_HERO_IMAGE);
+    const [heroMedia, setHeroMedia] = useState<HeroMedia[]>([{ url: DEFAULT_HERO_IMAGE, type: 'image' }]);
+    const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
         const supabase = getPublicSupabaseClient();
         if (!supabase) return;
 
         let cancelled = false;
-        async function loadHeroImage() {
+        async function loadHeroMedia() {
             const { data, error } = await supabase
                 .from('site_settings')
-                .select('value_text')
-                .eq('key', 'hero_image_url')
+                .select('value_json, value_text')
+                .eq('key', 'hero_media')
                 .maybeSingle();
 
             if (cancelled || error) return;
-            const next = data?.value_text?.trim();
-            if (next) setHeroImageUrl(next);
+            
+            // Try new format (value_json) first
+            if (data?.value_json && Array.isArray(data.value_json) && data.value_json.length > 0) {
+                setHeroMedia(data.value_json);
+            } 
+            // Fallback to old format (single URL in value_text)
+            else {
+                const fallbackData = await supabase
+                    .from('site_settings')
+                    .select('value_text')
+                    .eq('key', 'hero_image_url')
+                    .maybeSingle();
+                
+                const url = fallbackData.data?.value_text?.trim();
+                if (url) {
+                    setHeroMedia([{ url, type: 'image' }]);
+                }
+            }
         }
 
-        void loadHeroImage();
+        void loadHeroMedia();
         return () => {
             cancelled = true;
         };
     }, []);
+
+    // Auto-rotate media every 5 seconds
+    useEffect(() => {
+        if (heroMedia.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % heroMedia.length);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [heroMedia.length]);
+
+    const goToSlide = (index: number) => {
+        setCurrentIndex(index);
+    };
+
+    const goToPrevious = () => {
+        setCurrentIndex((prev) => (prev - 1 + heroMedia.length) % heroMedia.length);
+    };
+
+    const goToNext = () => {
+        setCurrentIndex((prev) => (prev + 1) % heroMedia.length);
+    };
 
     return (
         <section className="relative w-full overflow-hidden bg-white border-b border-gray-100">
@@ -106,14 +151,73 @@ export const HeroSection = () => {
                         </div>
                     </div>
 
-                    {/* Classic, clean Hero Image */}
+                    {/* Carousel Hero Media */}
                     <div className="lg:col-span-6 mt-8 lg:mt-0">
-                        <div className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-sm border border-gray-100">
-                            <img
-                                src={heroImageUrl}
-                                alt="Featured collection"
-                                className="h-[400px] w-full object-cover md:h-[500px]"
-                            />
+                        <div className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-sm border border-gray-100 group">
+                            {/* Media Display */}
+                            <div className="relative h-[400px] md:h-[500px]">
+                                {heroMedia.map((media, index) => (
+                                    <div
+                                        key={index}
+                                        className={`absolute inset-0 transition-opacity duration-500 ${
+                                            index === currentIndex ? 'opacity-100' : 'opacity-0'
+                                        }`}
+                                    >
+                                        {media.type === 'video' ? (
+                                            <video
+                                                src={media.url}
+                                                className="h-full w-full object-cover"
+                                                autoPlay
+                                                muted
+                                                loop
+                                                playsInline
+                                            />
+                                        ) : (
+                                            <img
+                                                src={media.url}
+                                                alt={`Hero ${index + 1}`}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Navigation Arrows - Show only if multiple items */}
+                            {heroMedia.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={goToPrevious}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                        aria-label="Previous"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
+                                    <button
+                                        onClick={goToNext}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                        aria-label="Next"
+                                    >
+                                        <ChevronRight size={20} />
+                                    </button>
+
+                                    {/* Dots Navigation */}
+                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                        {heroMedia.map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => goToSlide(index)}
+                                                className={`h-2 rounded-full transition-all ${
+                                                    index === currentIndex
+                                                        ? 'w-8 bg-white'
+                                                        : 'w-2 bg-white/50 hover:bg-white/75'
+                                                }`}
+                                                aria-label={`Go to slide ${index + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
