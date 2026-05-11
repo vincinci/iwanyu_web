@@ -203,13 +203,12 @@ Deno.serve(async (req: Request) => {
 
     const normalizedPhone = phoneNumber.replace(/\D/g, "");
 
-    // PawaPay V2 refund payload
+    // PawaPay V2 refund payload (no notificationUrl - refunds API doesn't support webhooks)
     const refundPayload = {
       refundId,
       depositId: originalDepositId,
       amount: String(Math.trunc(amountRwf)),
       currency: "RWF",
-      notificationUrl: `${SUPABASE_URL}/functions/v1/pawapay-refund-callback`,
     };
 
     console.log(`Initiating PawaPay refund: ${refundId}, deposit: ${originalDepositId}, phone: ${normalizedPhone}, amount: ${amountRwf}`);
