@@ -159,22 +159,52 @@ export class PawaPay {
   static async getBalance(): Promise<number> {
     try {
       const supabase = getSupabaseClient();
-      if (!supabase) throw new Error('Supabase client not available');
+      if (!supabase) {
+        console.error('Supabase client not available');
+        return 0;
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) throw new Error('Not authenticated');
+      if (!user) {
+        console.error('User not authenticated');
+        return 0;
+      }
+
+      console.log('Fetching wallet for user:', user.id);
 
       const { data, error } = await supabase
         .from('wallets')
         .select('balance')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Wallet fetch error:', error);
+        return 0;
+      }
 
-      return data?.balance || 0;
+      if (!data) {
+        console.log('No wallet found - creating one');
+        // Create wallet if it doesn't exist
+        const { data: newWallet, error: createError } = await supabase
+          .from('wallets')
+          .insert({ user_id: user.id, balance: 0 })
+          .select('balance')
+          .single();
+        
+        if (createError) {
+          console.error('Wallet creation error:', createError);
+          return 0;
+        }
+        
+        return newWallet?.balance || 0;
+      }
+
+      console.log('Wallet balance:', data.balance);
+      return data.balance || 0;
     } catch (error) {
+      console.error('getBalance error:', error);
       return 0;
     }
   }

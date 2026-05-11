@@ -96,7 +96,7 @@ export default function WalletPage() {
       const result = await PawaPay.withdraw(amountZmw, formattedPhone);
       
       if (result.success) {
-        toast({ title: "Withdrawal initiated", description: result.message ?? `${formatMoney(amountZmw)} is on the way.` });
+        toast({ title: "Withdrawal initiated", description: result.message ?? `${formatMoney(amountZmw, "ZMW")} is on the way.` });
         setWithdrawAmount("");
         setWithdrawPhone("");
         const newBalance = await PawaPay.getBalance();
@@ -126,7 +126,7 @@ export default function WalletPage() {
             </div>
             <div className="text-right">
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400">Balance</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">{loadingBalance ? "..." : formatMoney(balance ?? 0)}</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{loadingBalance ? "..." : formatMoney(balance ?? 0, "ZMW")}</p>
             </div>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function WalletPage() {
                   className="h-12 rounded-2xl border-gray-200"
                 />
                 {depositAmount && depositAmountNum < 100 && (
-                  <p className="text-xs text-gray-500">Minimum is {formatMoney(100)}.</p>
+                  <p className="text-xs text-gray-500">Minimum is {formatMoney(100, "ZMW")}.</p>
                 )}
               </div>
 
@@ -196,7 +196,7 @@ export default function WalletPage() {
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-gray-500">Amount</span>
-                    <span className="font-medium text-gray-900">{formatMoney(Math.round(depositAmountNum))}</span>
+                    <span className="font-medium text-gray-900">{formatMoney(Math.round(depositAmountNum), "ZMW")}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <span className="text-gray-500">Number</span>
@@ -211,7 +211,7 @@ export default function WalletPage() {
                 disabled={isProcessing || !canSubmitDeposit}
                 className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
               >
-                {isProcessing ? "Starting deposit..." : `Deposit ${depositAmountNum >= 100 ? formatMoney(Math.round(depositAmountNum)) : ""}`}
+                {isProcessing ? "Starting deposit..." : `Deposit ${depositAmountNum >= 100 ? formatMoney(Math.round(depositAmountNum), "ZMW") : ""}`}
               </Button>
 
               <p className="text-xs text-gray-500">
@@ -241,10 +241,10 @@ export default function WalletPage() {
                   className="h-12 rounded-2xl border-gray-200"
                 />
                 {withdrawAmount && withdrawAmountNum > (balance ?? 0) && (
-                  <p className="text-xs text-red-500">Exceeds your balance of {formatMoney(balance ?? 0)}.</p>
+                  <p className="text-xs text-red-500">Exceeds your balance of {formatMoney(balance ?? 0, "ZMW")}.</p>
                 )}
                 {withdrawAmount && withdrawAmountNum < 500 && (
-                  <p className="text-xs text-gray-500">Minimum withdrawal is {formatMoney(500)}.</p>
+                  <p className="text-xs text-gray-500">Minimum withdrawal is {formatMoney(500, "ZMW")}.</p>
                 )}
               </div>
 
@@ -264,11 +264,11 @@ export default function WalletPage() {
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-gray-500">You receive</span>
-                    <span className="font-medium text-gray-900">{formatMoney(withdrawAmountNum)}</span>
+                    <span className="font-medium text-gray-900">{formatMoney(withdrawAmountNum, "ZMW")}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <span className="text-gray-500">Remaining balance</span>
-                    <span className="font-medium text-gray-900">{formatMoney((balance ?? 0) - withdrawAmountNum)}</span>
+                    <span className="font-medium text-gray-900">{formatMoney((balance ?? 0) - withdrawAmountNum, "ZMW")}</span>
                   </div>
                 </div>
               )}
@@ -279,7 +279,7 @@ export default function WalletPage() {
                 disabled={isWithdrawing || !canSubmitWithdraw}
                 className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
               >
-                {isWithdrawing ? "Processing..." : `Withdraw ${canSubmitWithdraw ? formatMoney(withdrawAmountNum) : ""}`}
+                {isWithdrawing ? "Processing..." : `Withdraw ${canSubmitWithdraw ? formatMoney(withdrawAmountNum, "ZMW") : ""}`}
               </Button>
 
               <p className="text-xs text-gray-500">
