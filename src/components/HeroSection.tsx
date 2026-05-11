@@ -38,66 +38,65 @@ export const HeroSection = () => {
     }, []);
 
     return (
-        <section className="relative w-full overflow-hidden bg-gradient-to-br from-gray-50 via-white to-amber-50/30">
-            {/* Decorative gradient blobs */}
-            <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-amber-200/20 blur-3xl" />
-            <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-200/20 blur-3xl" />
-            
-            <div className="container relative mx-auto px-4 py-16 md:py-24">
-                <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+        <section className="relative w-full overflow-hidden bg-white border-b border-gray-100">
+            <div className="container relative mx-auto px-4 py-12 md:py-20">
+                <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-16">
                     <div className="lg:col-span-6 space-y-8">
-                        {/* Badge */}
-                        <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm font-medium text-amber-900 shadow-sm">
-                            <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                                <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
-                            </span>
-                            Rwanda's #1 Marketplace
+                        {/* Clean Badge */}
+                        <div className="inline-flex items-center gap-2 rounded-md bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-800 border border-gray-200">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500"></div>
+                            Rwanda's Premier Marketplace
                         </div>
 
-                        {/* Main Heading with gradient */}
-                        <h1 className="text-5xl font-bold tracking-tight text-gray-900 md:text-6xl lg:text-7xl">
-                            <span className="block">{t("hero.title").split(" ").slice(0, 3).join(" ")}</span>
-                            <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                                {t("hero.title").split(" ").slice(3).join(" ")}
-                            </span>
+                        {/* Solid, elegant heading */}
+                        <h1 className="text-4xl font-bold tracking-tight text-gray-900 md:text-5xl lg:text-6xl text-balance">
+                            {t("hero.title")}
                         </h1>
 
-                        {/* Subtitle with better styling */}
-                        <p className="text-xl text-gray-600 leading-relaxed max-w-xl">
+                        {/* Professional Subtitle */}
+                        <p className="text-lg text-gray-600 leading-relaxed max-w-lg">
                             {t("hero.subtitle")}
                         </p>
 
-                        {/* Feature pills */}
-                        <div className="flex flex-wrap gap-3">
-                            <span className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200">
-                                ✓ Verified Vendors
-                            </span>
-                            <span className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200">
-                                ⚡ Fast Delivery
-                            </span>
-                            <span className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200">
-                                🔒 Secure Checkout
-                            </span>
+                        {/* Subtle Features */}
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+                                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Verified Vendors
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+                                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Fast Delivery
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+                                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Secure Checkout
+                            </div>
                         </div>
 
-                        {/* CTA Buttons with improved styling */}
-                        <div className="flex flex-wrap items-center gap-4">
+                        {/* Clean CTA Buttons */}
+                        <div className="flex flex-wrap items-center gap-4 pt-4">
                             <Button 
                                 asChild 
                                 size="lg"
-                                className="group rounded-full bg-gradient-to-r from-gray-900 to-gray-800 px-8 py-6 text-base font-semibold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                                className="rounded-full bg-gray-900 px-8 text-base text-white hover:bg-gray-800 transition-colors"
                             >
                                 <Link to="/category/all" className="flex items-center gap-2">
                                     {t("hero.shopCategories")}
-                                    <ArrowRight className="transition-transform group-hover:translate-x-1" size={18} />
+                                    <ArrowRight size={18} className="text-gray-300" />
                                 </Link>
                             </Button>
                             <Button 
                                 asChild 
                                 variant="outline" 
                                 size="lg"
-                                className="rounded-full border-2 border-gray-300 px-8 py-6 text-base font-semibold hover:border-gray-900 hover:bg-gray-50"
+                                className="rounded-full border-gray-200 px-8 text-base font-medium hover:bg-gray-50 transition-colors"
                             >
                                 <Link to="/deals">{t("hero.viewDeals")}</Link>
                             </Button>
@@ -105,7 +104,7 @@ export const HeroSection = () => {
                                 <Button 
                                     asChild 
                                     size="lg"
-                                    className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-8 py-6 text-base font-semibold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                                    className="rounded-full bg-amber-400 text-amber-950 hover:bg-amber-500 px-8 text-base font-medium transition-colors"
                                 >
                                     <Link to="/sell">{t("header.sellOn")}</Link>
                                 </Button>
@@ -113,41 +112,14 @@ export const HeroSection = () => {
                         </div>
                     </div>
 
-                    {/* Hero Image with improved design */}
-                    <div className="lg:col-span-6">
-                        <div className="group relative">
-                            {/* Decorative elements */}
-                            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 blur-2xl transition-all group-hover:blur-3xl" />
-                            
-                            {/* Main image container */}
-                            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-100 to-gray-50 shadow-2xl ring-1 ring-gray-900/5 transition-transform group-hover:scale-[1.02]">
-                                <img
-                                    src={heroImageUrl}
-                                    alt="Featured collection"
-                                    className="h-[350px] w-full object-cover transition-transform duration-700 group-hover:scale-105 md:h-[500px]"
-                                />
-                                
-                                {/* Gradient overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                                
-                                {/* Floating stats badge */}
-                                <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur-sm">
-                                    <div className="grid grid-cols-3 gap-4 text-center">
-                                        <div>
-                                            <div className="text-2xl font-bold text-gray-900">1000+</div>
-                                            <div className="text-xs text-gray-600">Products</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-2xl font-bold text-gray-900">50+</div>
-                                            <div className="text-xs text-gray-600">Vendors</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-2xl font-bold text-amber-600">4.8★</div>
-                                            <div className="text-xs text-gray-600">Rating</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Classic, clean Hero Image */}
+                    <div className="lg:col-span-6 mt-8 lg:mt-0">
+                        <div className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-sm border border-gray-100">
+                            <img
+                                src={heroImageUrl}
+                                alt="Featured collection"
+                                className="h-[400px] w-full object-cover md:h-[500px]"
+                            />
                         </div>
                     </div>
                 </div>
