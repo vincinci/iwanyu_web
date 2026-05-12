@@ -30,7 +30,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { amount, phoneNumber, correspondent } = req.body;
+    const { amount, phoneNumber: rawPhone, correspondent } = req.body;
+    // PawaPay requires digits only — no +, spaces, or separators
+    const phoneNumber = String(rawPhone || '').replace(/[^0-9]/g, '');
 
     if (!amount || !phoneNumber) {
       return res.status(400).json({ error: 'Amount and phone number required' });
@@ -207,6 +209,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const pawapayData = await pawapayResponse.json();
+
+    // If PawaPay immediately rejected (HTTP 200 but status=REJECTED), rollback
+    if (pawapayData.status === 'REJECTED') {
+      await supabase.from('profiles').update({ wallet_balance_rwf: currentBalance }).eq('id', user.id);
+      await supabase.from('transactions').update({ status: 'failed', metadata: pawapayData, updated_at: new Date().toISOString() }).eq('reference', transactionId);
+      return res.status(400).setHeader('Access-Control-Allow-Origin', '*').json({
+        error: `Withdrawal rejected: ${pawapayData.rejectionReason?.rejectionMessage || 'Unknown reason'}`,
+        rejectionCode: pawapayData.rejectionReason?.rejectionCode,
+        pawapayData,
+      });
+    }
 
     // Update transaction with PawaPay response
     await supabase
