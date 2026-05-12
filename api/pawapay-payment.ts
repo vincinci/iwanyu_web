@@ -82,14 +82,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('orders')
       .select('*')
       .eq('id', orderId)
-      .eq('user_id', user.id)
+      .eq('buyer_user_id', user.id)
       .single();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    if (order.status !== 'pending') {
+    if (String(order.status).toLowerCase() !== 'pending' && String(order.status).toLowerCase() !== 'placed') {
       return res.status(400).json({ error: 'Order already processed' });
     }
 
@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         depositId: transactionId,
-        amount: order.total_amount.toString(),
+        amount: String(order.total_rwf ?? order.total_amount ?? 0),
         currency: 'RWF', // Rwanda Francs
         correspondent: correspondent || 'MTN_MOMO_RWA',
         payer: {
@@ -133,9 +133,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('orders')
       .update({
         transaction_id: transactionId,
-        payment_method: 'mobile_money',
+        payment_method: 'pawapay',
         payment_provider: 'pawapay',
         payment_phone: phoneNumber,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', orderId);
 

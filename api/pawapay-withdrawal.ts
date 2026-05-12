@@ -105,21 +105,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const currentBalance = profile.wallet_balance_rwf || 0;
     const newBalance = currentBalance - withdrawAmount;
 
-    // Record transaction in database FIRST
+    // Record transaction in unified transactions table first
     const { error: txError } = await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .insert({
         user_id: user.id,
-        external_transaction_id: transactionId,
         type: 'withdrawal',
         amount_rwf: withdrawAmount,
-        previous_balance_rwf: currentBalance,
-        new_balance_rwf: newBalance,
+        balance_after_rwf: newBalance,
         status: 'pending',
-        phone_number: phoneNumber,
-        payment_method: 'pawapay',
+        reference: transactionId,
         provider: correspondent || 'MTN_MOMO_RWA',
-        metadata: {},
+        phone: phoneNumber,
+        metadata: { source: 'pawapay' },
         description: `PawaPay withdrawal ${transactionId}`,
       });
 
@@ -197,12 +195,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Update transaction status to failed
       await supabase
-        .from('wallet_transactions')
+        .from('transactions')
         .update({
           status: 'failed',
           metadata: { error: errorText },
+          updated_at: new Date().toISOString(),
         })
-        .eq('external_transaction_id', transactionId);
+        .eq('reference', transactionId);
 
       return res.status(400).json({ error: `PawaPay error: ${errorText}` });
     }
@@ -211,11 +210,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Update transaction with PawaPay response
     await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .update({
         metadata: pawapayData,
+        updated_at: new Date().toISOString(),
       })
-      .eq('external_transaction_id', transactionId);
+      .eq('reference', transactionId);
 
     return res.status(200).setHeader('Access-Control-Allow-Origin', '*').json({
       success: true,

@@ -55,6 +55,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .range(offset, offset + limit - 1));
             }
             
+            if (error && /relation\s+"vendors"\s+does\s+not\s+exist/i.test(error.message)) {
+                const { data: profileData, error: profileErr } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, city, created_at')
+                    .eq('role', 'seller')
+                    .order('created_at', { ascending: false })
+                    .range(offset, offset + limit - 1);
+                if (profileErr) throw profileErr;
+                const derived = (profileData || []).map((p: any) => ({
+                    id: p.id,
+                    name: p.full_name || 'Seller',
+                    location: p.city || null,
+                    verified: false,
+                    owner_user_id: p.id,
+                    status: 'approved',
+                }));
+                return res.status(200).json(derived);
+            }
+
             if (error) throw error;
             return res.status(200).json(data || []);
         }
@@ -90,6 +109,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (productsRes.error) throw productsRes.error;
+        if (vendorsRes.error && /relation\s+"vendors"\s+does\s+not\s+exist/i.test(vendorsRes.error.message)) {
+            const profileVendors = await supabase
+                .from('profiles')
+                .select('id, full_name, city, created_at')
+                .eq('role', 'seller')
+                .order('created_at', { ascending: false })
+                .range(0, 499);
+            if (profileVendors.error) throw profileVendors.error;
+            return res.status(200).json({
+                products: productsRes.data || [],
+                vendors: (profileVendors.data || []).map((p: any) => ({
+                    id: p.id,
+                    name: p.full_name || 'Seller',
+                    location: p.city || null,
+                    verified: false,
+                    owner_user_id: p.id,
+                    status: 'approved',
+                })),
+            });
+        }
+
         if (vendorsRes.error) throw vendorsRes.error;
 
         return res.status(200).json({

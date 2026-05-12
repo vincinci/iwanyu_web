@@ -83,18 +83,7 @@ export default function AdminVendorsPage() {
     if (error) throw new Error(error.message);
     await refresh();
 
-    // Fire-and-forget: notify the seller their store is approved
-    const vendor = vendors.find(v => v.id === vendorId);
-    if (vendor?.ownerUserId) {
-      supabase.from("profiles").select("email").eq("id", vendor.ownerUserId).single()
-        .then(({ data }) => {
-          if (data?.email) {
-            return supabase.functions.invoke("send-email", {
-              body: { template: "seller_approved", to: data.email, data: { storeName: vendor.name } },
-            });
-          }
-        }).catch(() => {});
-    }
+    // Notifications are API-managed in simplified mode.
   }
 
   async function toggleVendorRevoke(vendorId: string, currentRevoked: boolean) {

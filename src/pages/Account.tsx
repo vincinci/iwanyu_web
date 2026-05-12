@@ -23,7 +23,7 @@ type WalletTx = {
   id: string;
   type: string;
   amount_rwf: number;
-  external_transaction_id: string;
+  reference: string;
   description: string;
   created_at: string;
 };
@@ -111,8 +111,8 @@ export default function AccountPage() {
     setTxLoading(true);
     try {
       const { data } = await supabase
-        .from("wallet_transactions")
-        .select("id, type, amount_rwf, external_transaction_id, description, created_at")
+        .from("transactions")
+        .select("id, type, amount_rwf, reference, description, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(20);

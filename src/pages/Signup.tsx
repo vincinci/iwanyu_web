@@ -55,12 +55,7 @@ export default function SignupPage() {
 
       if (signUpError) throw signUpError;
 
-      // Send welcome email (fire-and-forget, never blocks sign-up)
-      if (signUpData?.session) {
-        supabase.functions.invoke("send-welcome-email", {
-          body: { name: fullName.trim() || undefined },
-        }).catch(() => {});
-      }
+      // Welcome notifications are handled by backend APIs in simplified mode.
 
       navigate(nextPath);
     } catch (e) {

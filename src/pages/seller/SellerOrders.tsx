@@ -356,21 +356,7 @@ export default function SellerOrdersPage() {
                                         : undefined,
                                     });
 
-                                    // Notify buyer on key status changes (fire-and-forget)
-                                    const emailTemplate: Record<string, string> = {
-                                      Shipped: "order_shipped",
-                                      Delivered: "order_completed",
-                                      Cancelled: "order_cancelled",
-                                    };
-                                    if (o.buyerEmail && emailTemplate[nextStatus]) {
-                                      supabase.functions.invoke("send-email", {
-                                        body: {
-                                          template: emailTemplate[nextStatus],
-                                          to: o.buyerEmail,
-                                          data: { orderId: o.id },
-                                        },
-                                      }).catch(() => {});
-                                    }
+                                    // Notifications are API-managed in simplified mode.
                                   } catch (e) {
                                     toast({
                                       title: t("seller.updateFailed"),

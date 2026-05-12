@@ -39,10 +39,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No transaction ID in webhook' });
     }
 
-    // Determine if this is a deposit or payout
-    const isDeposit = !!depositId;
-    const isPayout = !!payoutId;
-
     // Check if this is an order payment, wallet deposit, or withdrawal
     if (transactionId.startsWith('pay_')) {
       // Order Payment Callback
@@ -89,9 +85,9 @@ async function handleOrderPaymentCallback(
     // Map PawaPay status to order status
     let orderStatus = 'pending';
     if (status === 'COMPLETED' || status === 'ACCEPTED') {
-      orderStatus = 'confirmed';
+      orderStatus = 'paid';
     } else if (status === 'FAILED' || status === 'REJECTED' || status === 'CANCELLED') {
-      orderStatus = 'failed';
+      orderStatus = 'cancelled';
     }
 
     // Update order status
@@ -123,9 +119,9 @@ async function handleWalletDepositCallback(
   try {
     // Find transaction
     const { data: transaction, error: fetchError } = await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .select('*')
-      .eq('external_transaction_id', transactionId)
+      .eq('reference', transactionId)
       .single();
 
     if (fetchError || !transaction) {
@@ -134,14 +130,15 @@ async function handleWalletDepositCallback(
     }
 
     // Map status
-    const txStatus = status === 'COMPLETED' ? 'completed' : 'failed';
+    const txStatus = status === 'COMPLETED' || status === 'ACCEPTED' ? 'completed' : 'failed';
 
     // Update transaction
     await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .update({
         status: txStatus,
         metadata: { ...transaction.metadata, ...payload },
+        updated_at: new Date().toISOString(),
       })
       .eq('reference', transactionId);
 
@@ -154,7 +151,7 @@ async function handleWalletDepositCallback(
         .single();
 
       const currentBalance = profile?.wallet_balance_rwf || 0;
-      const depositAmount = transaction.amount_rwf;
+      const depositAmount = Number(transaction.amount_rwf ?? 0);
       const newBalance = currentBalance + depositAmount;
 
       // Update wallet balance
@@ -167,11 +164,12 @@ async function handleWalletDepositCallback(
 
       // Update transaction with new balance
       await supabase
-        .from('wallet_transactions')
+        .from('transactions')
         .update({
-          new_balance_rwf: newBalance,
+          balance_after_rwf: newBalance,
+          updated_at: new Date().toISOString(),
         })
-        .eq('external_transaction_id', transactionId);
+        .eq('reference', transactionId);
 
       console.log(`Wallet deposit completed for user ${transaction.user_id}: +${depositAmount} RWF`);
     } else {
@@ -195,9 +193,9 @@ async function handleWalletWithdrawalCallback(
   try {
     // Find transaction
     const { data: transaction, error: fetchError } = await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .select('*')
-      .eq('external_transaction_id', transactionId)
+      .eq('reference', transactionId)
       .single();
 
     if (fetchError || !transaction) {
@@ -206,21 +204,22 @@ async function handleWalletWithdrawalCallback(
     }
 
     // Map status
-    const txStatus = status === 'COMPLETED' ? 'completed' : 'failed';
+    const txStatus = status === 'COMPLETED' || status === 'ACCEPTED' ? 'completed' : 'failed';
 
     // Update transaction
     await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .update({
         status: txStatus,
         metadata: { ...transaction.metadata, ...payload },
+        updated_at: new Date().toISOString(),
       })
-      .eq('external_transaction_id', transactionId);
+      .eq('reference', transactionId);
 
     // If failed, refund the wallet (we deducted optimistically)
     if (status === 'FAILED' || status === 'REJECTED' || status === 'CANCELLED') {
-      const withdrawAmount = transaction.amount_rwf;
-      const previousBalance = transaction.previous_balance_rwf;
+      const withdrawAmount = Number(transaction.amount_rwf ?? 0);
+      const previousBalance = Number(transaction.balance_after_rwf ?? 0) + withdrawAmount;
 
       // Refund to wallet
       await supabase

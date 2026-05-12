@@ -6,6 +6,7 @@ import { checkDepositStatus, checkPayoutStatus } from './lib/pawapay-utils';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const pawapayApiKey = process.env.PAWAPAY_API_KEY || '';
 
 const corsHeaders = {
@@ -34,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Transaction ID required' });
     }
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       return res.status(500).json({ error: 'Supabase configuration missing' });
     }
 
@@ -50,8 +51,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Authorization header missing' });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const token = authHeader.replace('Bearer ', '').trim();
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+    const { data: userData, error: userError } = await userSupabase.auth.getUser();
+    const user = userData.user;
 
     if (userError || !user) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -82,16 +91,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from('orders')
         .select('*')
         .eq('transaction_id', transactionId)
-        .eq('user_id', user.id)
+        .eq('buyer_user_id', user.id)
         .single();
       
       dbTransaction = order;
     } else {
       // Wallet transaction
       const { data: transaction } = await supabase
-        .from('wallet_transactions')
+        .from('transactions')
         .select('*')
-        .eq('external_transaction_id', transactionId)
+        .eq('reference', transactionId)
         .eq('user_id', user.id)
         .single();
       

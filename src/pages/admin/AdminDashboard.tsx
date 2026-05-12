@@ -381,20 +381,7 @@ export default function AdminDashboardPage() {
         .eq("id", vendor.ownerUserId)
         .single();
 
-      // Send email notification to vendor
-      if (profile?.email) {
-        supabase.functions.invoke("send-email", {
-          body: {
-            template: "product_removed",
-            to: profile.email,
-            data: {
-              productTitle: productToDelete.title,
-              storeName,
-              reason,
-            },
-          },
-        }).catch(() => {}); // Fire-and-forget
-      }
+      // Notifications are now API-managed; skip client-side function invocation.
     }
 
     const { error: deleteErr } = await supabase

@@ -340,8 +340,6 @@ export async function endLiveSession(sessionId: string) {
   const supabase = getSupabaseClient();
   if (supabase) {
     await supabase.from("auctions").update({ is_live: false }).eq("id", sessionId);
-    // Settle the auction: determine winner, release locked bids, send bid_won email
-    supabase.functions.invoke("settle-auction", { body: { auctionId: sessionId } }).catch(() => {});
   }
 
   const next = getLiveSessions().map((session) =>
@@ -382,24 +380,7 @@ export async function placeBidOnLiveAuction(input: {
     return { ok: true, message: "Bid placed in local mode." };
   }
 
-  // Call the lock_bid DB function — atomically validates, locks wallet balance,
-  // releases previously outbid users, and records the new bid.
-  const { data, error } = await supabase.rpc("lock_bid", {
-    p_auction_id: input.auctionId,
-    p_user_id: input.userId,
-    p_amount: amount,
-  });
-
-  if (error) {
-    return { ok: false, message: error.message || "Failed to place bid." };
-  }
-
-  const result = data as { ok: boolean; message: string } | null;
-  if (!result?.ok) {
-    return { ok: false, message: result?.message || "Failed to place bid." };
-  }
-
-  // Update local session cache
+  // API-first simplified mode: keep bid handling local (no DB RPC).
   const next = getLiveSessions().map((session) => {
     if (session.id !== input.auctionId) return session;
     return {
@@ -409,7 +390,7 @@ export async function placeBidOnLiveAuction(input: {
   });
   writeRawSessions(next);
 
-  return { ok: true, message: result.message };
+  return { ok: true, message: "Bid placed in simplified mode." };
 }
 
 /** Fetch the wallet balance and locked amount for a user. */
@@ -531,23 +512,6 @@ export async function purchaseLiveStreamProduct(input: {
 }): Promise<{ ok: boolean; message: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, message: "Not connected. Please log in and try again." };
-
-  const { data, error } = await supabase.rpc("purchase_live_stream_product", {
-    p_session_id:        input.sessionId,
-    p_product_id:        input.product.id,
-    p_product_title:     input.product.title,
-    p_product_image_url: input.product.imageUrl ?? "",
-    p_color:             input.product.color ?? "",
-    p_size:              input.product.size ?? "",
-    p_price_rwf:         input.product.priceRwf,
-    p_seller_user_id:    input.sellerUserId,
-    p_vendor_name:       input.vendorName,
-  });
-
-  if (error) return { ok: false, message: error.message || "Purchase failed." };
-
-  const result = data as { ok: boolean; message: string } | null;
-  if (!result?.ok) return { ok: false, message: result?.message || "Purchase failed." };
-  return { ok: true, message: result.message };
+  return { ok: false, message: "Live purchase is disabled in simplified mode." };
 }
 
