@@ -20,7 +20,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { amount, phoneNumber, correspondent } = req.body || {};
+    const { amount, phoneNumber: rawPhone, correspondent } = req.body || {};
+    // PawaPay requires digits only — no +, spaces, or separators
+    const phoneNumber = String(rawPhone || '').replace(/[^0-9]/g, '');
     const parsedAmount = Number(amount);
 
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || !phoneNumber) {

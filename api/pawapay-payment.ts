@@ -30,7 +30,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { orderId, phoneNumber, correspondent } = req.body;
+    const { orderId, phoneNumber: rawPhone, correspondent } = req.body;
+    // PawaPay requires digits only — no +, spaces, or separators
+    const phoneNumber = String(rawPhone || '').replace(/[^0-9]/g, '');
 
     if (!orderId || !phoneNumber) {
       return res.status(400).json({ error: 'Order ID and phone number required' });
