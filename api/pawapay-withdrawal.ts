@@ -96,8 +96,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Minimum withdrawal validation
-    if (withdrawAmount < 500) {
-      return res.status(400).json({ error: 'Minimum withdrawal is 500 RWF' });
+    if (withdrawAmount < 100) {
+      return res.status(400).json({ error: 'Minimum withdrawal is 100 RWF' });
     }
 
     // Generate unique transaction ID
