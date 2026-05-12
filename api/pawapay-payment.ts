@@ -93,8 +93,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Order already processed' });
     }
 
-    // Generate unique transaction ID
-    const transactionId = `pay_${Date.now()}_${orderId}`;
+    // Generate unique transaction ID — PawaPay requires exactly 36 characters (UUID)
+    const transactionId = crypto.randomUUID();
 
     // Call PawaPay Deposits API for order payment
     // Reference: POST https://api.pawapay.io/deposits

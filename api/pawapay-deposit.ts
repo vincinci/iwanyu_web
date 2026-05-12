@@ -46,7 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (authError || !authData.user) return res.status(401).json({ error: 'Invalid authentication token' });
 
     const userId = authData.user.id;
-    const transactionId = `dep_${Date.now()}_${userId.slice(0, 8)}`;
+    // PawaPay requires depositId to be exactly 36 characters (UUID format)
+    const transactionId = crypto.randomUUID();
 
     const { data: profile } = await service
       .from('profiles')

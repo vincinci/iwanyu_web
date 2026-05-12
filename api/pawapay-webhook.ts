@@ -39,18 +39,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No transaction ID in webhook' });
     }
 
-    // Check if this is an order payment, wallet deposit, or withdrawal
-    if (transactionId.startsWith('pay_')) {
-      // Order Payment Callback
-      await handleOrderPaymentCallback(supabase, transactionId, status, payload);
-    } else if (transactionId.startsWith('dep_')) {
-      // Wallet Deposit Callback
+    // Route by transaction type — look up in transactions table first, then orders
+    const { data: tx } = await supabase
+      .from('transactions')
+      .select('type')
+      .eq('reference', transactionId)
+      .maybeSingle();
+
+    if (tx?.type === 'deposit') {
       await handleWalletDepositCallback(supabase, transactionId, status, amount, payload);
-    } else if (transactionId.startsWith('wth_')) {
-      // Wallet Withdrawal Callback
+    } else if (tx?.type === 'withdrawal') {
       await handleWalletWithdrawalCallback(supabase, transactionId, status, amount, payload);
     } else {
-      console.warn('Unknown transaction type:', transactionId);
+      // Fallback: check orders table (for payment transactions)
+      const { data: order } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
+      if (order) {
+        await handleOrderPaymentCallback(supabase, transactionId, status, payload);
+      } else {
+        console.warn('Unknown transaction reference:', transactionId);
+      }
     }
 
     return res.status(200).json({ success: true, received: true });

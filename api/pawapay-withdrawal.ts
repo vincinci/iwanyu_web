@@ -100,8 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Minimum withdrawal is 100 RWF' });
     }
 
-    // Generate unique transaction ID
-    const transactionId = `wth_${Date.now()}_${user.id.substring(0, 8)}`;
+    // Generate unique transaction ID — PawaPay requires exactly 36 characters (UUID)
+    const transactionId = crypto.randomUUID();
     const currentBalance = profile.wallet_balance_rwf || 0;
     const newBalance = currentBalance - withdrawAmount;
 
