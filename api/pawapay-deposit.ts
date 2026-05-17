@@ -7,10 +7,38 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABA
 const pawapayApiKey = process.env.PAWAPAY_API_KEY || '';
 const PAWAPAY_API_BASE = 'https://api.pawapay.io';
 
+// Get allowed origin from environment or default to production domain
+const ALLOWED_ORIGIN = process.env.VERCEL_ENV === 'production'
+  ? 'https://www.iwanyu.store'
+  : 'http://localhost:8080';
+
 function setCors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
+// Rate limiting: track requests by user ID
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 5; // 5 deposits per minute
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -48,6 +76,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (authError || !authData.user) return res.status(401).json({ error: 'Invalid authentication token' });
 
     const userId = authData.user.id;
+
+    // Apply rate limiting per user (5 deposits per minute)
+    if (!checkRateLimit(userId)) {
+      return res.status(429).json({
+        error: 'Too many deposit requests. Please try again in a few moments.',
+        retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
+      });
+    }
+
     // PawaPay requires depositId to be exactly 36 characters (UUID format)
     const transactionId = crypto.randomUUID();
 

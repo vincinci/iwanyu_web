@@ -25,6 +25,7 @@ import { formatMoney } from "@/lib/money";
 import { getAllCategoryOptions, isRealCategoryName, normalizeCategoryName } from "@/lib/categories";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { uploadMediaToCloudinary } from "@/lib/cloudinary";
+import { HeroMediaUpload, type HeroMediaItem } from "@/components/HeroMediaUpload";
 
 const nav = [
   { labelKey: "admin.overview", icon: ClipboardList, href: "/admin", active: true },
@@ -524,6 +525,8 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // Note: Hero media upload is now handled by HeroMediaUpload component
+
   return (
     <div className="dashboard-shell">
       {/* Top Bar */}
@@ -660,190 +663,22 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="dashboard-card mt-6 p-6 bg-gradient-to-br from-white to-gray-50">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <Upload className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-900">Hero Carousel</h3>
-                    </div>
-                    <p className="text-sm text-gray-600">Upload images and videos for your homepage carousel</p>
-                  </div>
-                  {heroMediaItems.length > 0 && (
-                    <div className="bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-                      {heroMediaItems.length} {heroMediaItems.length === 1 ? 'item' : 'items'}
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Area */}
                 <div className="mb-6">
-                  <label 
-                    htmlFor="hero-media-upload" 
-                    className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                      heroMediaUploading 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.classList.add('border-blue-500', 'bg-blue-50');
-                    }}
-                    onDragLeave={(e) => {
-                      e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
-                      const files = e.dataTransfer.files;
-                      if (files.length > 0) {
-                        const input = document.getElementById("hero-media-upload") as HTMLInputElement;
-                        if (input) {
-                          input.files = files;
-                          input.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                      }
-                    }}
-                  >
-                    <input
-                      id="hero-media-upload"
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      className="hidden"
-                      onChange={handleHeroMediaUpload}
-                      disabled={heroMediaLoading || heroMediaSaving || heroMediaUploading}
-                    />
-                    
-                    {heroMediaUploading ? (
-                      <div className="space-y-3">
-                        <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
-                          <Upload className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-blue-700">Uploading... {heroMediaUploadProgress}%</p>
-                          <div className="mt-2 w-full max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className="bg-blue-600 h-full transition-all duration-300 rounded-full"
-                              style={{ width: `${heroMediaUploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="mx-auto h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                          <Upload className="h-6 w-6 text-gray-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">
-                            Drop files here or <span className="text-blue-600">browse</span>
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Images up to 10MB • Videos up to 50MB
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Upload className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Hero Carousel Manager</h3>
+                  </div>
+                  <p className="text-sm text-gray-600">Upload, organize, and manage images and videos for your homepage hero section</p>
                 </div>
 
-                {/* Media Items Grid */}
-                {heroMediaItems.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-700">Uploaded Media</p>
-                      <Button
-                        size="sm"
-                        className="rounded-full bg-blue-600 text-white hover:bg-blue-700 h-9 px-6"
-                        disabled={heroMediaLoading || heroMediaSaving || heroMediaUploading}
-                        onClick={async () => {
-                          try {
-                            await saveHeroMedia();
-                          } catch (e) {
-                            toast({
-                              title: "Failed to save",
-                              description: e instanceof Error ? e.message : "Unknown error",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        {heroMediaSaving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-2" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Save Changes
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {heroMediaItems.map((item, index) => (
-                        <div key={index} className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-sm hover:shadow-md transition-all">
-                          <div className="aspect-video overflow-hidden bg-gray-100">
-                            {item.type === 'video' ? (
-                              <video
-                                src={item.url}
-                                className="h-full w-full object-cover"
-                                muted
-                              />
-                            ) : (
-                              <img
-                                src={item.url}
-                                alt={`Hero ${index + 1}`}
-                                className="h-full w-full object-cover"
-                              />
-                            )}
-                          </div>
-                          
-                          {/* Media Type Badge */}
-                          <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-md flex items-center gap-1">
-                            {item.type === 'video' ? (
-                              <>
-                                <div className="h-2 w-2 rounded-full bg-red-500" />
-                                Video
-                              </>
-                            ) : (
-                              <>
-                                <div className="h-2 w-2 rounded-full bg-blue-500" />
-                                Image
-                              </>
-                            )}
-                          </div>
-                          
-                          {/* Delete Button */}
-                          <button
-                            className="absolute top-2 right-2 h-8 w-8 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-                            onClick={() => removeHeroMedia(index)}
-                            title="Delete this media"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                          
-                          {/* Position Number */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                            <p className="text-white text-xs font-medium">Position {index + 1}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : !heroMediaLoading && (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                      <Upload className="h-8 w-8 text-gray-400" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-900 mb-1">No media uploaded yet</p>
-                    <p className="text-xs text-gray-500">Upload images or videos to get started with your carousel</p>
-                  </div>
-                )}
+                <HeroMediaUpload
+                  items={heroMediaItems}
+                  onItemsChange={setHeroMediaItems}
+                  accessToken={user?.accessToken}
+                  onSave={saveHeroMedia}
+                />
               </div>
             </div>
 

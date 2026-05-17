@@ -10,19 +10,49 @@ const pawapayApiKey = process.env.PAWAPAY_API_KEY || '';
 
 const PAWAPAY_API_BASE = 'https://api.pawapay.io';
 
+// Get allowed origin from environment or default to production domain
+const ALLOWED_ORIGIN = process.env.VERCEL_ENV === 'production'
+  ? 'https://www.iwanyu.store'
+  : 'http://localhost:8080';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400',
 };
 
+// Rate limiting: track requests by user ID
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 3; // 3 withdrawals per minute (stricter than payments)
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS
+  // Set CORS headers
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    res.setHeader(key, value);
+  }
+
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(204).setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
-      .end();
+    return res.status(204).end();
   }
 
   if (req.method !== 'POST') {
@@ -74,6 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       user = userData.user;
     } catch (authErr) {
       return res.status(401).json({ error: 'Authentication failed' });
+    }
+
+    // Apply rate limiting per user (3 withdrawals per minute - stricter for security)
+    if (!checkRateLimit(user.id)) {
+      return res.status(429).json({
+        error: 'Too many withdrawal requests. Please try again in a few moments.',
+        retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
+      });
     }
 
     // Use service role client for database operations

@@ -9,19 +9,49 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const pawapayApiKey = process.env.PAWAPAY_API_KEY || '';
 
+// Get allowed origin from environment or default to production domain
+const ALLOWED_ORIGIN = process.env.VERCEL_ENV === 'production'
+  ? 'https://www.iwanyu.store'
+  : 'http://localhost:8080';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400',
 };
 
+// Rate limiting: track requests by user ID
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute (higher for status checks)
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS
+  // Set CORS headers
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    res.setHeader(key, value);
+  }
+
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(204).setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
-      .end();
+    return res.status(204).end();
   }
 
   if (req.method !== 'GET') {
@@ -64,6 +94,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (userError || !user) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Apply rate limiting per user (10 requests per minute for status checks)
+    if (!checkRateLimit(user.id)) {
+      return res.status(429).json({
+        error: 'Too many status requests. Please try again in a few moments.',
+        retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
+      });
     }
 
     // Check transaction type based on prefix
